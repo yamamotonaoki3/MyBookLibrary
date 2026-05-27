@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyBookLibrary — プロトタイプ</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ========================================
+     画面1: ログイン
+     ======================================== -->
+<div id="screen-login" class="screen auth-screen">
+  <div class="auth-container">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <h1>📚 MyBookLibrary</h1>
+        <p>文学賞受賞作を読み尽くそう</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">メールアドレス</label>
+        <input class="form-input" type="email" placeholder="example@mail.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">パスワード</label>
+        <input class="form-input" type="password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="navigate('dashboard')">ログイン</button>
+      <div class="form-divider">または</div>
+      <button class="btn btn-google btn-full">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+        Google でログイン
+      </button>
+      <p class="auth-link">アカウントをお持ちでない方は <a onclick="navigate('register')">新規登録</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================
+     画面2: 新規登録
+     ======================================== -->
+<div id="screen-register" class="screen auth-screen">
+  <div class="auth-container">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <h1>📚 新規登録</h1>
+        <p>MyBookLibrary へようこそ</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">ユーザー名</label>
+        <input class="form-input" type="text" placeholder="よむよむ太郎">
+      </div>
+      <div class="form-group">
+        <label class="form-label">メールアドレス</label>
+        <input class="form-input" type="email" placeholder="example@mail.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">パスワード</label>
+        <input class="form-input" type="password" placeholder="8文字以上">
+      </div>
+      <div class="form-group">
+        <label class="form-label">パスワード（確認）</label>
+        <input class="form-input" type="password" placeholder="もう一度入力">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="navigate('dashboard')">アカウントを作成</button>
+      <div class="form-divider">または</div>
+      <button class="btn btn-google btn-full">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+        Google で登録
+      </button>
+      <p class="auth-link">すでにアカウントをお持ちの方は <a onclick="navigate('login')">ログイン</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================
+     画面3: ダッシュボード
+     ======================================== -->
+<div id="screen-dashboard" class="screen">
+  <header class="app-header">
+    <span class="logo" onclick="navigate('dashboard')">📚 MyBookLibrary</span>
+    <div class="header-right">
+      <button class="notif-btn" onclick="navigate('notifications')">🔔<span class="notif-badge">3</span></button>
+      <div class="user-menu">
+        <button class="user-menu-btn" onclick="toggleUserMenu()">よむよむ太郎 ▾</button>
+        <div class="user-dropdown">
+          <a>プロフィール</a>
+          <a class="danger" onclick="navigate('login')">ログアウト</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <h1 class="page-title">📊 ダッシュボード</h1>
+
+    <div class="dashboard-grid">
+      <!-- 読書進捗 -->
+      <div class="card">
+        <h2 style="font-size:1rem;font-weight:700;margin-bottom:14px;color:var(--primary-dark)">📖 読書進捗</h2>
+        <ul id="dashboard-award-list" class="award-list"></ul>
+        <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="navigate('award')">詳細を見る →</button>
+      </div>
+
+      <!-- お気に入り著者 -->
+      <div class="card">
+        <h2 style="font-size:1rem;font-weight:700;margin-bottom:14px;color:var(--primary-dark)">⭐ お気に入り著者</h2>
+        <div class="fav-authors-preview">
+          <div class="fav-author-preview-item">
+            <div class="author-avatar" style="width:32px;height:32px;font-size:0.85rem">凪</div>
+            <span>凪良ゆう</span>
+          </div>
+          <div class="fav-author-preview-item">
+            <div class="author-avatar" style="width:32px;height:32px;font-size:0.85rem">東</div>
+            <span>東野圭吾</span>
+          </div>
+          <div class="fav-author-preview-item">
+            <div class="author-avatar" style="width:32px;height:32px;font-size:0.85rem">宇</div>
+            <span>宇佐見りん</span>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:14px" onclick="navigate('authors')">著者一覧を見る →</button>
+      </div>
+
+      <!-- 最近の読書記録 -->
+      <div class="card dashboard-full">
+        <h2 style="font-size:1rem;font-weight:700;margin-bottom:14px;color:var(--primary-dark)">📅 最近の読書記録</h2>
+        <div class="recent-books">
+          <div class="recent-book-item">
+            <div class="book-thumb">📖</div>
+            <div class="recent-book-info">
+              <div class="title">成瀬は天下を取りにいく</div>
+              <div class="author">宮島未奈 — 2024/05/20 読了</div>
+            </div>
+          </div>
+          <div class="recent-book-item">
+            <div class="book-thumb" style="background:linear-gradient(135deg,#adb5bd,#6c757d)">📖</div>
+            <div class="recent-book-info">
+              <div class="title">ハンチバック</div>
+              <div class="author">市川沙央 — 2024/05/15 読了</div>
+            </div>
+          </div>
+          <div class="recent-book-item">
+            <div class="book-thumb" style="background:linear-gradient(135deg,#f4a261,#e76f51)">📖</div>
+            <div class="recent-book-info">
+              <div class="title">少年と犬</div>
+              <div class="author">馳星周 — 2024/05/08 読了</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-items">
+      <button class="bottom-nav-item active" onclick="navigate('dashboard')"><span class="nav-icon">🏠</span>ホーム</button>
+      <button class="bottom-nav-item" onclick="navigate('award')"><span class="nav-icon">🏆</span>賞別</button>
+      <button class="bottom-nav-item" onclick="navigate('authors')"><span class="nav-icon">⭐</span>著者</button>
+      <button class="bottom-nav-item" onclick="navigate('notifications')"><span class="nav-icon">🔔</span>通知</button>
+    </div>
+  </nav>
+</div>
+
+<!-- ========================================
+     画面4: 賞別作品一覧
+     ======================================== -->
+<div id="screen-award" class="screen">
+  <header class="app-header">
+    <span class="logo" onclick="navigate('dashboard')">📚 MyBookLibrary</span>
+    <div class="header-right">
+      <button class="notif-btn" onclick="navigate('notifications')">🔔<span class="notif-badge">3</span></button>
+      <div class="user-menu">
+        <button class="user-menu-btn" onclick="toggleUserMenu()">よむよむ太郎 ▾</button>
+        <div class="user-dropdown">
+          <a>プロフィール</a>
+          <a class="danger" onclick="navigate('login')">ログアウト</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <h1 class="page-title">🏆 賞別作品一覧</h1>
+
+    <div class="tab-list">
+      <button class="tab-btn active" data-award="naoki" onclick="switchAwardTab('naoki')">直木賞</button>
+      <button class="tab-btn" data-award="akutagawa" onclick="switchAwardTab('akutagawa')">芥川賞</button>
+      <button class="tab-btn" data-award="honya" onclick="switchAwardTab('honya')">本屋大賞</button>
+      <button class="tab-btn" data-award="konomys" onclick="switchAwardTab('konomys')">このミス</button>
+    </div>
+
+    <div class="filter-bar">
+      <select class="form-select" style="width:auto">
+        <option>年度: すべて</option>
+        <option>2024年</option>
+        <option>2023年</option>
+        <option>2022年</option>
+      </select>
+      <div class="progress-bar-wrap" style="flex:1;max-width:200px">
+        <div id="award-progress-fill" class="progress-bar-fill" style="width:40%"></div>
+      </div>
+      <span id="award-progress-text" class="filter-summary">読込中...</span>
+    </div>
+
+    <div id="award-book-grid" class="book-grid"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-items">
+      <button class="bottom-nav-item" onclick="navigate('dashboard')"><span class="nav-icon">🏠</span>ホーム</button>
+      <button class="bottom-nav-item active" onclick="navigate('award')"><span class="nav-icon">🏆</span>賞別</button>
+      <button class="bottom-nav-item" onclick="navigate('authors')"><span class="nav-icon">⭐</span>著者</button>
+      <button class="bottom-nav-item" onclick="navigate('notifications')"><span class="nav-icon">🔔</span>通知</button>
+    </div>
+  </nav>
+</div>
+
+<!-- ========================================
+     画面5: お気に入り著者一覧
+     ======================================== -->
+<div id="screen-authors" class="screen">
+  <header class="app-header">
+    <span class="logo" onclick="navigate('dashboard')">📚 MyBookLibrary</span>
+    <div class="header-right">
+      <button class="notif-btn" onclick="navigate('notifications')">🔔<span class="notif-badge">3</span></button>
+      <div class="user-menu">
+        <button class="user-menu-btn" onclick="toggleUserMenu()">よむよむ太郎 ▾</button>
+        <div class="user-dropdown">
+          <a>プロフィール</a>
+          <a class="danger" onclick="navigate('login')">ログアウト</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <h1 class="page-title">⭐ お気に入り著者</h1>
+
+    <div class="author-search">
+      <input class="form-input" type="text" placeholder="著者名を検索して追加...">
+      <button class="btn btn-primary">追加</button>
+    </div>
+
+    <div id="author-list" class="author-list"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-items">
+      <button class="bottom-nav-item" onclick="navigate('dashboard')"><span class="nav-icon">🏠</span>ホーム</button>
+      <button class="bottom-nav-item" onclick="navigate('award')"><span class="nav-icon">🏆</span>賞別</button>
+      <button class="bottom-nav-item active" onclick="navigate('authors')"><span class="nav-icon">⭐</span>著者</button>
+      <button class="bottom-nav-item" onclick="navigate('notifications')"><span class="nav-icon">🔔</span>通知</button>
+    </div>
+  </nav>
+</div>
+
+<!-- ========================================
+     画面6: 著者別作品一覧
+     ======================================== -->
+<div id="screen-author-detail" class="screen">
+  <header class="app-header">
+    <span class="logo" onclick="navigate('dashboard')">📚 MyBookLibrary</span>
+    <div class="header-right">
+      <button class="notif-btn" onclick="navigate('notifications')">🔔<span class="notif-badge">3</span></button>
+      <div class="user-menu">
+        <button class="user-menu-btn" onclick="toggleUserMenu()">よむよむ太郎 ▾</button>
+        <div class="user-dropdown">
+          <a>プロフィール</a>
+          <a class="danger" onclick="navigate('login')">ログアウト</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <button class="back-btn" onclick="goBack()">← 戻る</button>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <h1 class="page-title" style="margin-bottom:0" id="author-detail-name">著者名</h1>
+      <span style="font-size:0.85rem;color:var(--primary);background:#e9f5ee;padding:4px 10px;border-radius:12px">⭐ お気に入り済</span>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-size:0.9rem;font-weight:500;margin-bottom:6px" id="author-detail-progress-text">読了: 0 / 0冊 (0%)</div>
+      <div class="progress-bar-wrap">
+        <div id="author-detail-progress-fill" class="progress-bar-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div id="author-detail-book-grid" class="book-grid"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-items">
+      <button class="bottom-nav-item" onclick="navigate('dashboard')"><span class="nav-icon">🏠</span>ホーム</button>
+      <button class="bottom-nav-item" onclick="navigate('award')"><span class="nav-icon">🏆</span>賞別</button>
+      <button class="bottom-nav-item active" onclick="navigate('authors')"><span class="nav-icon">⭐</span>著者</button>
+      <button class="bottom-nav-item" onclick="navigate('notifications')"><span class="nav-icon">🔔</span>通知</button>
+    </div>
+  </nav>
+</div>
+
+<!-- ========================================
+     画面7: 感想投稿・一覧
+     ======================================== -->
+<div id="screen-review" class="screen">
+  <header class="app-header">
+    <span class="logo" onclick="navigate('dashboard')">📚 MyBookLibrary</span>
+    <div class="header-right">
+      <button class="notif-btn" onclick="navigate('notifications')">🔔<span class="notif-badge">3</span></button>
+      <div class="user-menu">
+        <button class="user-menu-btn" onclick="toggleUserMenu()">よむよむ太郎 ▾</button>
+        <div class="user-dropdown">
+          <a>プロフィール</a>
+          <a class="danger" onclick="navigate('login')">ログアウト</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <button class="back-btn" onclick="goBack()">← 戻る</button>
+
+    <div class="book-detail-header">
+      <div class="book-detail-cover">📖</div>
+      <div class="book-detail-info">
+        <h2 id="review-book-title">タイトル</h2>
+        <div class="author" id="review-book-author">著者名</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge badge-win">受賞</span>
+          <span style="font-size:0.78rem;color:var(--text-muted)">直木賞 2020</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 感想投稿フォーム -->
+    <div class="card review-form" style="margin-bottom:24px">
+      <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:12px">感想を投稿する</h3>
+      <div class="review-form-header">
+        <select class="form-select" style="width:auto">
+          <option>ネタバレなし</option>
+          <option>ネタバレあり ⚠️</option>
+        </select>
+      </div>
+      <textarea class="form-textarea" placeholder="この本の感想を入力してください..."></textarea>
+      <button class="btn btn-primary" style="margin-top:10px">投稿する</button>
+    </div>
+
+    <!-- みんなの感想 -->
+    <div class="review-list-title">みんなの感想 (3件)</div>
+    <div id="review-list" class="review-list"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-items">
+      <button class="bottom-nav-item" onclick="navigate('dashboard')"><span class="nav-icon">🏠</span>ホーム</button>
+      <button class="bottom-nav-item" onclick="navigate('award')"><span class="nav-icon">🏆</span>賞別</button>
+      <button class="bottom-nav-item" onclick="navigate('authors')"><span class="nav-icon">⭐</span>著者</button>
+      <button class="bottom-nav-item" onclick="navigate('notifications')"><span class="nav-icon">🔔</span>通知</button>
+    </div>
+  </nav>
+</div>
+
+<!-- ========================================
+     画面8: 通知
+     ======================================== -->
+<div id="screen-notifications" class="screen">
+  <header class="app-header">
+    <span class="logo" onclick="navigate('dashboard')">📚 MyBookLibrary</span>
+    <div class="header-right">
+      <button class="notif-btn" onclick="navigate('notifications')">🔔<span class="notif-badge">3</span></button>
+      <div class="user-menu">
+        <button class="user-menu-btn" onclick="toggleUserMenu()">よむよむ太郎 ▾</button>
+        <div class="user-dropdown">
+          <a>プロフィール</a>
+          <a class="danger" onclick="navigate('login')">ログアウト</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <div class="notif-header">
+      <h1 class="page-title" style="margin-bottom:0">🔔 通知</h1>
+      <button class="btn btn-secondary btn-sm" onclick="markAllRead()">すべて既読にする</button>
+    </div>
+
+    <div id="notif-list" class="notif-list"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-items">
+      <button class="bottom-nav-item" onclick="navigate('dashboard')"><span class="nav-icon">🏠</span>ホーム</button>
+      <button class="bottom-nav-item" onclick="navigate('award')"><span class="nav-icon">🏆</span>賞別</button>
+      <button class="bottom-nav-item" onclick="navigate('authors')"><span class="nav-icon">⭐</span>著者</button>
+      <button class="bottom-nav-item active" onclick="navigate('notifications')"><span class="nav-icon">🔔</span>通知</button>
+    </div>
+  </nav>
+</div>
+
+<!-- ========================================
+     画面9: 管理画面
+     ======================================== -->
+<div id="screen-admin" class="screen">
+  <header class="app-header">
+    <span class="logo" onclick="navigate('dashboard')">📚 MyBookLibrary</span>
+    <div class="header-right">
+      <button class="notif-btn" onclick="navigate('notifications')">🔔<span class="notif-badge">3</span></button>
+      <div class="user-menu">
+        <button class="user-menu-btn" onclick="toggleUserMenu()">よむよむ太郎（管理者） ▾</button>
+        <div class="user-dropdown">
+          <a>プロフィール</a>
+          <a class="danger" onclick="navigate('login')">ログアウト</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <button class="back-btn" onclick="navigate('dashboard')">← ダッシュボードへ</button>
+    <h1 class="page-title">📋 受賞・ノミネート作品の登録</h1>
+
+    <!-- 書籍検索 -->
+    <div class="card admin-section">
+      <h3>書籍を検索して選択（楽天ブックスAPI）</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input class="form-input" type="text" placeholder="書籍タイトルで検索...">
+        <button class="btn btn-primary">検索</button>
+      </div>
+      <div class="search-result-list">
+        <div class="search-result-item">
+          <div class="book-thumb" style="width:36px;height:50px;font-size:1rem">📖</div>
+          <div style="flex:1">
+            <div style="font-size:0.9rem;font-weight:500">流浪の月</div>
+            <div style="font-size:0.78rem;color:var(--text-muted)">凪良ゆう / 2019年</div>
+          </div>
+          <button class="btn btn-sm btn-primary">選択</button>
+        </div>
+        <div class="search-result-item">
+          <div class="book-thumb" style="width:36px;height:50px;font-size:1rem;background:linear-gradient(135deg,#adb5bd,#6c757d)">📖</div>
+          <div style="flex:1">
+            <div style="font-size:0.9rem;font-weight:500">汝、星のごとく</div>
+            <div style="font-size:0.78rem;color:var(--text-muted)">凪良ゆう / 2022年</div>
+          </div>
+          <button class="btn btn-sm btn-primary">選択</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 登録フォーム -->
+    <div class="card admin-section">
+      <h3>作品情報を入力して登録</h3>
+      <div class="form-group">
+        <label class="form-label">書籍タイトル</label>
+        <input class="form-input" type="text" placeholder="流浪の月">
+      </div>
+      <div class="form-group">
+        <label class="form-label">著者名</label>
+        <input class="form-input" type="text" placeholder="凪良ゆう">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">出版年</label>
+          <input class="form-input" type="number" placeholder="2019">
+        </div>
+        <div class="form-group">
+          <label class="form-label">文学賞</label>
+          <select class="form-select">
+            <option>直木賞</option>
+            <option>芥川賞</option>
+            <option>本屋大賞</option>
+            <option>このミステリーがすごい!</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">種別</label>
+        <div class="radio-group">
+          <label><input type="radio" name="type" value="win" checked> 受賞作</label>
+          <label><input type="radio" name="type" value="nom"> ノミネート</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">受賞年度</label>
+        <select class="form-select">
+          <option>2024年</option>
+          <option>2023年</option>
+          <option>2022年</option>
+          <option>2021年</option>
+          <option>2020年</option>
+        </select>
+      </div>
+      <button class="btn btn-primary">登録する</button>
+    </div>
+
+    <!-- CSVインポート -->
+    <div class="card admin-section">
+      <h3>CSVで一括インポート</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="form-input" type="file" accept=".csv" style="flex:1">
+        <button class="btn btn-accent">インポート実行</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 管理画面へのリンク（ダッシュボードから隠しアクセス） -->
+<div style="position:fixed;bottom:80px;right:16px;z-index:200">
+  <button class="btn btn-sm btn-secondary" onclick="navigate('admin')" style="opacity:0.6;font-size:0.75rem">⚙️ 管理</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
