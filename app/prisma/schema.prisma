@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              Int              @id @default(autoincrement())
+  name            String
+  email           String           @unique
+  role            String           @default("user")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  favoriteAuthors FavoriteAuthor[]
+  readingStatuses ReadingStatus[]
+  reviews         Review[]
+  likes           Like[]
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model Author {
+  id              Int              @id @default(autoincrement())
+  name            String
+  books           Book[]
+  favoriteAuthors FavoriteAuthor[]
+
+  @@map("authors")
+}
+
+model Book {
+  id              Int             @id @default(autoincrement())
+  authorId        Int             @map("author_id")
+  title           String
+  publishedAt     DateTime        @map("published_at") @db.Date
+  coverImageUrl   String?         @map("cover_image_url")
+  author          Author          @relation(fields: [authorId], references: [id])
+  awardEntries    AwardEntry[]
+  readingStatuses ReadingStatus[]
+  reviews         Review[]
+
+  @@map("books")
+}
+
+model Award {
+  id           Int          @id @default(autoincrement())
+  name         String       @unique
+  awardEntries AwardEntry[]
+
+  @@map("awards")
+}
+
+model AwardEntry {
+  id      Int    @id @default(autoincrement())
+  bookId  Int    @map("book_id")
+  awardId Int    @map("award_id")
+  year    Int
+  type    String
+  book    Book   @relation(fields: [bookId], references: [id])
+  award   Award  @relation(fields: [awardId], references: [id])
+
+  @@unique([bookId, awardId, year])
+  @@map("award_entries")
+}
+
+model FavoriteAuthor {
+  id       Int     @id @default(autoincrement())
+  userId   Int     @map("user_id")
+  authorId Int     @map("author_id")
+  notify   Boolean @default(true)
+  user     User    @relation(fields: [userId], references: [id])
+  author   Author  @relation(fields: [authorId], references: [id])
+
+  @@unique([userId, authorId])
+  @@map("favorite_authors")
+}
+
+model ReadingStatus {
+  id     Int    @id @default(autoincrement())
+  userId Int    @map("user_id")
+  bookId Int    @map("book_id")
+  status String @default("unread")
+  user   User   @relation(fields: [userId], references: [id])
+  book   Book   @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+  @@map("reading_statuses")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  bookId    Int      @map("book_id")
+  body      String
+  isSpoiler Boolean  @default(false) @map("is_spoiler")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+  book      Book     @relation(fields: [bookId], references: [id])
+  likes     Like[]
+
+  @@map("reviews")
+}
+
+model Like {
+  id       Int    @id @default(autoincrement())
+  userId   Int    @map("user_id")
+  reviewId Int    @map("review_id")
+  user     User   @relation(fields: [userId], references: [id])
+  review   Review @relation(fields: [reviewId], references: [id])
+
+  @@unique([userId, reviewId])
+  @@map("likes")
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  type      String
+  content   String
+  isRead    Boolean   @default(false) @map("is_read")
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
