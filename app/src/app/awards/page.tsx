@@ -1,0 +1,79 @@
+import { Suspense } from "react";
+import { prisma } from "@/lib/prisma";
+import { AwardTabs } from "./_components/AwardTabs";
+import { YearFilter } from "./_components/YearFilter";
+import { BookList } from "./_components/BookList";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "賞別作品一覧 | MyBookLibrary",
+};
+
+type PageProps = {
+  searchParams: Promise<{
+    awardId?: string;
+    year?: string;
+  }>;
+};
+
+export default async function AwardsPage({ searchParams }: PageProps) {
+  const { awardId: awardIdParam, year: yearParam } = await searchParams;
+
+  const awards = await prisma.award.findMany({
+    orderBy: { id: "asc" },
+    select: { id: true, name: true },
+  });
+
+  const selectedAwardId = awardIdParam
+    ? parseInt(awardIdParam, 10)
+    : (awards[0]?.id ?? 1);
+
+  const selectedYear = yearParam ? parseInt(yearParam, 10) : undefined;
+
+  const yearsData = await prisma.awardEntry.findMany({
+    where: { awardId: selectedAwardId },
+    select: { year: true },
+    distinct: ["year"],
+    orderBy: { year: "desc" },
+  });
+  const availableYears = yearsData.map((e) => e.year);
+
+  return (
+    <div className="mx-auto w-full max-w-5xl px-4 py-8">
+      <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        賞別作品一覧
+      </h1>
+
+      {awards.length === 0 ? (
+        <p className="text-zinc-500">賞データが登録されていません。</p>
+      ) : (
+        <>
+          <AwardTabs awards={awards} selectedAwardId={selectedAwardId} />
+
+          <div className="mt-4 mb-6">
+            <YearFilter
+              availableYears={availableYears}
+              selectedYear={selectedYear}
+            />
+          </div>
+
+          <Suspense
+            key={`${selectedAwardId}-${selectedYear}`}
+            fallback={
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-40 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"
+                  />
+                ))}
+              </div>
+            }
+          >
+            <BookList awardId={selectedAwardId} year={selectedYear} />
+          </Suspense>
+        </>
+      )}
+    </div>
+  );
+}
