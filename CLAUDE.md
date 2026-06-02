@@ -65,8 +65,27 @@ docs: 要件定義書を追加
 
 ---
 
-## 技術スタック（未定・決定後に追記）
+## 技術スタック
 
-- **Backend:** 未定
-- **Frontend:** 未定
-- **アプリ起動:** 未定
+| 役割 | 技術 |
+| --- | --- |
+| フロントエンド | Next.js 16 (React 19) + TypeScript |
+| バックエンド | Next.js API Routes（同一プロジェクト内） |
+| データベース | MySQL 8.4 |
+| ORM | Prisma 7 |
+| スタイリング | Tailwind CSS v4 |
+| コンテナ | Docker |
+| 認証 | 未定（NextAuth.js 候補） |
+| 外部API | 楽天ブックスAPI（候補） |
+| デプロイ | 未定（Vercel 候補） |
+
+## アプリ起動手順
+
+```bash
+# 1. データベース起動
+docker compose up -d
+
+# 2. 開発サーバー起動（app/ ディレクトリで）
+cd app
+npm run dev
+```

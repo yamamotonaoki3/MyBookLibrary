@@ -121,7 +121,7 @@
 | --- | --- |
 | フロントエンド | Next.js (React) |
 | バックエンド | Next.js API Routes |
-| データベース | PostgreSQL |
+| データベース | MySQL 8.4 |
 | 認証 | NextAuth.js（メール＋パスワード・Googleログイン） |
 | 外部API | 楽天ブックスAPI（書影・書籍情報・新刊取得） |
 | デプロイ | Vercel |
