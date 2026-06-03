@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { BookCard } from "./_components/BookCard";
 import type { Metadata } from "next";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "本一覧 | MyBookLibrary",
 };
