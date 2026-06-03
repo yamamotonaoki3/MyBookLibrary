@@ -1,0 +1,145 @@
+import Image from "next/image";
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import type { Metadata } from "next";
+
+export const dynamic = "force-dynamic";
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const book = await prisma.book.findUnique({
+    where: { id: Number(id) },
+    select: { title: true },
+  });
+  return { title: book ? `${book.title} | MyBookLibrary` : "Not Found" };
+}
+
+export default async function BookDetailPage({ params }: Props) {
+  const { id } = await params;
+  const bookId = Number(id);
+
+  if (isNaN(bookId)) notFound();
+
+  const book = await prisma.book.findUnique({
+    where: { id: bookId },
+    include: {
+      author: true,
+      awardEntries: {
+        include: { award: true },
+        orderBy: { year: "desc" },
+      },
+      reviews: {
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+
+  if (!book) notFound();
+
+  const publishedYear = book.publishedAt.getFullYear();
+
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 py-8">
+      {/* 書籍ヘッダー */}
+      <div className="flex gap-6">
+        <div className="relative h-48 w-32 shrink-0 overflow-hidden rounded-lg">
+          {book.coverImageUrl ? (
+            <Image
+              src={book.coverImageUrl}
+              alt={`${book.title}の書影`}
+              fill
+              className="object-cover"
+              sizes="128px"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-sm text-zinc-400 dark:bg-zinc-800">
+              No Image
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col justify-center gap-2">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            {book.title}
+          </h1>
+          <p className="text-zinc-600 dark:text-zinc-400">{book.author.name}</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-500">
+            {publishedYear}年
+          </p>
+        </div>
+      </div>
+
+      {/* 受賞歴 */}
+      {book.awardEntries.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            受賞歴
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {book.awardEntries.map((entry) => (
+              <li
+                key={entry.id}
+                className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    entry.type === "winner"
+                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                      : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
+                  }`}
+                >
+                  {entry.type === "winner" ? "受賞" : "ノミネート"}
+                </span>
+                <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                  {entry.award.name}
+                </span>
+                <span className="ml-auto text-sm text-zinc-500">
+                  {entry.year}年
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* レビュー一覧 */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          レビュー{book.reviews.length > 0 && `（${book.reviews.length}件）`}
+        </h2>
+
+        {book.reviews.length === 0 ? (
+          <p className="text-sm text-zinc-500">まだレビューがありません。</p>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {book.reviews.map((review) => (
+              <li
+                key={review.id}
+                className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    {review.user.name}
+                  </span>
+                  {review.isSpoiler && (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900 dark:text-red-300">
+                      ネタバレあり
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  {review.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
