@@ -9,7 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "enrich": "tsx scripts/enrich-books.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
