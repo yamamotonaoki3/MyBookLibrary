@@ -1,5 +1,5 @@
 const RAKUTEN_API_BASE =
-  "https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404";
+  "https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404";
 
 export type RakutenBook = {
   title: string;
@@ -14,10 +14,13 @@ export async function searchBooks(params: {
   author?: string;
 }): Promise<RakutenBook[]> {
   const appId = process.env.RAKUTEN_APP_ID;
+  const accessKey = process.env.RAKUTEN_ACCESS_KEY;
   if (!appId) throw new Error("RAKUTEN_APP_ID is not set");
+  if (!accessKey) throw new Error("RAKUTEN_ACCESS_KEY is not set");
 
   const url = new URL(RAKUTEN_API_BASE);
   url.searchParams.set("applicationId", appId);
+  url.searchParams.set("accessKey", accessKey);
   url.searchParams.set("formatVersion", "2");
 
   if (params.title) url.searchParams.set("title", params.title);
