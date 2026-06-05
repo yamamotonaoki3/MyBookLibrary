@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { SearchResult } from "@/app/api/books/search/route";
 
 type SearchType = "title" | "author";
@@ -14,17 +14,12 @@ export default function BookSearchPage() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = query.trim();
-    if (!trimmed) return;
-
+  async function fetchResults(q: string) {
     setLoading(true);
     setError(null);
-
     try {
       const res = await fetch(
-        `/api/books/search?q=${encodeURIComponent(trimmed)}&type=${type}`
+        `/api/books/search?q=${encodeURIComponent(q)}&type=${type}`
       );
       const data = await res.json();
       if (!res.ok) {
@@ -40,6 +35,21 @@ export default function BookSearchPage() {
       setLoading(false);
       setSearched(true);
     }
+  }
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) return;
+    const timer = setTimeout(() => fetchResults(trimmed), 0);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    await fetchResults(trimmed);
   }
 
   return (
