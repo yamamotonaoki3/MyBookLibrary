@@ -1,4 +1,5 @@
-const RAKUTEN_API_BASE = "https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404";
+const RAKUTEN_API_BASE =
+  "https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404";
 
 export type RakutenBook = {
   title: string;
@@ -6,9 +7,13 @@ export type RakutenBook = {
   largeImageUrl: string;
   publisherName: string;
   salesDate: string;
+  isbn: string;
 };
 
-export async function searchBookByTitle(title: string): Promise<RakutenBook | null> {
+export async function searchBooks(params: {
+  title?: string;
+  author?: string;
+}): Promise<RakutenBook[]> {
   const appId = process.env.RAKUTEN_APP_ID;
   const accessKey = process.env.RAKUTEN_ACCESS_KEY;
   if (!appId) throw new Error("RAKUTEN_APP_ID is not set");
@@ -17,18 +22,36 @@ export async function searchBookByTitle(title: string): Promise<RakutenBook | nu
   const url = new URL(RAKUTEN_API_BASE);
   url.searchParams.set("applicationId", appId);
   url.searchParams.set("accessKey", accessKey);
-  url.searchParams.set("title", title);
   url.searchParams.set("formatVersion", "2");
+
+  if (params.title) url.searchParams.set("title", params.title);
+  if (params.author) url.searchParams.set("author", params.author);
 
   const res = await fetch(url.toString());
   if (!res.ok) {
     console.error(`楽天API エラー: ${res.status} ${res.statusText}`);
-    return null;
+    return [];
   }
 
   const data = await res.json();
-  const items: RakutenBook[] = data.Items ?? [];
+  return (data.Items ?? []) as RakutenBook[];
+}
 
-  if (items.length === 0) return null;
-  return items[0];
+export async function searchBooksByIsbn(isbn: string): Promise<RakutenBook | null> {
+  const appId = process.env.RAKUTEN_APP_ID;
+  const accessKey = process.env.RAKUTEN_ACCESS_KEY;
+  if (!appId || !accessKey) return null;
+
+  const url = new URL(RAKUTEN_API_BASE);
+  url.searchParams.set("applicationId", appId);
+  url.searchParams.set("accessKey", accessKey);
+  url.searchParams.set("formatVersion", "2");
+  url.searchParams.set("isbn", isbn);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  const items = (data.Items ?? []) as RakutenBook[];
+  return items[0] ?? null;
 }

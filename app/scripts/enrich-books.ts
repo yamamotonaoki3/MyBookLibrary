@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma";
-import { searchBookByTitle } from "../src/lib/rakuten";
+import { searchBooks } from "../src/lib/rakuten";
 
 const prisma = new PrismaClient();
 
@@ -21,7 +21,8 @@ async function main() {
   for (const book of books) {
     console.log(`\n検索中: 「${book.title}」`);
 
-    const result = await searchBookByTitle(book.title);
+    const items = await searchBooks({ title: book.title });
+    const result = items[0] ?? null;
 
     if (!result) {
       console.log(`  → 見つかりませんでした`);
