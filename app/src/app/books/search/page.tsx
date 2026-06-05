@@ -2,21 +2,14 @@
 
 import Image from "next/image";
 import { useState } from "react";
-
-type RakutenBook = {
-  title: string;
-  author: string;
-  largeImageUrl: string;
-  publisherName: string;
-  salesDate: string;
-};
+import type { SearchResult } from "@/app/api/books/search/route";
 
 type SearchType = "title" | "author";
 
 export default function BookSearchPage() {
   const [query, setQuery] = useState("");
   const [type, setType] = useState<SearchType>("title");
-  const [results, setResults] = useState<RakutenBook[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
@@ -83,7 +76,7 @@ export default function BookSearchPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={type === "title" ? "タイトルを入力" : "著者名を入力"}
+            placeholder={type === "title" ? "タイトルを入力（例：吾輩は猫である）" : "著者名を入力（例：夏目漱石）"}
             className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
           />
           <button
@@ -94,6 +87,9 @@ export default function BookSearchPage() {
             {loading ? "検索中…" : "検索"}
           </button>
         </div>
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">
+          検索にヒットしない場合は、正式なタイトルや著者名（漢字）でお試しください。
+        </p>
       </form>
 
       {error && (
@@ -104,20 +100,22 @@ export default function BookSearchPage() {
 
       {searched && !loading && !error && (
         <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
-          {results.length > 0 ? `${results.length} 件見つかりました` : "該当する本が見つかりませんでした"}
+          {results.length > 0
+            ? `${results.length} 件見つかりました`
+            : "該当する本が見つかりませんでした"}
         </p>
       )}
 
       <div className="flex flex-col gap-3">
         {results.map((book, i) => (
           <div
-            key={i}
+            key={book.isbn || i}
             className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
           >
             <div className="relative h-32 w-20 shrink-0 overflow-hidden rounded">
-              {book.largeImageUrl ? (
+              {book.coverImageUrl ? (
                 <Image
-                  src={book.largeImageUrl}
+                  src={book.coverImageUrl}
                   alt={`${book.title}の書影`}
                   fill
                   className="object-cover"
@@ -137,7 +135,8 @@ export default function BookSearchPage() {
                 {book.author}
               </p>
               <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                {book.publisherName} · {book.salesDate}
+                {book.publisherName}
+                {book.salesDate ? ` · ${book.salesDate}` : ""}
               </p>
             </div>
           </div>

@@ -7,6 +7,7 @@ export type RakutenBook = {
   largeImageUrl: string;
   publisherName: string;
   salesDate: string;
+  isbn: string;
 };
 
 export async function searchBooks(params: {
@@ -34,4 +35,23 @@ export async function searchBooks(params: {
 
   const data = await res.json();
   return (data.Items ?? []) as RakutenBook[];
+}
+
+export async function searchBooksByIsbn(isbn: string): Promise<RakutenBook | null> {
+  const appId = process.env.RAKUTEN_APP_ID;
+  const accessKey = process.env.RAKUTEN_ACCESS_KEY;
+  if (!appId || !accessKey) return null;
+
+  const url = new URL(RAKUTEN_API_BASE);
+  url.searchParams.set("applicationId", appId);
+  url.searchParams.set("accessKey", accessKey);
+  url.searchParams.set("formatVersion", "2");
+  url.searchParams.set("isbn", isbn);
+
+  const res = await fetch(url.toString());
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  const items = (data.Items ?? []) as RakutenBook[];
+  return items[0] ?? null;
 }
