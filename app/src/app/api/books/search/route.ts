@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchBooks } from "@/lib/rakuten";
+import { prisma } from "@/lib/prisma";
 
 export type SearchResult = {
   title: string;
@@ -8,6 +9,7 @@ export type SearchResult = {
   publisherName: string;
   salesDate: string;
   coverImageUrl: string | null;
+  awards: { name: string; year: number; type: string }[];
 };
 
 export async function GET(request: NextRequest) {
@@ -29,6 +31,25 @@ export async function GET(request: NextRequest) {
     const params = type === "title" ? { title: q } : { author: q };
     const items = await searchBooks(params);
 
+    const isbns = items.map((b) => b.isbn).filter(Boolean);
+    const titles = items.map((b) => b.title);
+    const dbBooks = await prisma.book.findMany({
+      where: { OR: [{ isbn: { in: isbns } }, { title: { in: titles } }] },
+      select: {
+        isbn: true,
+        title: true,
+        awardEntries: {
+          select: { year: true, type: true, award: { select: { name: true } } },
+        },
+      },
+    });
+
+    const toAwards = (entries: { year: number; type: string; award: { name: string } }[]) =>
+      entries.map((e) => ({ name: e.award.name, year: e.year, type: e.type }));
+
+    const awardsByIsbn = new Map(dbBooks.filter((b) => b.isbn).map((b) => [b.isbn, toAwards(b.awardEntries)]));
+    const awardsByTitle = new Map(dbBooks.map((b) => [b.title, toAwards(b.awardEntries)]));
+
     const results: SearchResult[] = items.map((b) => ({
       title: b.title,
       author: b.author,
@@ -36,6 +57,7 @@ export async function GET(request: NextRequest) {
       publisherName: b.publisherName,
       salesDate: b.salesDate,
       coverImageUrl: b.largeImageUrl || null,
+      awards: awardsByIsbn.get(b.isbn) ?? awardsByTitle.get(b.title) ?? [],
     }));
 
     return NextResponse.json({ items: results });

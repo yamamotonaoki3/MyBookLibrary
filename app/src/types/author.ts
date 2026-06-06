@@ -19,6 +19,7 @@ export type AuthorBook = {
   salesDate: string;
   bookId: number | null;
   status: "unread" | "reading" | "read";
+  awards: { name: string; year: number; type: string }[];
 };
 
 export type FavoriteAuthorItem = {
