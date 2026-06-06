@@ -10,10 +10,20 @@ export type AuthorSearchResult = {
   isFavorite: boolean;
 };
 
+export type AuthorBook = {
+  title: string;
+  author: string;
+  isbn: string;
+  coverImageUrl: string | null;
+  publisherName: string;
+  salesDate: string;
+  status: "unread" | "reading" | "read";
+};
+
 export type FavoriteAuthorItem = {
   id: number;
   authorId: number;
   authorName: string;
-  bookCount: number;
+  readingCount: number;
   notify: boolean;
 };

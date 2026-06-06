@@ -16,7 +16,14 @@ async function FavoriteAuthorList() {
       author: {
         select: {
           name: true,
-          _count: { select: { books: true } },
+          books: {
+            select: {
+              readingStatuses: {
+                where: { userId: 1, status: "reading" },
+                select: { id: true },
+              },
+            },
+          },
         },
       },
     },
@@ -27,7 +34,10 @@ async function FavoriteAuthorList() {
     id: f.id,
     authorId: f.authorId,
     authorName: f.author.name,
-    bookCount: f.author._count.books,
+    readingCount: f.author.books.reduce(
+      (sum, book) => sum + book.readingStatuses.length,
+      0
+    ),
     notify: f.notify,
   }));
 

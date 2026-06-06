@@ -36,6 +36,7 @@ model Book {
   id              Int             @id @default(autoincrement())
   authorId        Int             @map("author_id")
   title           String
+  isbn            String?         @unique
   publishedAt     DateTime        @map("published_at") @db.Date
   coverImageUrl   String?         @map("cover_image_url")
   author          Author          @relation(fields: [authorId], references: [id])
