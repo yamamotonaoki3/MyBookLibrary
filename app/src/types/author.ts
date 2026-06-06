@@ -17,6 +17,7 @@ export type AuthorBook = {
   coverImageUrl: string | null;
   publisherName: string;
   salesDate: string;
+  bookId: number | null;
   status: "unread" | "reading" | "read";
 };
 
