@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { BookWithAwardEntry } from "@/types/award";
 
 type Props = {
@@ -9,7 +10,10 @@ export function BookCard({ entry }: Props) {
   const { book, type, year } = entry;
 
   return (
-    <div className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+    <Link
+      href={`/books/${book.id}`}
+      className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+    >
       <div className="relative h-32 w-20 shrink-0 overflow-hidden rounded">
         {book.coverImageUrl ? (
           <Image
@@ -49,6 +53,6 @@ export function BookCard({ entry }: Props) {
           </p>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

@@ -32,6 +32,7 @@ export async function GET(
     const books = await prisma.book.findMany({
       where: { isbn: { in: isbnList } },
       select: {
+        id: true,
         isbn: true,
         readingStatuses: {
           where: { userId: TEMP_USER_ID },
@@ -40,22 +41,24 @@ export async function GET(
       },
     });
 
-    const statusByIsbn = new Map(
-      books.map((b) => [b.isbn, b.readingStatuses[0]?.status ?? "unread"])
-    );
+    const bookByIsbn = new Map(books.map((b) => [b.isbn, b]));
 
-    const result = rakutenBooks.map((book) => ({
-      title: book.title,
-      author: book.author,
-      isbn: book.isbn,
-      coverImageUrl: book.largeImageUrl || null,
-      publisherName: book.publisherName,
-      salesDate: book.salesDate,
-      status: (statusByIsbn.get(book.isbn) ?? "unread") as
-        | "unread"
-        | "reading"
-        | "read",
-    }));
+    const result = rakutenBooks.map((book) => {
+      const dbBook = bookByIsbn.get(book.isbn);
+      return {
+        title: book.title,
+        author: book.author,
+        isbn: book.isbn,
+        coverImageUrl: book.largeImageUrl || null,
+        publisherName: book.publisherName,
+        salesDate: book.salesDate,
+        bookId: dbBook?.id ?? null,
+        status: (dbBook?.readingStatuses[0]?.status ?? "unread") as
+          | "unread"
+          | "reading"
+          | "read",
+      };
+    });
 
     return Response.json(result);
   } catch (error) {

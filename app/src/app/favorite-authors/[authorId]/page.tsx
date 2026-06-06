@@ -51,6 +51,7 @@ async function BookList({
       ],
     },
     select: {
+      id: true,
       isbn: true,
       title: true,
       readingStatuses: {
@@ -60,28 +61,24 @@ async function BookList({
     },
   });
 
-  const statusByIsbn = new Map(
-    dbBooks
-      .filter((b) => b.isbn)
-      .map((b) => [b.isbn, b.readingStatuses[0]?.status ?? "unread"])
-  );
-  const statusByTitle = new Map(
-    dbBooks.map((b) => [b.title, b.readingStatuses[0]?.status ?? "unread"])
-  );
+  const bookByIsbn = new Map(dbBooks.filter((b) => b.isbn).map((b) => [b.isbn, b]));
+  const bookByTitle = new Map(dbBooks.map((b) => [b.title, b]));
 
-  const books: AuthorBook[] = pagedRakutenBooks.map((book) => ({
-    title: book.title,
-    author: book.author,
-    isbn: book.isbn,
-    coverImageUrl: book.largeImageUrl || null,
-    publisherName: book.publisherName,
-    salesDate: book.salesDate,
-    status: (
-      (book.isbn ? statusByIsbn.get(book.isbn) : undefined) ??
-      statusByTitle.get(book.title) ??
-      "unread"
-    ) as AuthorBook["status"],
-  }));
+  const books: AuthorBook[] = pagedRakutenBooks.map((book) => {
+    const dbBook =
+      (book.isbn ? bookByIsbn.get(book.isbn) : undefined) ??
+      bookByTitle.get(book.title);
+    return {
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn,
+      coverImageUrl: book.largeImageUrl || null,
+      publisherName: book.publisherName,
+      salesDate: book.salesDate,
+      bookId: dbBook?.id ?? null,
+      status: (dbBook?.readingStatuses[0]?.status ?? "unread") as AuthorBook["status"],
+    };
+  });
 
   if (books.length === 0) {
     return (

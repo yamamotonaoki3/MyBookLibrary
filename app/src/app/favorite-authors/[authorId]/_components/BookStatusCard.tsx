@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import type { AuthorBook } from "@/types/author";
 
@@ -37,27 +38,44 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
     setSaving(false);
   }
 
+  const coverImage = book.coverImageUrl ? (
+    <Image
+      src={book.coverImageUrl}
+      alt={book.title}
+      width={64}
+      height={90}
+      className="flex-shrink-0 rounded object-cover"
+    />
+  ) : (
+    <div className="flex h-[90px] w-16 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-xs text-gray-400 dark:bg-gray-700">
+      No Image
+    </div>
+  );
+
   return (
     <div className="flex gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      {book.coverImageUrl ? (
-        <Image
-          src={book.coverImageUrl}
-          alt={book.title}
-          width={64}
-          height={90}
-          className="flex-shrink-0 rounded object-cover"
-        />
+      {book.bookId != null ? (
+        <Link href={`/books/${book.bookId}`} className="flex-shrink-0">
+          {coverImage}
+        </Link>
       ) : (
-        <div className="flex h-[90px] w-16 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-xs text-gray-400 dark:bg-gray-700">
-          No Image
-        </div>
+        coverImage
       )}
 
       <div className="flex flex-1 flex-col justify-between gap-2">
         <div>
-          <p className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">
-            {book.title}
-          </p>
+          {book.bookId != null ? (
+            <Link
+              href={`/books/${book.bookId}`}
+              className="font-semibold text-gray-900 hover:underline dark:text-gray-100 line-clamp-2"
+            >
+              {book.title}
+            </Link>
+          ) : (
+            <p className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">
+              {book.title}
+            </p>
+          )}
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {book.publisherName}　{book.salesDate}
           </p>
