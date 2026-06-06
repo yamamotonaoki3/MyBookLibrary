@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/awards", label: "賞別一覧" },
   { href: "/books/search", label: "本を探す" },
   { href: "/favorite-authors", label: "お気に入り著者" },
+  { href: "/my-reviews", label: "投稿した感想" },
 ];
 
 export function Header() {
