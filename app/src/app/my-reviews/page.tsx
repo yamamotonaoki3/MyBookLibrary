@@ -17,6 +17,7 @@ export default async function MyReviewsPage() {
     where: { userId: TEMP_USER_ID },
     include: {
       book: { select: { id: true, title: true } },
+      _count: { select: { likes: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -47,6 +48,10 @@ export default async function MyReviewsPage() {
                   {review.book.title}
                 </Link>
                 <span className="ml-auto flex items-center gap-3 text-xs text-zinc-400 dark:text-zinc-500">
+                  <span className="flex items-center gap-0.5 text-red-400 dark:text-red-400">
+                    <span>♥</span>
+                    <span>{review._count.likes}</span>
+                  </span>
                   {review.createdAt.toLocaleDateString("ja-JP", {
                     year: "numeric",
                     month: "long",
