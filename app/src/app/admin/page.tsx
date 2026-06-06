@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type SearchResult = {
   title: string;
@@ -15,6 +15,19 @@ type SearchResult = {
 type Award = {
   id: number;
   name: string;
+};
+
+type AwardEntry = {
+  id: number;
+  year: number;
+  type: string;
+  award: { id: number; name: string };
+  book: {
+    id: number;
+    title: string;
+    coverImageUrl: string | null;
+    author: { id: number; name: string };
+  };
 };
 
 type FormState = {
@@ -56,6 +69,22 @@ export default function AdminPage() {
     null
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [entries, setEntries] = useState<AwardEntry[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingType, setEditingType] = useState<"winner" | "nominee">("winner");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/admin/award-entries")
+      .then((res) => res.json())
+      .then((data: AwardEntry[]) => setEntries(data));
+  }, [refreshKey]);
+
+  function refreshEntries() {
+    setRefreshKey((k) => k + 1);
+  }
 
   async function loadAwards() {
     if (awardsLoaded) return;
@@ -112,6 +141,7 @@ export default function AdminPage() {
     });
     if (res.ok) {
       setRegisterResult("登録しました。");
+      refreshEntries();
     } else {
       const data = await res.json();
       setRegisterResult(`エラー: ${data.error ?? "登録に失敗しました。"}`);
@@ -129,6 +159,30 @@ export default function AdminPage() {
     const data = await res.json();
     setImportResult(data);
     setImporting(false);
+    refreshEntries();
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm("この受賞登録を削除しますか？")) return;
+    setDeletingId(id);
+    await fetch(`/api/admin/award-entries/${id}`, { method: "DELETE" });
+    setDeletingId(null);
+    refreshEntries();
+  }
+
+  function startEdit(entry: AwardEntry) {
+    setEditingId(entry.id);
+    setEditingType(entry.type as "winner" | "nominee");
+  }
+
+  async function handleEditSave(id: number) {
+    await fetch(`/api/admin/award-entries/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: editingType }),
+    });
+    setEditingId(null);
+    refreshEntries();
   }
 
   return (
@@ -315,7 +369,7 @@ export default function AdminPage() {
       </section>
 
       {/* CSVインポート */}
-      <section className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+      <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
         <h2 className="mb-2 text-base font-semibold text-zinc-800 dark:text-zinc-200">
           CSVから一括インポート
         </h2>
@@ -351,6 +405,107 @@ export default function AdminPage() {
                 ))}
               </ul>
             )}
+          </div>
+        )}
+      </section>
+
+      {/* 受賞登録一覧 */}
+      <section>
+        <h2 className="mb-4 text-base font-semibold text-zinc-800 dark:text-zinc-200">
+          受賞登録一覧
+        </h2>
+        {entries.length === 0 ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">登録されていません。</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                <tr>
+                  <th className="px-4 py-3 text-left">文学賞</th>
+                  <th className="px-4 py-3 text-left">年度</th>
+                  <th className="px-4 py-3 text-left">タイトル</th>
+                  <th className="px-4 py-3 text-left">著者</th>
+                  <th className="px-4 py-3 text-left">種別</th>
+                  <th className="px-4 py-3 text-left">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
+                {entries.map((entry) => (
+                  <tr key={entry.id}>
+                    <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                      {entry.award.name}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{entry.year}年</td>
+                    <td className="px-4 py-3 text-zinc-900 dark:text-zinc-50">
+                      {entry.book.title}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                      {entry.book.author.name}
+                    </td>
+                    <td className="px-4 py-3">
+                      {editingId === entry.id ? (
+                        <select
+                          value={editingType}
+                          onChange={(e) =>
+                            setEditingType(e.target.value as "winner" | "nominee")
+                          }
+                          className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
+                        >
+                          <option value="winner">受賞作</option>
+                          <option value="nominee">ノミネート</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            entry.type === "winner"
+                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                              : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                          }`}
+                        >
+                          {entry.type === "winner" ? "受賞作" : "ノミネート"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        {editingId === entry.id ? (
+                          <>
+                            <button
+                              onClick={() => handleEditSave(entry.id)}
+                              className="rounded bg-zinc-900 px-2 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                            >
+                              保存
+                            </button>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                            >
+                              キャンセル
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => startEdit(entry)}
+                              className="rounded border border-zinc-300 px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                            >
+                              編集
+                            </button>
+                            <button
+                              onClick={() => handleDelete(entry.id)}
+                              disabled={deletingId === entry.id}
+                              className="rounded border border-red-300 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                            >
+                              {deletingId === entry.id ? "削除中..." : "削除"}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>

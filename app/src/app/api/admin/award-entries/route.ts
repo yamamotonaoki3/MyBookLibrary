@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 
+export async function GET() {
+  try {
+    const entries = await prisma.awardEntry.findMany({
+      include: {
+        book: { include: { author: true } },
+        award: true,
+      },
+      orderBy: [{ award: { name: "asc" } }, { year: "desc" }],
+    });
+    return NextResponse.json(entries);
+  } catch (error) {
+    console.error("[GET /api/admin/award-entries]", error);
+    return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
+  }
+}
+
 // "2024年01月" "2024年01月中旬" などを Date に変換する
 function parsePublishedAt(raw: string | null | undefined): Date {
   if (!raw) return new Date();
