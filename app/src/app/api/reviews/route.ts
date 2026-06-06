@@ -3,6 +3,24 @@ import { prisma } from "@/lib/prisma";
 
 const TEMP_USER_ID = 1;
 
+export async function GET() {
+  try {
+    const reviews = await prisma.review.findMany({
+      where: { userId: TEMP_USER_ID },
+      include: {
+        book: { select: { id: true, title: true, coverImageUrl: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(reviews);
+  } catch {
+    return NextResponse.json(
+      { error: "サーバーエラーが発生しました。" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { bookId, body, isSpoiler } = await request.json();
