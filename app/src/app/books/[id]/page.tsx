@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import LikeButton from "./_components/LikeButton";
+import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
 
 const TEMP_USER_ID = 1;
 
@@ -51,6 +52,11 @@ export default async function BookDetailPage({ params }: Props) {
 
   if (!book) notFound();
 
+  const favoriteRecord = await prisma.favoriteAuthor.findUnique({
+    where: { userId_authorId: { userId: TEMP_USER_ID, authorId: book.authorId } },
+    select: { authorId: true },
+  });
+
   const publishedYear = book.publishedAt.getFullYear();
 
   return (
@@ -77,7 +83,14 @@ export default async function BookDetailPage({ params }: Props) {
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
             {book.title}
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">{book.author.name}</p>
+          <div className="flex items-center gap-3">
+            <p className="text-zinc-600 dark:text-zinc-400">{book.author.name}</p>
+            <FavoriteAuthorButton
+              authorName={book.author.name}
+              initialFavorited={favoriteRecord !== null}
+              initialAuthorId={book.authorId}
+            />
+          </div>
           <p className="text-sm text-zinc-500 dark:text-zinc-500">
             {publishedYear}年
           </p>
