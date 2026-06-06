@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import DeleteReviewButton from "./_components/DeleteReviewButton";
+import EditReviewForm from "./_components/EditReviewForm";
 
 export const dynamic = "force-dynamic";
 
@@ -45,11 +46,6 @@ export default async function MyReviewsPage() {
                 >
                   {review.book.title}
                 </Link>
-                {review.isSpoiler && (
-                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900 dark:text-red-300">
-                    ネタバレあり
-                  </span>
-                )}
                 <span className="ml-auto flex items-center gap-3 text-xs text-zinc-400 dark:text-zinc-500">
                   {review.createdAt.toLocaleDateString("ja-JP", {
                     year: "numeric",
@@ -59,9 +55,13 @@ export default async function MyReviewsPage() {
                   <DeleteReviewButton reviewId={review.id} />
                 </span>
               </div>
-              <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                {review.body}
-              </p>
+              <EditReviewForm
+                review={{
+                  id: review.id,
+                  body: review.body,
+                  isSpoiler: review.isSpoiler,
+                }}
+              />
             </li>
           ))}
         </ul>

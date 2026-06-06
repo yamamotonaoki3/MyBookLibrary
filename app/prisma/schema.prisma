@@ -96,7 +96,7 @@ model Review {
   id        Int      @id @default(autoincrement())
   userId    Int      @map("user_id")
   bookId    Int      @map("book_id")
-  body      String
+  body      String   @db.Text
   isSpoiler Boolean  @default(false) @map("is_spoiler")
   createdAt DateTime @default(now()) @map("created_at")
   user      User     @relation(fields: [userId], references: [id])
