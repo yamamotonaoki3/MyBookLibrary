@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FavoriteAuthorItem } from "@/types/author";
 
@@ -20,11 +21,14 @@ export function AuthorCard({ author }: Props) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
       <div>
-        <p className="font-semibold text-gray-900 dark:text-gray-100">
+        <Link
+          href={`/favorite-authors/${author.authorId}`}
+          className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
+        >
           {author.authorName}
-        </p>
+        </Link>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          登録作品数: {author.bookCount}冊
+          読書中: {author.readingCount}冊
         </p>
       </div>
       <button

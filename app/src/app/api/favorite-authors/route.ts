@@ -14,7 +14,14 @@ export async function GET() {
         author: {
           select: {
             name: true,
-            _count: { select: { books: true } },
+            books: {
+              select: {
+                readingStatuses: {
+                  where: { userId: TEMP_USER_ID, status: "reading" },
+                  select: { id: true },
+                },
+              },
+            },
           },
         },
       },
@@ -25,7 +32,10 @@ export async function GET() {
       id: f.id,
       authorId: f.authorId,
       authorName: f.author.name,
-      bookCount: f.author._count.books,
+      readingCount: f.author.books.reduce(
+        (sum, book) => sum + book.readingStatuses.length,
+        0
+      ),
       notify: f.notify,
     }));
 
