@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import type { SearchResult } from "@/app/api/books/search/route";
 
@@ -118,9 +119,10 @@ export default function BookSearchPage() {
 
       <div className="flex flex-col gap-3">
         {results.map((book, i) => (
-          <div
+          <Link
             key={book.isbn || i}
-            className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+            href={book.isbn ? `/books/isbn/${book.isbn}` : "#"}
+            className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900"
           >
             <div className="relative h-32 w-20 shrink-0 overflow-hidden rounded">
               {book.coverImageUrl ? (
@@ -149,7 +151,7 @@ export default function BookSearchPage() {
                 {book.salesDate ? ` · ${book.salesDate}` : ""}
               </p>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

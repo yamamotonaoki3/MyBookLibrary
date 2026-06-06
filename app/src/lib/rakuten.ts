@@ -90,7 +90,7 @@ export async function searchBooksByIsbn(isbn: string): Promise<RakutenBook | nul
   url.searchParams.set("formatVersion", "2");
   url.searchParams.set("isbn", isbn);
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
   if (!res.ok) return null;
 
   const data = await res.json();
