@@ -57,7 +57,7 @@ export async function searchBooks(params: {
 }): Promise<RakutenBook[]> {
   const { items, pageCount } = await fetchBookPage({ ...params, page: 1, hits: 30 });
 
-  if (pageCount <= 1) return items;
+  if (pageCount <= 1) return deduplicateByTitle(items);
 
   // 2ページ目以降を逐次取得（並列だと429 Too Many Requestsになるため）
   const allItems = [...items];
@@ -68,7 +68,7 @@ export async function searchBooks(params: {
     allItems.push(...pageItems);
   }
 
-  return allItems;
+  return deduplicateByTitle(allItems);
 }
 
 /** タイトルで重複除去し、最初に登場したものを残す */
