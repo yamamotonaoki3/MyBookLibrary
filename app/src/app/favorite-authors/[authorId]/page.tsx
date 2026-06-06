@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { deduplicateByTitle, searchBooks } from "@/lib/rakuten";
 import { BookStatusCard } from "./_components/BookStatusCard";
+import { SearchInput } from "./_components/SearchInput";
 import type { AuthorBook } from "@/types/author";
 
 export const dynamic = "force-dynamic";
@@ -12,17 +13,19 @@ const PAGE_SIZE = 10;
 
 type Props = {
   params: Promise<{ authorId: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; q?: string }>;
 };
 
 async function BookList({
   authorId,
   authorName,
   page,
+  query,
 }: {
   authorId: number;
   authorName: string;
   page: number;
+  query?: string;
 }) {
   const author = await prisma.author.findUnique({
     where: { id: authorId },
@@ -35,9 +38,15 @@ async function BookList({
     await searchBooks({ author: author.name })
   );
 
-  const totalPages = Math.max(1, Math.ceil(allBooks.length / PAGE_SIZE));
+  const filteredBooks = query
+    ? allBooks.filter((b) =>
+        b.title.toLowerCase().includes(query.toLowerCase())
+      )
+    : allBooks;
+
+  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / PAGE_SIZE));
   const currentPage = Math.min(Math.max(1, page), totalPages);
-  const pagedRakutenBooks = allBooks.slice(
+  const pagedRakutenBooks = filteredBooks.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
@@ -95,7 +104,10 @@ async function BookList({
   return (
     <div className="flex flex-col gap-6">
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        全{allBooks.length}冊 / {currentPage}/{totalPages}ページ
+        {query
+          ? `「${query}」の絞り込み結果: ${filteredBooks.length}件`
+          : `全${allBooks.length}冊`}{" "}
+        / {currentPage}/{totalPages}ページ
       </p>
 
       <ul className="flex flex-col gap-3">
@@ -109,7 +121,7 @@ async function BookList({
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           <Link
-            href={`?page=${currentPage - 1}`}
+            href={`?page=${currentPage - 1}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
             aria-disabled={currentPage === 1}
             className={`rounded-md px-3 py-1.5 text-sm ${
               currentPage === 1
@@ -123,7 +135,7 @@ async function BookList({
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <Link
               key={p}
-              href={`?page=${p}`}
+              href={`?page=${p}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
               className={`rounded-md px-3 py-1.5 text-sm ${
                 p === currentPage
                   ? "bg-blue-600 text-white"
@@ -135,7 +147,7 @@ async function BookList({
           ))}
 
           <Link
-            href={`?page=${currentPage + 1}`}
+            href={`?page=${currentPage + 1}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
             aria-disabled={currentPage === totalPages}
             className={`rounded-md px-3 py-1.5 text-sm ${
               currentPage === totalPages
@@ -153,9 +165,10 @@ async function BookList({
 
 export default async function AuthorBooksPage({ params, searchParams }: Props) {
   const { authorId: authorIdParam } = await params;
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, q } = await searchParams;
   const authorId = Number(authorIdParam);
   const page = Number(pageParam ?? "1");
+  const query = q?.trim() || undefined;
 
   if (!authorId || isNaN(authorId)) notFound();
 
@@ -180,11 +193,15 @@ export default async function AuthorBooksPage({ params, searchParams }: Props) {
         </h1>
       </div>
 
+      <div className="mb-4">
+        <SearchInput />
+      </div>
+
       <Suspense
         fallback={<p className="text-center text-gray-500">読み込み中...</p>}
-        key={page}
+        key={`${page}-${query ?? ""}`}
       >
-        <BookList authorId={authorId} authorName={author.name} page={page} />
+        <BookList authorId={authorId} authorName={author.name} page={page} query={query} />
       </Suspense>
     </main>
   );
