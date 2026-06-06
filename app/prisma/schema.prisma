@@ -122,6 +122,7 @@ model Notification {
   userId    Int       @map("user_id")
   type      String
   content   String
+  bookIsbn  String?   @map("book_isbn")
   isRead    Boolean   @default(false) @map("is_read")
   expiresAt DateTime? @map("expires_at")
   createdAt DateTime  @default(now()) @map("created_at")
