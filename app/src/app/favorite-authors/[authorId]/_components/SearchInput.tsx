@@ -11,22 +11,13 @@ export function SearchInput() {
 
   function submit() {
     const value = inputRef.current?.value.trim() ?? "";
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set("q", value);
-    } else {
-      params.delete("q");
-    }
-    params.set("page", "1");
-    router.push(`?${params.toString()}`);
+    const qs = value ? `?page=1&q=${encodeURIComponent(value)}` : "?page=1";
+    router.push(qs);
   }
 
   function clear() {
     if (inputRef.current) inputRef.current.value = "";
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("q");
-    params.set("page", "1");
-    router.push(`?${params.toString()}`);
+    router.push("?page=1");
   }
 
   return (
