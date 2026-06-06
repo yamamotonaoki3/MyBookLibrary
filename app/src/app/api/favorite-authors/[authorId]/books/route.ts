@@ -27,24 +27,35 @@ export async function GET(
     // 楽天APIで著者の本を検索
     const rakutenBooks = await searchBooks({ author: author.name });
 
-    // DBのReadingStatusをISBNで照合
+    // DBのReadingStatus・受賞情報をISBNまたはタイトルで照合
     const isbnList = rakutenBooks.map((b) => b.isbn).filter(Boolean);
+    const titleList = rakutenBooks.map((b) => b.title);
     const books = await prisma.book.findMany({
-      where: { isbn: { in: isbnList } },
+      where: {
+        OR: [
+          { isbn: { in: isbnList } },
+          { authorId, title: { in: titleList } },
+        ],
+      },
       select: {
         id: true,
         isbn: true,
+        title: true,
         readingStatuses: {
           where: { userId: TEMP_USER_ID },
           select: { status: true },
         },
+        awardEntries: {
+          select: { year: true, type: true, award: { select: { name: true } } },
+        },
       },
     });
 
-    const bookByIsbn = new Map(books.map((b) => [b.isbn, b]));
+    const bookByIsbn = new Map(books.filter((b) => b.isbn).map((b) => [b.isbn, b]));
+    const bookByTitle = new Map(books.map((b) => [b.title, b]));
 
     const result = rakutenBooks.map((book) => {
-      const dbBook = bookByIsbn.get(book.isbn);
+      const dbBook = (book.isbn ? bookByIsbn.get(book.isbn) : undefined) ?? bookByTitle.get(book.title);
       return {
         title: book.title,
         author: book.author,
@@ -57,6 +68,7 @@ export async function GET(
           | "unread"
           | "reading"
           | "read",
+        awards: dbBook?.awardEntries.map((e) => ({ name: e.award.name, year: e.year, type: e.type })) ?? [],
       };
     });
 

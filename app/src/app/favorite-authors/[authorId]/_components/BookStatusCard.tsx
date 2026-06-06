@@ -79,6 +79,22 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {book.publisherName}　{book.salesDate}
           </p>
+          {book.awards.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {book.awards.map((award) => (
+                <span
+                  key={`${award.name}-${award.year}`}
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    award.type === "winner"
+                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                      : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
+                  }`}
+                >
+                  {award.type === "winner" ? "受賞" : "ノミネート"}　{award.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2">

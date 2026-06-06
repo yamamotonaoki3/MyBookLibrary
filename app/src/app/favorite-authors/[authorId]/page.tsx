@@ -58,6 +58,9 @@ async function BookList({
         where: { userId: 1 },
         select: { status: true },
       },
+      awardEntries: {
+        select: { year: true, type: true, award: { select: { name: true } } },
+      },
     },
   });
 
@@ -77,6 +80,7 @@ async function BookList({
       salesDate: book.salesDate,
       bookId: dbBook?.id ?? null,
       status: (dbBook?.readingStatuses[0]?.status ?? "unread") as AuthorBook["status"],
+      awards: dbBook?.awardEntries.map((e) => ({ name: e.award.name, year: e.year, type: e.type })) ?? [],
     };
   });
 
