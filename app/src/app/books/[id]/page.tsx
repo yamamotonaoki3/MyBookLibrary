@@ -131,6 +131,13 @@ export default async function BookDetailPage({ params }: Props) {
                       ネタバレあり
                     </span>
                   )}
+                  <span className="ml-auto text-xs text-zinc-400 dark:text-zinc-500">
+                    {review.createdAt.toLocaleDateString("ja-JP", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </span>
                 </div>
                 <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                   {review.body}
