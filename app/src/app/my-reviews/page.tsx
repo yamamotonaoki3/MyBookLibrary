@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
+import DeleteReviewButton from "./_components/DeleteReviewButton";
 
 export const dynamic = "force-dynamic";
 
@@ -49,12 +50,13 @@ export default async function MyReviewsPage() {
                     ネタバレあり
                   </span>
                 )}
-                <span className="ml-auto text-xs text-zinc-400 dark:text-zinc-500">
+                <span className="ml-auto flex items-center gap-3 text-xs text-zinc-400 dark:text-zinc-500">
                   {review.createdAt.toLocaleDateString("ja-JP", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
                   })}
+                  <DeleteReviewButton reviewId={review.id} />
                 </span>
               </div>
               <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
