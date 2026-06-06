@@ -2,6 +2,9 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
+import LikeButton from "./_components/LikeButton";
+
+const TEMP_USER_ID = 1;
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +36,14 @@ export default async function BookDetailPage({ params }: Props) {
         orderBy: { year: "desc" },
       },
       reviews: {
-        include: { user: { select: { name: true } } },
+        include: {
+          user: { select: { name: true } },
+          _count: { select: { likes: true } },
+          likes: {
+            where: { userId: TEMP_USER_ID },
+            select: { id: true },
+          },
+        },
         orderBy: { createdAt: "desc" },
       },
     },
@@ -142,6 +152,13 @@ export default async function BookDetailPage({ params }: Props) {
                 <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                   {review.body}
                 </p>
+                <div className="mt-2 flex justify-end">
+                  <LikeButton
+                    reviewId={review.id}
+                    initialLiked={review.likes.length > 0}
+                    initialCount={review._count.likes}
+                  />
+                </div>
               </li>
             ))}
           </ul>
