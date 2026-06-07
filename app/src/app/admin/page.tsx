@@ -75,6 +75,18 @@ export default function AdminPage() {
   const [editingType, setEditingType] = useState<"winner" | "nominee">("winner");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [stats, setStats] = useState<{
+    userCount: number;
+    reviewCount: number;
+    likeCount: number;
+    newUsersThisMonth: number;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/stats")
+      .then((res) => res.json())
+      .then((data) => setStats(data));
+  }, []);
 
   useEffect(() => {
     fetch("/api/admin/award-entries")
@@ -190,6 +202,28 @@ export default function AdminPage() {
       <h1 className="mb-8 text-xl font-bold text-zinc-900 dark:text-zinc-50">
         📋 受賞・ノミネート作品の登録
       </h1>
+
+      {/* 統計情報 */}
+      <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+        <h2 className="mb-4 text-base font-semibold text-zinc-800 dark:text-zinc-200">
+          統計情報
+        </h2>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[
+            { label: "登録ユーザー数", value: stats?.userCount },
+            { label: "今月の新規ユーザー", value: stats?.newUsersThisMonth },
+            { label: "総レビュー数", value: stats?.reviewCount },
+            { label: "総いいね数", value: stats?.likeCount },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-md bg-zinc-50 p-4 dark:bg-zinc-800">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
+              <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                {value === undefined ? "..." : value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* 楽天API検索 */}
       <section className="mb-8">
