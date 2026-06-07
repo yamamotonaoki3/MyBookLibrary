@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { RecentReadCard } from "./_components/RecentReadCard";
 
 const TEMP_USER_ID = 1;
 
@@ -29,22 +30,62 @@ export default async function Home() {
     })
   );
 
+  const allBookIds = awards.flatMap((a) => a.awardEntries.map((e) => e.bookId));
+  const uniqueBookIds = [...new Set(allBookIds)];
+  const totalAll = uniqueBookIds.length;
+  const readAll = await prisma.readingStatus.count({
+    where: {
+      userId: TEMP_USER_ID,
+      status: "read",
+      bookId: { in: uniqueBookIds },
+    },
+  });
+  const pctAll = totalAll > 0 ? Math.round((readAll / totalAll) * 100) : 0;
+
   const favoriteAuthors = await prisma.favoriteAuthor.findMany({
     where: { userId: TEMP_USER_ID },
     take: 3,
-    include: { author: true },
-  });
-
-  const recentReads = await prisma.readingStatus.findMany({
-    where: { userId: TEMP_USER_ID, status: "reading" },
-    orderBy: { updatedAt: "desc" },
-    take: 5,
     include: {
-      book: {
-        include: { author: true },
+      author: {
+        include: {
+          books: {
+            include: {
+              readingStatuses: {
+                where: { userId: TEMP_USER_ID },
+                select: { status: true },
+              },
+            },
+          },
+        },
       },
     },
   });
+
+  const favoriteAuthorsWithProgress = favoriteAuthors.map((fa) => {
+    const dbTotal = fa.author.books.filter((b) => b.readingStatuses.length > 0).length;
+    const dbRead = fa.author.books.filter(
+      (b) => b.readingStatuses[0]?.status === "read"
+    ).length;
+    const pct = dbTotal > 0 ? Math.round((dbRead / dbTotal) * 100) : 0;
+    return { id: fa.id, authorId: fa.authorId, name: fa.author.name, dbTotal, dbRead, pct };
+  });
+
+  const [recentReads, myReviews] = await Promise.all([
+    prisma.readingStatus.findMany({
+      where: { userId: TEMP_USER_ID, status: { in: ["reading", "read"] } },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      include: {
+        book: { include: { author: true } },
+      },
+    }),
+    prisma.review.findMany({
+      where: { userId: TEMP_USER_ID },
+      select: { bookId: true },
+    }),
+  ]);
+
+  const reviewedBookIds = new Set(myReviews.map((r) => r.bookId));
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8">
@@ -61,6 +102,27 @@ export default async function Home() {
           <p className="text-sm text-zinc-500">賞データがまだ登録されていません。</p>
         ) : (
           <div className="flex flex-col gap-4">
+            {/* 全賞合計 */}
+            <div>
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  全賞合計
+                </span>
+                <span className="text-zinc-500 dark:text-zinc-400">
+                  {readAll} / {totalAll}冊 ({pctAll}%)
+                </span>
+              </div>
+              <div className="h-3 w-full rounded-full bg-zinc-200 dark:bg-zinc-700">
+                <div
+                  className="h-3 rounded-full bg-zinc-900 transition-all dark:bg-zinc-50"
+                  style={{ width: `${pctAll}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-zinc-100 dark:border-zinc-800" />
+
+            {/* 各賞 */}
             {awardProgress.map((award) => (
               <Link
                 key={award.id}
@@ -91,22 +153,36 @@ export default async function Home() {
         {/* お気に入り著者 */}
         <section className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
           <h2 className="mb-4 text-base font-semibold text-zinc-800 dark:text-zinc-200">
-            ⭐ お気に入り著者
+            ⭐ お気に入り著者 読みたい本 進捗
           </h2>
-          {favoriteAuthors.length === 0 ? (
+          {favoriteAuthorsWithProgress.length === 0 ? (
             <p className="text-sm text-zinc-500">
               まだお気に入り著者がいません。
             </p>
           ) : (
-            <ul className="flex flex-col gap-2">
-              {favoriteAuthors.map((fa) => (
+            <ul className="flex flex-col gap-4">
+              {favoriteAuthorsWithProgress.map((fa) => (
                 <li key={fa.authorId}>
                   <Link
                     href={`/favorite-authors/${fa.authorId}`}
                     className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
                   >
-                    {fa.author.name} →
+                    {fa.name} →
                   </Link>
+                  {fa.dbTotal > 0 && (
+                    <div className="mt-1">
+                      <div className="mb-0.5 flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                        <span>{fa.dbRead} / {fa.dbTotal}冊 読了</span>
+                        <span>{fa.pct}%</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-700">
+                        <div
+                          className="h-1.5 rounded-full bg-zinc-900 transition-all dark:bg-zinc-50"
+                          style={{ width: `${fa.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -128,22 +204,24 @@ export default async function Home() {
           </h2>
           {recentReads.length === 0 ? (
             <p className="text-sm text-zinc-500">
-              読書中の本がまだありません。
+              読書中・読了の本がまだありません。
             </p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="flex flex-col gap-4">
               {recentReads.map((rs) => (
-                <li key={rs.id}>
-                  <Link
-                    href={`/books/${rs.bookId}`}
-                    className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
-                  >
-                    {rs.book.title}
-                  </Link>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {rs.book.author.name}
-                  </p>
-                </li>
+                <RecentReadCard
+                  key={rs.id}
+                  book={{
+                    id: rs.bookId,
+                    title: rs.book.title,
+                    authorName: rs.book.author.name,
+                    isbn: rs.book.isbn,
+                    coverImageUrl: rs.book.coverImageUrl,
+                    publishedAt: rs.book.publishedAt.toISOString(),
+                  }}
+                  initialStatus={rs.status as "unread" | "want_to_read" | "reading" | "read"}
+                  hasReview={reviewedBookIds.has(rs.bookId)}
+                />
               ))}
             </ul>
           )}
