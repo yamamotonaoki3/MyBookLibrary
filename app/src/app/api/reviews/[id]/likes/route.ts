@@ -16,7 +16,10 @@ export async function POST(_request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "ID が不正です。" }, { status: 400 });
     }
 
-    const review = await prisma.review.findUnique({ where: { id: reviewId } });
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      include: { book: { select: { title: true, isbn: true } } },
+    });
 
     if (!review) {
       return NextResponse.json(
@@ -39,6 +42,22 @@ export async function POST(_request: NextRequest, { params }: Props) {
     await prisma.like.create({
       data: { userId: TEMP_USER_ID, reviewId },
     });
+
+    if (review.userId !== TEMP_USER_ID) {
+      const alreadyNotified = await prisma.notification.findFirst({
+        where: { userId: review.userId, type: "like", bookIsbn: review.book.isbn },
+      });
+      if (!alreadyNotified) {
+        await prisma.notification.create({
+          data: {
+            userId: review.userId,
+            type: "like",
+            content: `「${review.book.title}」のレビューにいいねが付きました`,
+            bookIsbn: review.book.isbn ?? null,
+          },
+        });
+      }
+    }
 
     const count = await prisma.like.count({ where: { reviewId } });
 
