@@ -81,12 +81,13 @@ model FavoriteAuthor {
 }
 
 model ReadingStatus {
-  id     Int    @id @default(autoincrement())
-  userId Int    @map("user_id")
-  bookId Int    @map("book_id")
-  status String @default("unread")
-  user   User   @relation(fields: [userId], references: [id])
-  book   Book   @relation(fields: [bookId], references: [id])
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  bookId    Int      @map("book_id")
+  status    String   @default("unread")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id])
+  book      Book     @relation(fields: [bookId], references: [id])
 
   @@unique([userId, bookId])
   @@map("reading_statuses")

@@ -37,7 +37,7 @@ export default async function Home() {
 
   const recentReads = await prisma.readingStatus.findMany({
     where: { userId: TEMP_USER_ID, status: "read" },
-    orderBy: { id: "desc" },
+    orderBy: { updatedAt: "desc" },
     take: 3,
     include: {
       book: {
