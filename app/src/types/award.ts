@@ -9,6 +9,7 @@ export type BookWithAwardEntry = {
   awardEntryId: number;
   year: number;
   type: string;
+  awardName?: string;
   status: ReadingStatus;
   hasReview: boolean;
   book: {

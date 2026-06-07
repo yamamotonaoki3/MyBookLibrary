@@ -26,14 +26,19 @@ export default async function AwardsPage({ searchParams }: PageProps) {
     select: { id: true, name: true },
   });
 
-  const selectedAwardId = awardIdParam
-    ? parseInt(awardIdParam, 10)
-    : (awards[0]?.id ?? 1);
+  const showAll = awardIdParam === "all";
+  const selectedAwardId: number | "all" = showAll
+    ? "all"
+    : awardIdParam
+      ? parseInt(awardIdParam, 10)
+      : (awards[0]?.id ?? 1);
 
   const selectedYear = yearParam ? parseInt(yearParam, 10) : undefined;
 
+  const awardIdFilter = showAll ? {} : { awardId: selectedAwardId as number };
+
   const yearsData = await prisma.awardEntry.findMany({
-    where: { awardId: selectedAwardId },
+    where: awardIdFilter,
     select: { year: true },
     distinct: ["year"],
     orderBy: { year: "desc" },
@@ -42,14 +47,14 @@ export default async function AwardsPage({ searchParams }: PageProps) {
 
   const totalEntries = await prisma.awardEntry.count({
     where: {
-      awardId: selectedAwardId,
+      ...awardIdFilter,
       ...(selectedYear !== undefined ? { year: selectedYear } : {}),
     },
   });
 
   const bookIds = await prisma.awardEntry.findMany({
     where: {
-      awardId: selectedAwardId,
+      ...awardIdFilter,
       ...(selectedYear !== undefined ? { year: selectedYear } : {}),
     },
     select: { bookId: true },
