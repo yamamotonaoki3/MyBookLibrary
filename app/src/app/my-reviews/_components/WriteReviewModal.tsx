@@ -7,6 +7,7 @@ type Book = {
   id: number;
   title: string;
   author: { name: string };
+  hasReview: boolean;
 };
 
 export function WriteReviewModal() {
@@ -138,17 +139,31 @@ export function WriteReviewModal() {
                   <ul className="mt-4 max-h-64 divide-y divide-zinc-100 overflow-y-auto dark:divide-zinc-800">
                     {results.map((book) => (
                       <li key={book.id}>
-                        <button
-                          onClick={() => setSelectedBook(book)}
-                          className="w-full py-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 px-1 rounded"
-                        >
-                          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                            {book.title}
-                          </p>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                            {book.author.name}
-                          </p>
-                        </button>
+                        {book.hasReview ? (
+                          <div className="flex items-center justify-between px-1 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
+                                {book.title}
+                              </p>
+                              <p className="text-xs text-zinc-400 dark:text-zinc-600">
+                                {book.author.name}
+                              </p>
+                            </div>
+                            <span className="text-xs text-zinc-400 dark:text-zinc-500">投稿済み</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setSelectedBook(book)}
+                            className="w-full py-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 px-1 rounded"
+                          >
+                            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                              {book.title}
+                            </p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                              {book.author.name}
+                            </p>
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>

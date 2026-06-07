@@ -42,11 +42,19 @@ export async function BookList({ awardId, year }: Props) {
     },
   });
 
+  const reviewedBookIds = new Set(
+    (await prisma.review.findMany({
+      where: { userId: TEMP_USER_ID },
+      select: { bookId: true },
+    })).map((r) => r.bookId)
+  );
+
   const entries: BookWithAwardEntry[] = awardEntries.map((entry) => ({
     awardEntryId: entry.id,
     year: entry.year,
     type: entry.type,
     status: (entry.book.readingStatuses[0]?.status ?? "unread") as ReadingStatus,
+    hasReview: reviewedBookIds.has(entry.book.id),
     book: {
       id: entry.book.id,
       title: entry.book.title,

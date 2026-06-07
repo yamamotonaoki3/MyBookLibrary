@@ -12,15 +12,23 @@ export const metadata: Metadata = {
 const TEMP_USER_ID = 1;
 
 async function BookGrid() {
-  const myStatuses = await prisma.readingStatus.findMany({
-    where: { userId: TEMP_USER_ID },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      book: {
-        include: { author: { select: { name: true } } },
+  const [myStatuses, myReviews] = await Promise.all([
+    prisma.readingStatus.findMany({
+      where: { userId: TEMP_USER_ID },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        book: {
+          include: { author: { select: { name: true } } },
+        },
       },
-    },
-  });
+    }),
+    prisma.review.findMany({
+      where: { userId: TEMP_USER_ID },
+      select: { bookId: true },
+    }),
+  ]);
+
+  const reviewedBookIds = new Set(myReviews.map((r) => r.bookId));
 
   if (myStatuses.length === 0) {
     return (
@@ -46,6 +54,7 @@ async function BookGrid() {
           initialStatus={
             rs.status as "unread" | "want_to_read" | "reading" | "read"
           }
+          hasReview={reviewedBookIds.has(rs.bookId)}
         />
       ))}
     </div>

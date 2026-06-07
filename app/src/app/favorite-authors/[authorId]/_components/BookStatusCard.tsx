@@ -120,12 +120,18 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
             </button>
           ))}
           {book.bookId != null && status !== "unread" && (
-            <Link
-              href={`/books/${book.bookId}/reviews/new`}
-              className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              感想を書く
-            </Link>
+            book.hasReview ? (
+              <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+                感想投稿済み
+              </span>
+            ) : (
+              <Link
+                href={`/books/${book.bookId}/reviews/new`}
+                className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                感想を書く
+              </Link>
+            )
           )}
         </div>
       </div>

@@ -16,6 +16,7 @@ type Props = {
     author: { name: string };
   };
   initialStatus: ReadingStatus;
+  hasReview: boolean;
 };
 
 const STATUS_LABELS: Record<ReadingStatus, string> = {
@@ -25,7 +26,7 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
   read: "読了",
 };
 
-export function BookCard({ book, initialStatus }: Props) {
+export function BookCard({ book, initialStatus, hasReview }: Props) {
   const [status, setStatus] = useState<ReadingStatus>(initialStatus);
   const [saving, setSaving] = useState(false);
 
@@ -100,12 +101,18 @@ export function BookCard({ book, initialStatus }: Props) {
               {STATUS_LABELS[s]}
             </button>
           ))}
-          <Link
-            href={`/books/${book.id}/reviews/new`}
-            className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            感想を書く
-          </Link>
+          {hasReview ? (
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+              感想投稿済み
+            </span>
+          ) : (
+            <Link
+              href={`/books/${book.id}/reviews/new`}
+              className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              感想を書く
+            </Link>
+          )}
         </div>
       </div>
     </div>
