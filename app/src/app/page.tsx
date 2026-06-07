@@ -95,13 +95,13 @@ export default async function Home() {
   ]);
 
   return (
-    <div className="flex flex-col px-4 py-6 md:h-full md:overflow-hidden md:px-8 md:py-8">
-      <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight md:mb-6 md:text-3xl">
+    <div className="flex flex-col px-4 py-6 lg:h-full lg:overflow-hidden lg:px-8 lg:py-8">
+      <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         ダッシュボード
       </h1>
 
       {/* 統計カード: モバイルは3列グリッド / PC は各カラムの上に配置するため非表示 */}
-      <div className="mb-5 grid grid-cols-3 gap-3 md:hidden">
+      <div className="mb-5 grid grid-cols-3 gap-3 lg:hidden">
         <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-3 text-white shadow-md">
           <BookOpen className="h-5 w-5 opacity-80" />
           <p className="text-lg font-bold leading-none">{totalBooks}</p>
@@ -120,7 +120,7 @@ export default async function Home() {
       </div>
 
       {/* モバイル: 縦積みコンテンツ */}
-      <div className="flex flex-col gap-4 md:hidden">
+      <div className="flex flex-col gap-4 lg:hidden">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -223,7 +223,7 @@ export default async function Home() {
       </div>
 
       {/* PC: 3カラム固定高さ */}
-      <div className="hidden md:flex md:flex-1 md:gap-6 md:overflow-hidden">
+      <div className="hidden lg:flex lg:flex-1 lg:gap-6 lg:overflow-hidden">
 
         {/* カラム1: 登録冊数 + 読書進捗 */}
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
@@ -257,9 +257,9 @@ export default async function Home() {
                   <Separator />
                   {awardProgress.map((award) => (
                     <Link key={award.id} href={`/awards?awardId=${award.id}`} className="group block">
-                      <div className="mb-2 flex items-center justify-between text-sm">
-                        <span className="font-medium transition-colors group-hover:text-foreground text-muted-foreground">{award.name}</span>
-                        <span className="tabular-nums text-muted-foreground text-xs">{award.read} / {award.total}冊 · {award.pct}%</span>
+                      <div className="mb-2 flex items-center justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate font-medium transition-colors group-hover:text-foreground text-muted-foreground">{award.name}</span>
+                        <span className="shrink-0 tabular-nums text-muted-foreground text-xs">{award.read} / {award.total}冊 · {award.pct}%</span>
                       </div>
                       <Progress value={award.pct} className="h-1.5" />
                     </Link>

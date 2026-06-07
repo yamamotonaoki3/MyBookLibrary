@@ -16,7 +16,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-white/8 bg-emerald-700 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-white/8 bg-emerald-700 lg:hidden">
       {TAB_LINKS.map(({ href, label, icon: Icon }) => {
         const isActive = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
         return (
