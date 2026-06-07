@@ -44,7 +44,14 @@ export async function POST(request: Request) {
       });
     }
 
-    // ReadingStatusをupsert
+    // 未読はデフォルト状態（レコードなし）なので削除、それ以外はupsert
+    if (status === "unread") {
+      await prisma.readingStatus.deleteMany({
+        where: { userId: TEMP_USER_ID, bookId: book.id },
+      });
+      return Response.json({ status: "unread" });
+    }
+
     const readingStatus = await prisma.readingStatus.upsert({
       where: { userId_bookId: { userId: TEMP_USER_ID, bookId: book.id } },
       update: { status },
