@@ -3,7 +3,7 @@ export type AwardItem = {
   name: string;
 };
 
-export type ReadingStatus = "unread" | "reading" | "read";
+export type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
 
 export type BookWithAwardEntry = {
   awardEntryId: number;

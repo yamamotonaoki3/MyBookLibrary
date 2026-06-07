@@ -12,6 +12,7 @@ type Props = {
 
 const STATUS_LABELS: Record<AuthorBook["status"], string> = {
   unread: "未読",
+  want_to_read: "読みたい",
   reading: "読書中",
   read: "読了",
 };
@@ -97,8 +98,8 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
           )}
         </div>
 
-        <div className="flex gap-2">
-          {(["unread", "reading", "read"] as const).map((s) => (
+        <div className="flex flex-wrap gap-2">
+          {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
             <button
               key={s}
               onClick={() => handleStatusChange(s)}
@@ -109,7 +110,9 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
                     ? "bg-green-600 text-white"
                     : s === "reading"
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-600 text-white"
+                      : s === "want_to_read"
+                        ? "bg-orange-500 text-white"
+                        : "bg-gray-600 text-white"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
               }`}
             >
