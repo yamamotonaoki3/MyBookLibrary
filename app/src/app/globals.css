@@ -4,8 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
+@theme {
   --breakpoint-lg: 1280px;
+}
+
+@theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
