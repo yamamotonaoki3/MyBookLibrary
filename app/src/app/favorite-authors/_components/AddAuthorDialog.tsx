@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthorSearchResult } from "@/types/author";
 
 export function AddAuthorDialog() {
   const router = useRouter();
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AuthorSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -16,11 +16,11 @@ export function AddAuthorDialog() {
     setQuery("");
     setResults([]);
     setSearched(false);
-    dialogRef.current?.showModal();
+    setOpen(true);
   }
 
   function closeDialog() {
-    dialogRef.current?.close();
+    setOpen(false);
   }
 
   async function handleSearch() {
@@ -53,85 +53,88 @@ export function AddAuthorDialog() {
     <>
       <button
         onClick={openDialog}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
         著者を追加
       </button>
 
-      <dialog
-        ref={dialogRef}
-        className="w-full max-w-md rounded-lg p-0 shadow-xl backdrop:bg-black/50"
-        onClick={(e) => {
-          if (e.target === dialogRef.current) closeDialog();
-        }}
-      >
-        <div className="flex flex-col gap-4 p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">著者を追加</h2>
-            <button
-              onClick={closeDialog}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ✕
-            </button>
-          </div>
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeDialog();
+          }}
+        >
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                著者を追加
+              </h2>
+              <button
+                onClick={closeDialog}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                ✕
+              </button>
+            </div>
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="例：東野圭吾、湊かなえ"
-              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
-            />
-            <button
-              onClick={handleSearch}
-              disabled={loading || !query.trim()}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              検索
-            </button>
-          </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                placeholder="例：東野圭吾、湊かなえ"
+                className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
+              />
+              <button
+                onClick={handleSearch}
+                disabled={loading || !query.trim()}
+                className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                検索
+              </button>
+            </div>
 
-          {loading && (
-            <p className="text-center text-sm text-gray-500">検索中...</p>
-          )}
+            {loading && (
+              <p className="mt-4 text-center text-sm text-zinc-500">検索中...</p>
+            )}
 
-          {!loading && searched && results.length === 0 && (
-            <p className="text-center text-sm text-gray-500">
-              著者が見つかりませんでした
-            </p>
-          )}
+            {!loading && searched && results.length === 0 && (
+              <p className="mt-4 text-center text-sm text-zinc-500">
+                著者が見つかりませんでした
+              </p>
+            )}
 
-          {!loading && results.length > 0 && (
-            <ul className="max-h-72 overflow-y-auto divide-y divide-gray-100">
-              {results.map((author) => (
-                <li
-                  key={author.name}
-                  className="flex items-center justify-between py-3"
-                >
-                  <p
-                    className={`text-sm font-medium ${author.isFavorite ? "text-gray-400" : "text-gray-900 dark:text-gray-100"}`}
+            {!loading && results.length > 0 && (
+              <ul className="mt-4 max-h-72 divide-y divide-zinc-100 overflow-y-auto dark:divide-zinc-800">
+                {results.map((author) => (
+                  <li
+                    key={author.name}
+                    className="flex items-center justify-between py-3"
                   >
-                    {author.name}
-                  </p>
-                  {author.isFavorite ? (
-                    <span className="text-xs text-gray-400">登録済み</span>
-                  ) : (
-                    <button
-                      onClick={() => handleAdd(author.name)}
-                      className="rounded px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    <p
+                      className={`text-sm font-medium ${author.isFavorite ? "text-zinc-400" : "text-zinc-900 dark:text-zinc-50"}`}
                     >
-                      追加
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                      {author.name}
+                    </p>
+                    {author.isFavorite ? (
+                      <span className="text-xs text-zinc-400">登録済み</span>
+                    ) : (
+                      <button
+                        onClick={() => handleAdd(author.name)}
+                        className="rounded px-3 py-1 text-sm font-medium text-zinc-900 hover:bg-zinc-100 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                      >
+                        追加
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
-      </dialog>
+      )}
     </>
   );
 }
