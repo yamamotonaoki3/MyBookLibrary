@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { BookOpen, Star, TrendingUp, Clock } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { RecentReadCard } from "./_components/RecentReadCard";
 
 const TEMP_USER_ID = 1;
@@ -19,11 +23,7 @@ export default async function Home() {
       const bookIds = award.awardEntries.map((e) => e.bookId);
       const total = bookIds.length;
       const read = await prisma.readingStatus.count({
-        where: {
-          userId: TEMP_USER_ID,
-          status: "read",
-          bookId: { in: bookIds },
-        },
+        where: { userId: TEMP_USER_ID, status: "read", bookId: { in: bookIds } },
       });
       const pct = total > 0 ? Math.round((read / total) * 100) : 0;
       return { id: award.id, name: award.name, total, read, pct };
@@ -34,11 +34,7 @@ export default async function Home() {
   const uniqueBookIds = [...new Set(allBookIds)];
   const totalAll = uniqueBookIds.length;
   const readAll = await prisma.readingStatus.count({
-    where: {
-      userId: TEMP_USER_ID,
-      status: "read",
-      bookId: { in: uniqueBookIds },
-    },
+    where: { userId: TEMP_USER_ID, status: "read", bookId: { in: uniqueBookIds } },
   });
   const pctAll = totalAll > 0 ? Math.round((readAll / totalAll) * 100) : 0;
 
@@ -63,19 +59,14 @@ export default async function Home() {
 
   const favoriteAuthorsWithProgress = favoriteAuthors.map((fa) => {
     const dbTotal = fa.author.books.filter((b) => b.readingStatuses.length > 0).length;
-    const dbRead = fa.author.books.filter(
-      (b) => b.readingStatuses[0]?.status === "read"
-    ).length;
+    const dbRead = fa.author.books.filter((b) => b.readingStatuses[0]?.status === "read").length;
     const pct = dbTotal > 0 ? Math.round((dbRead / dbTotal) * 100) : 0;
     return { id: fa.id, authorId: fa.authorId, name: fa.author.name, dbTotal, dbRead, pct };
   });
 
   const favoriteAuthorIds = new Set(favoriteAuthors.map((fa) => fa.authorId));
   const othersStatuses = await prisma.readingStatus.findMany({
-    where: {
-      userId: TEMP_USER_ID,
-      book: { authorId: { notIn: [...favoriteAuthorIds] } },
-    },
+    where: { userId: TEMP_USER_ID, book: { authorId: { notIn: [...favoriteAuthorIds] } } },
     select: { status: true },
   });
   const othersTotal = othersStatuses.length;
@@ -87,9 +78,7 @@ export default async function Home() {
       where: { userId: TEMP_USER_ID, status: { in: ["reading", "read"] } },
       orderBy: { updatedAt: "desc" },
       take: 5,
-      include: {
-        book: { include: { author: true } },
-      },
+      include: { book: { include: { author: true } } },
     }),
     prisma.review.findMany({
       where: { userId: TEMP_USER_ID },
@@ -99,164 +88,293 @@ export default async function Home() {
 
   const reviewedBookIds = new Set(myReviews.map((r) => r.bookId));
 
+  const [totalBooks, totalReadBooks, totalAuthors] = await Promise.all([
+    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID } }),
+    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID, status: "read" } }),
+    prisma.favoriteAuthor.count({ where: { userId: TEMP_USER_ID } }),
+  ]);
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8">
-      <h1 className="mb-8 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+    <div className="flex flex-col px-4 py-6 md:h-full md:overflow-hidden md:px-8 md:py-8">
+      <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight md:mb-6 md:text-3xl">
         ダッシュボード
       </h1>
 
-      {/* 読書進捗サマリー */}
-      <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-        <h2 className="mb-4 text-base font-semibold text-zinc-800 dark:text-zinc-200">
-          📊 読書進捗サマリー
-        </h2>
-        {awardProgress.length === 0 ? (
-          <p className="text-sm text-zinc-500">賞データがまだ登録されていません。</p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {/* 全賞合計 */}
-            <div>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                  全賞合計
-                </span>
-                <span className="text-zinc-500 dark:text-zinc-400">
-                  {readAll} / {totalAll}冊 ({pctAll}%)
-                </span>
-              </div>
-              <div className="h-3 w-full rounded-full bg-zinc-200 dark:bg-zinc-700">
-                <div
-                  className="h-3 rounded-full bg-zinc-900 transition-all dark:bg-zinc-50"
-                  style={{ width: `${pctAll}%` }}
-                />
-              </div>
-            </div>
+      {/* 統計カード: モバイルは3列グリッド / PC は各カラムの上に配置するため非表示 */}
+      <div className="mb-5 grid grid-cols-3 gap-3 md:hidden">
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-3 text-white shadow-md">
+          <BookOpen className="h-5 w-5 opacity-80" />
+          <p className="text-lg font-bold leading-none">{totalBooks}</p>
+          <p className="text-[10px] opacity-75">登録冊数</p>
+        </div>
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 p-3 text-white shadow-md">
+          <Star className="h-5 w-5 opacity-80" />
+          <p className="text-lg font-bold leading-none">{totalAuthors}</p>
+          <p className="text-[10px] opacity-75">お気に入り著者</p>
+        </div>
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-500 p-3 text-white shadow-md">
+          <TrendingUp className="h-5 w-5 opacity-80" />
+          <p className="text-lg font-bold leading-none">{totalReadBooks}</p>
+          <p className="text-[10px] opacity-75">読了冊数</p>
+        </div>
+      </div>
 
-            <div className="border-t border-zinc-100 dark:border-zinc-800" />
-
-            {/* 各賞 */}
-            {awardProgress.map((award) => (
-              <Link
-                key={award.id}
-                href={`/awards?awardId=${award.id}`}
-                className="group block"
-              >
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="font-medium text-zinc-900 group-hover:underline dark:text-zinc-50">
-                    {award.name}
-                  </span>
-                  <span className="text-zinc-500 dark:text-zinc-400">
-                    {award.read} / {award.total}冊 ({award.pct}%)
-                  </span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-700">
-                  <div
-                    className="h-2 rounded-full bg-zinc-900 transition-all dark:bg-zinc-50"
-                    style={{ width: `${award.pct}%` }}
-                  />
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        {/* お気に入り著者 */}
-        <section className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-4 text-base font-semibold text-zinc-800 dark:text-zinc-200">
-            ⭐ 私の読みたい本進捗
-          </h2>
-          {favoriteAuthorsWithProgress.length === 0 ? (
-            <p className="text-sm text-zinc-500">
-              まだお気に入り著者がいません。
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-4">
-              {favoriteAuthorsWithProgress.map((fa) => (
-                <li key={fa.authorId}>
-                  <Link
-                    href={`/favorite-authors/${fa.authorId}`}
-                    className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
-                  >
-                    {fa.name} →
-                  </Link>
-                  {fa.dbTotal > 0 && (
-                    <div className="mt-1">
-                      <div className="mb-0.5 flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                        <span>{fa.dbRead} / {fa.dbTotal}冊 読了</span>
-                        <span>{fa.pct}%</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-700">
-                        <div
-                          className="h-1.5 rounded-full bg-zinc-900 transition-all dark:bg-zinc-50"
-                          style={{ width: `${fa.pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </li>
-              ))}
-              {othersTotal > 0 && (
-                <li>
-                  <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                    その他
-                  </span>
-                  <div className="mt-1">
-                    <div className="mb-0.5 flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                      <span>{othersRead} / {othersTotal}冊 読了</span>
-                      <span>{othersPct}%</span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-700">
-                      <div
-                        className="h-1.5 rounded-full bg-zinc-900 transition-all dark:bg-zinc-50"
-                        style={{ width: `${othersPct}%` }}
-                      />
-                    </div>
+      {/* モバイル: 縦積みコンテンツ */}
+      <div className="flex flex-col gap-4 md:hidden">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              <TrendingUp className="h-3.5 w-3.5" />読書進捗
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {awardProgress.length === 0 ? (
+              <p className="text-sm text-muted-foreground">賞データがまだ登録されていません。</p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between text-sm">
+                    <span className="font-semibold">全賞合計</span>
+                    <span className="tabular-nums text-muted-foreground text-xs">{readAll} / {totalAll}冊 · {pctAll}%</span>
                   </div>
-                </li>
-              )}
-            </ul>
-          )}
-          <div className="mt-4">
-            <Link
-              href="/favorite-authors"
-              className="text-xs text-zinc-500 hover:underline dark:text-zinc-400"
-            >
-              著者一覧へ →
-            </Link>
-          </div>
-        </section>
+                  <Progress value={pctAll} className="h-2" />
+                </div>
+                <Separator />
+                {awardProgress.map((award) => (
+                  <Link key={award.id} href={`/awards?awardId=${award.id}`} className="group block">
+                    <div className="mb-1.5 flex items-center justify-between text-sm">
+                      <span className="font-medium text-muted-foreground">{award.name}</span>
+                      <span className="tabular-nums text-muted-foreground text-xs">{award.read} / {award.total}冊 · {award.pct}%</span>
+                    </div>
+                    <Progress value={award.pct} className="h-1.5" />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* 最近の読書記録 */}
-        <section className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-4 text-base font-semibold text-zinc-800 dark:text-zinc-200">
-            📖 最近の読書記録
-          </h2>
-          {recentReads.length === 0 ? (
-            <p className="text-sm text-zinc-500">
-              読書中・読了の本がまだありません。
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-4">
-              {recentReads.map((rs) => (
-                <RecentReadCard
-                  key={rs.id}
-                  book={{
-                    id: rs.bookId,
-                    title: rs.book.title,
-                    authorName: rs.book.author.name,
-                    isbn: rs.book.isbn,
-                    coverImageUrl: rs.book.coverImageUrl,
-                    publishedAt: rs.book.publishedAt.toISOString(),
-                  }}
-                  initialStatus={rs.status as "unread" | "want_to_read" | "reading" | "read"}
-                  hasReview={reviewedBookIds.has(rs.bookId)}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              <Star className="h-3.5 w-3.5" />お気に入り著者
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {favoriteAuthorsWithProgress.length === 0 ? (
+              <p className="text-sm text-muted-foreground">まだお気に入り著者がいません。</p>
+            ) : (
+              <ul className="flex flex-col gap-4">
+                {favoriteAuthorsWithProgress.map((fa) => (
+                  <li key={fa.authorId}>
+                    <Link href={`/favorite-authors/${fa.authorId}`} className="text-sm font-medium hover:text-muted-foreground">
+                      {fa.name}
+                    </Link>
+                    {fa.dbTotal > 0 && (
+                      <div className="mt-1.5">
+                        <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                          <span>{fa.dbRead} / {fa.dbTotal}冊 読了</span>
+                          <span>{fa.pct}%</span>
+                        </div>
+                        <Progress value={fa.pct} className="h-1" />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Separator className="my-3" />
+            <Link href="/favorite-authors" className="text-xs font-medium text-muted-foreground hover:text-foreground">
+              著者一覧を見る →
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" />最近の読書記録
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentReads.length === 0 ? (
+              <p className="text-sm text-muted-foreground">読書中・読了の本がまだありません。</p>
+            ) : (
+              <ul className="flex flex-col divide-y">
+                {recentReads.map((rs) => (
+                  <RecentReadCard
+                    key={rs.id}
+                    book={{
+                      id: rs.bookId,
+                      title: rs.book.title,
+                      authorName: rs.book.author.name,
+                      isbn: rs.book.isbn,
+                      coverImageUrl: rs.book.coverImageUrl,
+                      publishedAt: rs.book.publishedAt.toISOString(),
+                    }}
+                    initialStatus={rs.status as "unread" | "want_to_read" | "reading" | "read"}
+                    hasReview={reviewedBookIds.has(rs.bookId)}
+                  />
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* PC: 3カラム固定高さ */}
+      <div className="hidden md:flex md:flex-1 md:gap-6 md:overflow-hidden">
+
+        {/* カラム1: 登録冊数 + 読書進捗 */}
+        <div className="flex flex-1 flex-col gap-4 overflow-hidden">
+          <div className="shrink-0 flex items-center gap-4 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-5 text-white shadow-lg shadow-orange-200">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-white/75">登録冊数</p>
+              <p className="text-2xl font-bold">{totalBooks}<span className="ml-1 text-sm font-normal">冊</span></p>
+            </div>
+          </div>
+          <Card className="flex flex-1 flex-col overflow-hidden">
+            <CardHeader className="shrink-0 pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                <TrendingUp className="h-4 w-4" />読書進捗
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto">
+              {awardProgress.length === 0 ? (
+                <p className="text-sm text-muted-foreground">賞データがまだ登録されていません。</p>
+              ) : (
+                <div className="flex flex-col gap-5">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="font-semibold">全賞合計</span>
+                      <span className="tabular-nums text-muted-foreground">{readAll} / {totalAll}冊 · {pctAll}%</span>
+                    </div>
+                    <Progress value={pctAll} className="h-2" />
+                  </div>
+                  <Separator />
+                  {awardProgress.map((award) => (
+                    <Link key={award.id} href={`/awards?awardId=${award.id}`} className="group block">
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span className="font-medium transition-colors group-hover:text-foreground text-muted-foreground">{award.name}</span>
+                        <span className="tabular-nums text-muted-foreground text-xs">{award.read} / {award.total}冊 · {award.pct}%</span>
+                      </div>
+                      <Progress value={award.pct} className="h-1.5" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* カラム2: お気に入り著者数 + お気に入り著者 */}
+        <div className="flex flex-1 flex-col gap-4 overflow-hidden">
+          <div className="shrink-0 flex items-center gap-4 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 p-5 text-white shadow-lg shadow-purple-200">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20">
+              <Star className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-white/75">お気に入り著者</p>
+              <p className="text-2xl font-bold">{totalAuthors}<span className="ml-1 text-sm font-normal">人</span></p>
+            </div>
+          </div>
+          <Card className="flex flex-1 flex-col overflow-hidden">
+            <CardHeader className="shrink-0 pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                <Star className="h-4 w-4" />お気に入り著者
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto">
+                {favoriteAuthorsWithProgress.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">まだお気に入り著者がいません。</p>
+                ) : (
+                  <ul className="flex flex-col gap-5">
+                    {favoriteAuthorsWithProgress.map((fa) => (
+                      <li key={fa.authorId}>
+                        <Link href={`/favorite-authors/${fa.authorId}`} className="text-sm font-medium transition-colors hover:text-muted-foreground">
+                          {fa.name}
+                        </Link>
+                        {fa.dbTotal > 0 && (
+                          <div className="mt-2">
+                            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                              <span>{fa.dbRead} / {fa.dbTotal}冊 読了</span>
+                              <span>{fa.pct}%</span>
+                            </div>
+                            <Progress value={fa.pct} className="h-1" />
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                    {othersTotal > 0 && (
+                      <li>
+                        <span className="text-sm font-medium text-muted-foreground">その他</span>
+                        <div className="mt-2">
+                          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                            <span>{othersRead} / {othersTotal}冊 読了</span>
+                            <span>{othersPct}%</span>
+                          </div>
+                          <Progress value={othersPct} className="h-1" />
+                        </div>
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+              <Separator className="my-4 shrink-0" />
+              <Link href="/favorite-authors" className="shrink-0 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
+                著者一覧を見る →
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* カラム3: 読了冊数 + 最近の読書記録 */}
+        <div className="flex flex-1 flex-col gap-4 overflow-hidden">
+          <div className="shrink-0 flex items-center gap-4 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-500 p-5 text-white shadow-lg shadow-blue-200">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-white/75">読了冊数</p>
+              <p className="text-2xl font-bold">{totalReadBooks}<span className="ml-1 text-sm font-normal">冊</span></p>
+            </div>
+          </div>
+          <Card className="flex flex-1 flex-col overflow-hidden">
+            <CardHeader className="shrink-0 pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                <Clock className="h-4 w-4" />最近の読書記録
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto">
+              {recentReads.length === 0 ? (
+                <p className="text-sm text-muted-foreground">読書中・読了の本がまだありません。</p>
+              ) : (
+                <ul className="flex flex-col divide-y">
+                  {recentReads.map((rs) => (
+                    <RecentReadCard
+                      key={rs.id}
+                      book={{
+                        id: rs.bookId,
+                        title: rs.book.title,
+                        authorName: rs.book.author.name,
+                        isbn: rs.book.isbn,
+                        coverImageUrl: rs.book.coverImageUrl,
+                        publishedAt: rs.book.publishedAt.toISOString(),
+                      }}
+                      initialStatus={rs.status as "unread" | "want_to_read" | "reading" | "read"}
+                      hasReview={reviewedBookIds.has(rs.bookId)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
       </div>
     </div>
   );

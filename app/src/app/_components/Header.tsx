@@ -46,7 +46,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-14 w-full max-w-5xl items-center px-4">
         <Link
           href="/"
