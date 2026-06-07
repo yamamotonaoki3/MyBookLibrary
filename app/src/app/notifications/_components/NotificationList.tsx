@@ -1,11 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Notification = {
   id: number;
   type: string;
   content: string;
+  bookIsbn: string | null;
   isRead: boolean;
   createdAt: string;
 };
@@ -40,6 +42,7 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 export function NotificationList({ initialNotifications }: Props) {
+  const router = useRouter();
   const [notifications, setNotifications] = useState(initialNotifications);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -49,11 +52,16 @@ export function NotificationList({ initialNotifications }: Props) {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   }
 
-  async function handleRead(id: number) {
-    await fetch(`/api/notifications/${id}/read`, { method: "PATCH" });
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  async function handleClick(notification: Notification) {
+    if (!notification.isRead) {
+      await fetch(`/api/notifications/${notification.id}/read`, { method: "PATCH" });
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
+      );
+    }
+    if (notification.bookIsbn) {
+      router.push(`/books/isbn/${notification.bookIsbn}`);
+    }
   }
 
   return (
@@ -81,10 +89,10 @@ export function NotificationList({ initialNotifications }: Props) {
           {notifications.map((notification) => (
             <li
               key={notification.id}
-              onClick={() => !notification.isRead && handleRead(notification.id)}
+              onClick={() => handleClick(notification)}
               className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
                 notification.isRead
-                  ? "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
+                  ? "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
                   : "border-blue-200 bg-blue-50 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-950/60"
               }`}
             >
