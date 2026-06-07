@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import LikeButton from "./_components/LikeButton";
 import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
+import { ReadingStatusButtons } from "./_components/ReadingStatusButtons";
 
 const TEMP_USER_ID = 1;
 
@@ -52,10 +53,24 @@ export default async function BookDetailPage({ params }: Props) {
 
   if (!book) notFound();
 
-  const favoriteRecord = await prisma.favoriteAuthor.findUnique({
-    where: { userId_authorId: { userId: TEMP_USER_ID, authorId: book.authorId } },
-    select: { authorId: true },
-  });
+  const [favoriteRecord, readingStatusRecord, reviewRecord] = await Promise.all([
+    prisma.favoriteAuthor.findUnique({
+      where: { userId_authorId: { userId: TEMP_USER_ID, authorId: book.authorId } },
+      select: { authorId: true },
+    }),
+    prisma.readingStatus.findUnique({
+      where: { userId_bookId: { userId: TEMP_USER_ID, bookId } },
+      select: { status: true },
+    }),
+    prisma.review.findFirst({
+      where: { userId: TEMP_USER_ID, bookId },
+      select: { id: true },
+    }),
+  ]);
+
+  type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
+  const currentStatus = (readingStatusRecord?.status ?? "unread") as ReadingStatus;
+  const hasReview = reviewRecord !== null;
 
   const publishedYear = book.publishedAt.getFullYear();
 
@@ -94,6 +109,18 @@ export default async function BookDetailPage({ params }: Props) {
           <p className="text-sm text-zinc-500 dark:text-zinc-500">
             {publishedYear}年
           </p>
+          <ReadingStatusButtons
+            book={{
+              id: book.id,
+              title: book.title,
+              authorName: book.author.name,
+              isbn: book.isbn,
+              coverImageUrl: book.coverImageUrl,
+              publishedAt: book.publishedAt.toISOString(),
+            }}
+            initialStatus={currentStatus}
+            hasReview={hasReview}
+          />
         </div>
       </div>
 
