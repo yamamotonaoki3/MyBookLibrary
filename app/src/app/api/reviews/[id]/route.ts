@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ReviewSchema } from "@/lib/validations";
 
 const TEMP_USER_ID = 1;
 
@@ -68,21 +69,18 @@ export async function PATCH(request: NextRequest, { params }: Props) {
         { status: 403 }
       );
     }
+    const patchSchema = ReviewSchema.pick({ body: true, isSpoiler: true });
+    const parsed = patchSchema.safeParse({ body, isSpoiler });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0].message },
+        { status: 400 }
+      );
+    }
+
     const data: { body?: string; isSpoiler?: boolean } = {};
-
-    if (body !== undefined) {
-      if (typeof body !== "string" || body.trim() === "") {
-        return NextResponse.json(
-          { error: "感想を入力してください。" },
-          { status: 400 }
-        );
-      }
-      data.body = body.trim();
-    }
-
-    if (isSpoiler !== undefined) {
-      data.isSpoiler = Boolean(isSpoiler);
-    }
+    if (parsed.data.body !== undefined) data.body = parsed.data.body;
+    if (parsed.data.isSpoiler !== undefined) data.isSpoiler = parsed.data.isSpoiler;
 
     const updated = await prisma.review.update({
       where: { id: reviewId },

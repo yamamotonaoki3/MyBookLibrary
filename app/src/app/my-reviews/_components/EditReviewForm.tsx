@@ -27,9 +27,16 @@ export default function EditReviewForm({ review }: Props) {
     setIsEditing(false);
   }
 
+  const editBodyLength = editBody.trim().length;
+  const isEditBodyInvalid = editBodyLength < 10 || editBodyLength > 2000;
+
   async function handleSave() {
-    if (editBody.trim() === "") {
-      setError("感想を入力してください。");
+    if (editBodyLength < 10) {
+      setError("感想は10文字以上で入力してください。");
+      return;
+    }
+    if (editBodyLength > 2000) {
+      setError("感想は2000文字以内で入力してください。");
       return;
     }
 
@@ -89,8 +96,12 @@ export default function EditReviewForm({ review }: Props) {
         value={editBody}
         onChange={(e) => setEditBody(e.target.value)}
         rows={5}
+        placeholder="感想を入力してください...（10文字以上2000文字以内）"
         className="w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400"
       />
+      <p className={`text-right text-xs ${editBodyLength > 2000 ? "text-red-500" : "text-zinc-400 dark:text-zinc-500"}`}>
+        {editBodyLength} / 2000
+      </p>
       <label className="flex cursor-pointer items-center gap-2">
         <input
           type="checkbox"
@@ -108,7 +119,7 @@ export default function EditReviewForm({ review }: Props) {
       <div className="flex gap-2">
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || isEditBodyInvalid}
           className="rounded-lg bg-zinc-900 px-4 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           {saving ? "保存中..." : "保存"}

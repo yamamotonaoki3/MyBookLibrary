@@ -11,11 +11,13 @@ export function AddAuthorDialog() {
   const [results, setResults] = useState<AuthorSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   function openDialog() {
     setQuery("");
     setResults([]);
     setSearched(false);
+    setAddError(null);
     setOpen(true);
   }
 
@@ -23,8 +25,10 @@ export function AddAuthorDialog() {
     setOpen(false);
   }
 
+  const queryLength = query.trim().length;
+
   async function handleSearch() {
-    if (!query.trim()) return;
+    if (queryLength < 2) return;
     setLoading(true);
     setSearched(false);
     try {
@@ -40,11 +44,17 @@ export function AddAuthorDialog() {
   }
 
   async function handleAdd(name: string) {
-    await fetch("/api/favorite-authors", {
+    setAddError(null);
+    const res = await fetch("/api/favorite-authors", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ authorName: name }),
     });
+    if (!res.ok) {
+      const data = await res.json();
+      setAddError(data.error ?? "追加に失敗しました。");
+      return;
+    }
     router.refresh();
     closeDialog();
   }
@@ -89,12 +99,18 @@ export function AddAuthorDialog() {
               />
               <button
                 onClick={handleSearch}
-                disabled={loading || !query.trim()}
+                disabled={loading || queryLength < 2}
                 className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
                 検索
               </button>
             </div>
+            {query.trim().length > 0 && queryLength < 2 && (
+              <p className="mt-1.5 text-xs text-red-500">2文字以上入力してください。</p>
+            )}
+            {addError && (
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400">{addError}</p>
+            )}
 
             {loading && (
               <p className="mt-4 text-center text-sm text-zinc-500">検索中...</p>
