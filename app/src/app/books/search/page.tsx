@@ -1,9 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import type { SearchResult } from "@/app/api/books/search/route";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { SearchResult, SearchResponse } from "@/app/api/books/search/route";
 
 type SearchType = "title" | "author";
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
@@ -130,50 +132,80 @@ function SearchResultCard({ book }: { book: SearchResult }) {
   );
 }
 
-export default function BookSearchPage() {
-  const [query, setQuery] = useState("");
-  const [type, setType] = useState<SearchType>("title");
+function BookSearchContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const urlQ = searchParams.get("q") ?? "";
+  const urlType = (searchParams.get("type") ?? "title") as SearchType;
+  const urlPage = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+
+  const [query, setQuery] = useState(urlQ);
+  const [type, setType] = useState<SearchType>(urlType);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
 
-  async function fetchResults(q: string) {
+  const fetchResults = useCallback(async (q: string, t: SearchType, page: number) => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(
-        `/api/books/search?q=${encodeURIComponent(q)}&type=${type}`
+        `/api/books/search?q=${encodeURIComponent(q)}&type=${t}&page=${page}`
       );
-      const data = await res.json();
+      const data: SearchResponse = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "検索に失敗しました");
+        setError((data as { error?: string }).error ?? "検索に失敗しました");
         setResults([]);
+        setTotalPages(0);
       } else {
         setResults(data.items);
+        setTotalPages(data.totalPages);
       }
     } catch {
       setError("通信エラーが発生しました");
       setResults([]);
+      setTotalPages(0);
     } finally {
       setLoading(false);
       setSearched(true);
     }
+  }, []);
+
+  // URL パラメータが変わったら検索実行
+  useEffect(() => {
+    if (urlQ.trim().length >= 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchResults(urlQ, urlType, urlPage);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQ, urlType, urlPage]);
+
+  function pushUrl(q: string, t: SearchType, page: number) {
+    const params = new URLSearchParams({ q, type: t, page: String(page) });
+    router.push(`/books/search?${params.toString()}`);
   }
 
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (trimmed.length < 2) return;
-    const timer = setTimeout(() => fetchResults(trimmed), 0);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type]);
-
-  async function handleSearch(e: React.FormEvent) {
+  function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = query.trim();
-    if (!trimmed) return;
-    await fetchResults(trimmed);
+    if (trimmed.length < 2) return;
+    pushUrl(trimmed, type, 1);
+  }
+
+  function handleTypeChange(newType: SearchType) {
+    setType(newType);
+    const trimmed = query.trim();
+    if (trimmed.length >= 2 && searched) {
+      pushUrl(trimmed, newType, 1);
+    }
+  }
+
+  function handlePageChange(page: number) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    pushUrl(urlQ, urlType, page);
   }
 
   return (
@@ -190,7 +222,7 @@ export default function BookSearchPage() {
               name="type"
               value="title"
               checked={type === "title"}
-              onChange={() => setType("title")}
+              onChange={() => handleTypeChange("title")}
             />
             タイトル
           </label>
@@ -200,7 +232,7 @@ export default function BookSearchPage() {
               name="type"
               value="author"
               checked={type === "author"}
-              onChange={() => setType("author")}
+              onChange={() => handleTypeChange("author")}
             />
             著者名
           </label>
@@ -215,7 +247,7 @@ export default function BookSearchPage() {
           />
           <button
             type="submit"
-            disabled={loading || !query.trim()}
+            disabled={loading || query.trim().length < 2}
             className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {loading ? "検索中…" : "検索"}
@@ -235,7 +267,7 @@ export default function BookSearchPage() {
       {searched && !loading && !error && (
         <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
           {results.length > 0
-            ? `${results.length} 件見つかりました`
+            ? `${results.length} 件表示中`
             : "該当する本が見つかりませんでした"}
         </p>
       )}
@@ -245,6 +277,37 @@ export default function BookSearchPage() {
           <SearchResultCard key={book.isbn || i} book={book} />
         ))}
       </div>
+
+      {/* ページング UI */}
+      {totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-4">
+          <button
+            onClick={() => handlePageChange(urlPage - 1)}
+            disabled={urlPage <= 1 || loading}
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            ← 前へ
+          </button>
+          <span className="text-sm text-zinc-600 dark:text-zinc-400">
+            {urlPage} / {totalPages}
+          </span>
+          <button
+            onClick={() => handlePageChange(urlPage + 1)}
+            disabled={urlPage >= totalPages || loading}
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            次へ →
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function BookSearchPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-2xl px-4 py-8 text-sm text-zinc-500">読み込み中...</div>}>
+      <BookSearchContent />
+    </Suspense>
   );
 }

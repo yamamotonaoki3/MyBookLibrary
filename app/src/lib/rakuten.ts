@@ -18,7 +18,7 @@ function getCredentials() {
   return { appId, accessKey };
 }
 
-async function fetchBookPage(params: {
+export async function fetchBookPage(params: {
   author?: string;
   title?: string;
   page: number;
