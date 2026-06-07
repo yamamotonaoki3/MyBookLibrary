@@ -1,6 +1,8 @@
-import type { BookWithAwardEntry } from "@/types/award";
+import type { BookWithAwardEntry, ReadingStatus } from "@/types/award";
 import { BookCard } from "./BookCard";
 import { prisma } from "@/lib/prisma";
+
+const TEMP_USER_ID = 1;
 
 type Props = {
   awardId: number;
@@ -30,6 +32,11 @@ export async function BookList({ awardId, year }: Props) {
               name: true,
             },
           },
+          readingStatuses: {
+            where: { userId: TEMP_USER_ID },
+            select: { status: true },
+            take: 1,
+          },
         },
       },
     },
@@ -39,6 +46,7 @@ export async function BookList({ awardId, year }: Props) {
     awardEntryId: entry.id,
     year: entry.year,
     type: entry.type,
+    status: (entry.book.readingStatuses[0]?.status ?? "unread") as ReadingStatus,
     book: {
       id: entry.book.id,
       title: entry.book.title,

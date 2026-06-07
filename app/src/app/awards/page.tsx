@@ -5,6 +5,8 @@ import { YearFilter } from "./_components/YearFilter";
 import { BookList } from "./_components/BookList";
 import type { Metadata } from "next";
 
+const TEMP_USER_ID = 1;
+
 export const metadata: Metadata = {
   title: "賞別作品一覧 | MyBookLibrary",
 };
@@ -38,6 +40,31 @@ export default async function AwardsPage({ searchParams }: PageProps) {
   });
   const availableYears = yearsData.map((e) => e.year);
 
+  const totalEntries = await prisma.awardEntry.count({
+    where: {
+      awardId: selectedAwardId,
+      ...(selectedYear !== undefined ? { year: selectedYear } : {}),
+    },
+  });
+
+  const bookIds = await prisma.awardEntry.findMany({
+    where: {
+      awardId: selectedAwardId,
+      ...(selectedYear !== undefined ? { year: selectedYear } : {}),
+    },
+    select: { bookId: true },
+  });
+
+  const readCount = await prisma.readingStatus.count({
+    where: {
+      userId: TEMP_USER_ID,
+      status: "read",
+      bookId: { in: bookIds.map((e) => e.bookId) },
+    },
+  });
+
+  const pct = totalEntries > 0 ? Math.round((readCount / totalEntries) * 100) : 0;
+
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8">
       <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
@@ -50,11 +77,27 @@ export default async function AwardsPage({ searchParams }: PageProps) {
         <>
           <AwardTabs awards={awards} selectedAwardId={selectedAwardId} />
 
-          <div className="mt-4 mb-6">
+          <div className="mt-4 mb-2 flex items-center justify-between gap-4">
             <YearFilter
               availableYears={availableYears}
               selectedYear={selectedYear}
             />
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              進捗:{" "}
+              <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                {readCount} / {totalEntries}冊
+              </span>{" "}
+              ({pct}%)
+            </p>
+          </div>
+
+          <div className="mb-6">
+            <div className="h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-700">
+              <div
+                className="h-2 rounded-full bg-zinc-900 transition-all dark:bg-zinc-50"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
           </div>
 
           <Suspense
