@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 
 const NAV_LINKS = [
   { href: "/books", label: "私の本一覧" },
@@ -31,7 +31,9 @@ export function Header() {
 
   // ページ遷移時にメニューを閉じる
   useEffect(() => {
-    setMenuOpen(false);
+    startTransition(() => {
+      setMenuOpen(false);
+    });
   }, [pathname]);
 
   // メニュー外クリックで閉じる

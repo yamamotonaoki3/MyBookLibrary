@@ -3,6 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
 
@@ -24,6 +27,20 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
   want_to_read: "読みたい",
   reading: "読書中",
   read: "読了",
+};
+
+const STATUS_COLORS: Record<ReadingStatus, string> = {
+  unread: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+  want_to_read: "bg-orange-100 text-orange-700 hover:bg-orange-200",
+  reading: "bg-blue-100 text-blue-700 hover:bg-blue-200",
+  read: "bg-green-100 text-green-700 hover:bg-green-200",
+};
+
+const STATUS_ACTIVE_COLORS: Record<ReadingStatus, string> = {
+  unread: "bg-secondary-foreground text-secondary",
+  want_to_read: "bg-orange-500 text-white",
+  reading: "bg-blue-600 text-white",
+  read: "bg-green-600 text-white",
 };
 
 export function BookCard({ book, initialStatus, hasReview }: Props) {
@@ -49,72 +66,66 @@ export function BookCard({ book, initialStatus, hasReview }: Props) {
   }
 
   return (
-    <div className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-      <Link href={`/books/${book.id}`} className="shrink-0">
-        <div className="relative h-32 w-20 overflow-hidden rounded">
-          {book.coverImageUrl ? (
-            <Image
-              src={book.coverImageUrl}
-              alt={`${book.title}の書影`}
-              fill
-              className="object-cover"
-              sizes="80px"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-xs text-zinc-400 dark:bg-zinc-800">
-              No Image
-            </div>
-          )}
-        </div>
-      </Link>
+    <Card>
+      <CardContent className="flex gap-4 p-4">
+        <Link href={`/books/${book.id}`} className="shrink-0">
+          <div className="relative h-32 w-20 overflow-hidden rounded">
+            {book.coverImageUrl ? (
+              <Image
+                src={book.coverImageUrl}
+                alt={`${book.title}の書影`}
+                fill
+                className="object-cover"
+                sizes="80px"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground rounded">
+                No Image
+              </div>
+            )}
+          </div>
+        </Link>
 
-      <div className="flex flex-1 flex-col justify-between gap-2">
-        <div>
-          <Link href={`/books/${book.id}`}>
-            <h3 className="font-semibold leading-tight text-zinc-900 hover:underline dark:text-zinc-50">
-              {book.title}
-            </h3>
-          </Link>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {book.author.name}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-1">
-          {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => handleStatusChange(s)}
-              disabled={saving}
-              className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
-                status === s
-                  ? s === "read"
-                    ? "bg-green-600 text-white"
-                    : s === "reading"
-                      ? "bg-blue-600 text-white"
-                      : s === "want_to_read"
-                        ? "bg-orange-500 text-white"
-                        : "bg-zinc-600 text-white"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
-              }`}
-            >
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
-          {hasReview ? (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
-              感想投稿済み
-            </span>
-          ) : (
-            <Link
-              href={`/books/${book.id}/reviews/new`}
-              className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              感想を書く
+        <div className="flex flex-1 flex-col justify-between gap-2">
+          <div>
+            <Link href={`/books/${book.id}`}>
+              <h3 className="font-semibold leading-tight transition-colors hover:text-muted-foreground">
+                {book.title}
+              </h3>
             </Link>
-          )}
+            <p className="mt-1 text-sm text-muted-foreground">
+              {book.author.name}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-1">
+            {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => handleStatusChange(s)}
+                disabled={saving}
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                  status === s ? STATUS_ACTIVE_COLORS[s] : STATUS_COLORS[s]
+                }`}
+              >
+                {STATUS_LABELS[s]}
+              </button>
+            ))}
+            {hasReview ? (
+              <Badge variant="secondary" className="rounded-full font-normal text-muted-foreground">
+                感想投稿済み
+              </Badge>
+            ) : (
+              <Link
+                href={`/books/${book.id}/reviews/new`}
+                className={buttonVariants({ variant: "outline", size: "sm", className: "h-auto rounded-full px-2.5 py-0.5 text-xs" })}
+              >
+                感想を書く
+              </Link>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

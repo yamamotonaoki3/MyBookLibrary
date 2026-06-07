@@ -1,5 +1,7 @@
 import { Suspense } from "react";
+import { BookOpen, BookMarked, BookCheck, Heart } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookCard } from "./_components/BookCard";
 import { BooksFilter } from "./_components/BooksFilter";
 import type { Metadata } from "next";
@@ -50,7 +52,7 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
 
   if (myStatuses.length === 0) {
     return (
-      <p className="text-zinc-500">
+      <p className="text-sm text-muted-foreground">
         該当する本がありません。
       </p>
     );
@@ -86,41 +88,81 @@ type Props = {
 export default async function BooksPage({ searchParams }: Props) {
   const { status = "all", author = "all" } = await searchParams;
 
-  const favoriteAuthors = await prisma.favoriteAuthor.findMany({
-    where: { userId: TEMP_USER_ID },
-    include: { author: { select: { name: true } } },
-  });
+  const [favoriteAuthors, wantToRead, reading, read] = await Promise.all([
+    prisma.favoriteAuthor.findMany({
+      where: { userId: TEMP_USER_ID },
+      include: { author: { select: { name: true } } },
+    }),
+    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID, status: "want_to_read" } }),
+    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID, status: "reading" } }),
+    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID, status: "read" } }),
+  ]);
+
   const favoriteAuthorList = favoriteAuthors.map((fa) => ({
     id: fa.authorId,
     name: fa.author.name,
   }));
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+    <div className="flex flex-col px-4 py-6 md:px-8 md:py-8">
+      <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight md:mb-6 md:text-3xl">
         私の本一覧
       </h1>
 
-      <BooksFilter favoriteAuthors={favoriteAuthorList} />
-
-      <Suspense
-        fallback={
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-40 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"
-              />
-            ))}
+      {/* ステータスサマリー */}
+      <div className="mb-6 grid grid-cols-3 gap-3">
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-3 text-white shadow-md md:flex-row md:gap-3 md:p-4">
+          <Heart className="h-5 w-5 opacity-80 shrink-0" />
+          <div className="text-center md:text-left">
+            <p className="text-lg font-bold leading-none">{wantToRead}</p>
+            <p className="text-[10px] opacity-75 md:text-xs">読みたい</p>
           </div>
-        }
-      >
-        <BookGrid
-          status={status}
-          author={author}
-          favoriteAuthorIds={favoriteAuthorList.map((a) => a.id)}
-        />
-      </Suspense>
+        </div>
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-500 p-3 text-white shadow-md md:flex-row md:gap-3 md:p-4">
+          <BookOpen className="h-5 w-5 opacity-80 shrink-0" />
+          <div className="text-center md:text-left">
+            <p className="text-lg font-bold leading-none">{reading}</p>
+            <p className="text-[10px] opacity-75 md:text-xs">読書中</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 p-3 text-white shadow-md md:flex-row md:gap-3 md:p-4">
+          <BookCheck className="h-5 w-5 opacity-80 shrink-0" />
+          <div className="text-center md:text-left">
+            <p className="text-lg font-bold leading-none">{read}</p>
+            <p className="text-[10px] opacity-75 md:text-xs">読了</p>
+          </div>
+        </div>
+      </div>
+
+      {/* フィルター + 一覧 */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+            <BookMarked className="h-4 w-4" />登録した本
+          </CardTitle>
+          <BooksFilter favoriteAuthors={favoriteAuthorList} />
+        </CardHeader>
+        <CardContent>
+          <Suspense
+            fallback={
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-40 animate-pulse rounded-lg bg-muted"
+                  />
+                ))}
+              </div>
+            }
+          >
+            <BookGrid
+              status={status}
+              author={author}
+              favoriteAuthorIds={favoriteAuthorList.map((a) => a.id)}
+            />
+          </Suspense>
+        </CardContent>
+      </Card>
     </div>
   );
 }
