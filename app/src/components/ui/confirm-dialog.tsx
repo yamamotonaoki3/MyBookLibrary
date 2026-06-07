@@ -39,7 +39,10 @@ export function ConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>キャンセル</AlertDialogCancel>
-          <AlertDialogAction variant={confirmVariant} onClick={onConfirm}>
+          <AlertDialogAction
+            variant={confirmVariant}
+            onClick={() => { onOpenChange(false); onConfirm(); }}
+          >
             {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>

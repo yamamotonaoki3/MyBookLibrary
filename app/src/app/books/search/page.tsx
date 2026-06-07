@@ -18,6 +18,7 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
 };
 
 function SearchResultCard({ book }: { book: SearchResult }) {
+  const router = useRouter();
   const [status, setStatus] = useState<ReadingStatus>((book.status as ReadingStatus) ?? "unread");
   const [saving, setSaving] = useState(false);
   const [bookId, setBookId] = useState<number | null>(null);
@@ -40,6 +41,7 @@ function SearchResultCard({ book }: { book: SearchResult }) {
     const data = await res.json();
     if (data.bookId) setBookId(data.bookId);
     setSaving(false);
+    router.refresh();
   }
 
   return (

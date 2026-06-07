@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AuthorBook } from "@/types/author";
 
 type Props = {
@@ -18,6 +19,7 @@ const STATUS_LABELS: Record<AuthorBook["status"], string> = {
 };
 
 export function BookStatusCard({ book, canonicalAuthorName }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<AuthorBook["status"]>(book.status);
   const [saving, setSaving] = useState(false);
 
@@ -37,6 +39,7 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
       }),
     });
     setSaving(false);
+    router.refresh();
   }
 
   const coverImage = book.coverImageUrl ? (

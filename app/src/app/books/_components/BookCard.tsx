@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -45,6 +46,7 @@ const STATUS_ACTIVE_COLORS: Record<ReadingStatus, string> = {
 };
 
 export function BookCard({ book, initialStatus, hasReview }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<ReadingStatus>(initialStatus);
   const [saving, setSaving] = useState(false);
   const [unreadDialogOpen, setUnreadDialogOpen] = useState(false);
@@ -65,6 +67,7 @@ export function BookCard({ book, initialStatus, hasReview }: Props) {
       }),
     });
     setSaving(false);
+    router.refresh();
   }
 
   function handleStatusChange(newStatus: ReadingStatus) {

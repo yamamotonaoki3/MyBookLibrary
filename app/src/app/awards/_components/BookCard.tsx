@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { BookWithAwardEntry, ReadingStatus } from "@/types/award";
 
 type Props = {
@@ -17,6 +18,7 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
 };
 
 export function BookCard({ entry }: Props) {
+  const router = useRouter();
   const { book, type, year, status: initialStatus } = entry;
   const [status, setStatus] = useState<ReadingStatus>(initialStatus);
   const [saving, setSaving] = useState(false);
@@ -37,6 +39,7 @@ export function BookCard({ entry }: Props) {
       }),
     });
     setSaving(false);
+    router.refresh();
   }
 
   return (
