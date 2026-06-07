@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
 
@@ -26,6 +27,7 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
 };
 
 export function ReadingStatusButtons({ book, initialStatus, hasReview }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<ReadingStatus>(initialStatus);
   const [saving, setSaving] = useState(false);
 
@@ -45,6 +47,7 @@ export function ReadingStatusButtons({ book, initialStatus, hasReview }: Props) 
       }),
     });
     setSaving(false);
+    router.refresh();
   }
 
   return (

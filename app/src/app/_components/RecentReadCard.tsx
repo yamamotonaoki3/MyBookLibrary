@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 
@@ -35,6 +36,7 @@ const STATUS_COLORS: Record<ReadingStatus, string> = {
 };
 
 export function RecentReadCard({ book, initialStatus, hasReview }: Props) {
+  const router = useRouter();
   const [status, setStatus] = useState<ReadingStatus>(initialStatus);
   const [saving, setSaving] = useState(false);
 
@@ -54,6 +56,7 @@ export function RecentReadCard({ book, initialStatus, hasReview }: Props) {
       }),
     });
     setSaving(false);
+    router.refresh();
   }
 
   return (
