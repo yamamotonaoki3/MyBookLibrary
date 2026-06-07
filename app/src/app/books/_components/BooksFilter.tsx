@@ -15,6 +15,13 @@ type Props = {
   favoriteAuthors: FavoriteAuthor[];
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  all: "すべてのステータス",
+  want_to_read: "読みたい",
+  reading: "読書中",
+  read: "読了",
+};
+
 export function BooksFilter({ favoriteAuthors }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,11 +34,20 @@ export function BooksFilter({ favoriteAuthors }: Props) {
     router.replace(`/books?${params.toString()}`);
   }
 
+  function getAuthorLabel(v: string | null): string {
+    if (!v || v === "all") return "すべての著者";
+    if (v === "others") return "その他";
+    const fa = favoriteAuthors.find((a) => String(a.id) === v);
+    return fa?.name ?? v;
+  }
+
   return (
-    <div className="mb-6 flex flex-wrap gap-3">
+    <div className="mt-2 flex flex-wrap gap-3">
       <Select value={status} onValueChange={(v) => { if (v) update("status", v); }}>
-        <SelectTrigger className="w-44">
-          <SelectValue placeholder="ステータスで絞り込み" />
+        <SelectTrigger className="w-48">
+          <SelectValue>
+            {(v: string | null) => STATUS_LABEL[v ?? "all"] ?? v ?? "すべてのステータス"}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">すべてのステータス</SelectItem>
@@ -42,8 +58,10 @@ export function BooksFilter({ favoriteAuthors }: Props) {
       </Select>
 
       <Select value={author} onValueChange={(v) => { if (v) update("author", v); }}>
-        <SelectTrigger className="w-44">
-          <SelectValue placeholder="著者で絞り込み" />
+        <SelectTrigger className="w-48">
+          <SelectValue>
+            {(v: string | null) => getAuthorLabel(v)}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">すべての著者</SelectItem>
