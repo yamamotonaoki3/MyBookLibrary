@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import LikeButton from "./_components/LikeButton";
 import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
 import { ReadingStatusButtons } from "./_components/ReadingStatusButtons";
+import { ReportButton } from "./_components/ReportButton";
 
 const TEMP_USER_ID = 1;
 
@@ -39,9 +40,13 @@ export default async function BookDetailPage({ params }: Props) {
       },
       reviews: {
         include: {
-          user: { select: { name: true } },
+          user: { select: { name: true, id: true } },
           _count: { select: { likes: true } },
           likes: {
+            where: { userId: TEMP_USER_ID },
+            select: { id: true },
+          },
+          reports: {
             where: { userId: TEMP_USER_ID },
             select: { id: true },
           },
@@ -192,7 +197,13 @@ export default async function BookDetailPage({ params }: Props) {
                 <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                   {review.body}
                 </p>
-                <div className="mt-2 flex justify-end">
+                <div className="mt-2 flex items-center justify-end gap-3">
+                  {review.user.id !== TEMP_USER_ID && (
+                    <ReportButton
+                      reviewId={review.id}
+                      initialReported={review.reports.length > 0}
+                    />
+                  )}
                   <LikeButton
                     reviewId={review.id}
                     initialLiked={review.likes.length > 0}

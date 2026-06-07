@@ -30,6 +30,14 @@ type AwardEntry = {
   };
 };
 
+type ReportedReview = {
+  id: number;
+  body: string;
+  reportCount: number;
+  user: { name: string };
+  book: { id: number; title: string };
+};
+
 type FormState = {
   title: string;
   author: string;
@@ -81,12 +89,28 @@ export default function AdminPage() {
     likeCount: number;
     newUsersThisMonth: number;
   } | null>(null);
+  const [reportedReviews, setReportedReviews] = useState<ReportedReview[]>([]);
+  const [deletingReviewId, setDeletingReviewId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/stats")
       .then((res) => res.json())
       .then((data) => setStats(data));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/admin/reported-reviews")
+      .then((res) => res.json())
+      .then((data: ReportedReview[]) => setReportedReviews(data));
+  }, []);
+
+  async function handleDeleteReview(id: number) {
+    if (!confirm("このレビューを削除しますか？")) return;
+    setDeletingReviewId(id);
+    await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
+    setDeletingReviewId(null);
+    setReportedReviews((prev) => prev.filter((r) => r.id !== id));
+  }
 
   useEffect(() => {
     fetch("/api/admin/award-entries")
@@ -541,6 +565,49 @@ export default function AdminPage() {
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      {/* 通報されたレビュー */}
+      <section className="mt-8">
+        <h2 className="mb-4 text-base font-semibold text-zinc-800 dark:text-zinc-200">
+          🚨 通報されたレビュー
+        </h2>
+        {reportedReviews.length === 0 ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">通報されたレビューはありません。</p>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {reportedReviews.map((review) => (
+              <li
+                key={review.id}
+                className="rounded-lg border border-red-200 bg-white p-4 dark:border-red-900/40 dark:bg-zinc-900"
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                      {review.user.name}
+                    </span>
+                    <span className="text-zinc-400 dark:text-zinc-500">
+                      『{review.book.title}』
+                    </span>
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                      通報 {review.reportCount}件
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteReview(review.id)}
+                    disabled={deletingReviewId === review.id}
+                    className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                  >
+                    {deletingReviewId === review.id ? "削除中..." : "削除"}
+                  </button>
+                </div>
+                <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-3">
+                  {review.body}
+                </p>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </main>

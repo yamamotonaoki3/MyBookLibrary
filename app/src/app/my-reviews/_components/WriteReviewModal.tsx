@@ -183,6 +183,9 @@ export function WriteReviewModal() {
                   </span>
                 </div>
 
+                <p className="mb-1 text-xs text-zinc-400 dark:text-zinc-500">
+                  ※ 著者・作品に対する誹謗中傷が確認された場合、通報の対象となり削除されることがあります。
+                </p>
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}

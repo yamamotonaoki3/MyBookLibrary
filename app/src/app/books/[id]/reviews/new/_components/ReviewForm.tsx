@@ -64,6 +64,9 @@ export default function ReviewForm({ bookId, bookTitle }: Props) {
           >
             感想
           </label>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">
+            ※ 著者・作品に対する誹謗中傷が確認された場合、通報の対象となり削除されることがあります。
+          </p>
           <textarea
             id="body"
             value={body}
