@@ -36,9 +36,9 @@ export default async function Home() {
   });
 
   const recentReads = await prisma.readingStatus.findMany({
-    where: { userId: TEMP_USER_ID, status: "read" },
+    where: { userId: TEMP_USER_ID, status: "reading" },
     orderBy: { updatedAt: "desc" },
-    take: 3,
+    take: 5,
     include: {
       book: {
         include: { author: true },
@@ -128,7 +128,7 @@ export default async function Home() {
           </h2>
           {recentReads.length === 0 ? (
             <p className="text-sm text-zinc-500">
-              読了した本がまだありません。
+              読書中の本がまだありません。
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
