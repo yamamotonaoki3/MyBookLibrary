@@ -24,10 +24,10 @@ export default async function MyReviewsPage() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+      <div className="mb-5 flex shrink-0 items-center justify-between lg:mb-6">
         <div>
-          <h1 className="mb-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          <h1 className="mb-1 text-2xl font-bold tracking-tight lg:text-3xl">
             投稿した感想
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">

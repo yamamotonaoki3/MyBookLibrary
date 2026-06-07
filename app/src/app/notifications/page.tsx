@@ -16,7 +16,7 @@ export default async function NotificationsPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
+    <main className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
       <NotificationList initialNotifications={serialized} />
     </main>
   );

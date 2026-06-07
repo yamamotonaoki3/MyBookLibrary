@@ -211,8 +211,8 @@ function BookSearchContent() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+      <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         本を探す
       </h1>
 

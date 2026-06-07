@@ -47,7 +47,7 @@ export default async function BookIsbnPage({ params }: Props) {
   const authorId = favoriteRecord?.authorId ?? null;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8">
+    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
       {/* 書籍ヘッダー */}
       <div className="flex gap-6">
         <div className="relative h-48 w-32 shrink-0 overflow-hidden rounded-lg">
