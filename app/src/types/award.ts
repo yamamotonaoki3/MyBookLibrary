@@ -3,10 +3,13 @@ export type AwardItem = {
   name: string;
 };
 
+export type ReadingStatus = "unread" | "reading" | "read";
+
 export type BookWithAwardEntry = {
   awardEntryId: number;
   year: number;
   type: string;
+  status: ReadingStatus;
   book: {
     id: number;
     title: string;

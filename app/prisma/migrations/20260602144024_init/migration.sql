@@ -23,9 +23,11 @@ CREATE TABLE `books` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `author_id` INTEGER NOT NULL,
     `title` VARCHAR(191) NOT NULL,
+    `isbn` VARCHAR(191) NULL,
     `published_at` DATE NOT NULL,
     `cover_image_url` VARCHAR(191) NULL,
 
+    UNIQUE INDEX `books_isbn_key`(`isbn`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -67,6 +69,7 @@ CREATE TABLE `reading_statuses` (
     `user_id` INTEGER NOT NULL,
     `book_id` INTEGER NOT NULL,
     `status` VARCHAR(191) NOT NULL DEFAULT 'unread',
+    `updated_at` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `reading_statuses_user_id_book_id_key`(`user_id`, `book_id`),
     PRIMARY KEY (`id`)
@@ -77,7 +80,7 @@ CREATE TABLE `reviews` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `user_id` INTEGER NOT NULL,
     `book_id` INTEGER NOT NULL,
-    `body` VARCHAR(191) NOT NULL,
+    `body` TEXT NOT NULL,
     `is_spoiler` BOOLEAN NOT NULL DEFAULT false,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -100,6 +103,7 @@ CREATE TABLE `notifications` (
     `user_id` INTEGER NOT NULL,
     `type` VARCHAR(191) NOT NULL,
     `content` VARCHAR(191) NOT NULL,
+    `book_isbn` VARCHAR(191) NULL,
     `is_read` BOOLEAN NOT NULL DEFAULT false,
     `expires_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
