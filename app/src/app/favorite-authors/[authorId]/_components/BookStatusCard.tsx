@@ -119,6 +119,14 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
               {STATUS_LABELS[s]}
             </button>
           ))}
+          {book.bookId != null && status !== "unread" && (
+            <Link
+              href={`/books/${book.bookId}/reviews/new`}
+              className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              感想を書く
+            </Link>
+          )}
         </div>
       </div>
     </div>

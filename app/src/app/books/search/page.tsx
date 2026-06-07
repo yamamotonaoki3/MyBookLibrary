@@ -18,11 +18,12 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
 function SearchResultCard({ book }: { book: SearchResult }) {
   const [status, setStatus] = useState<ReadingStatus>("unread");
   const [saving, setSaving] = useState(false);
+  const [bookId, setBookId] = useState<number | null>(null);
 
   async function handleStatusChange(newStatus: ReadingStatus) {
     setSaving(true);
     setStatus(newStatus);
-    await fetch("/api/reading-status", {
+    const res = await fetch("/api/reading-status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -34,6 +35,8 @@ function SearchResultCard({ book }: { book: SearchResult }) {
         status: newStatus,
       }),
     });
+    const data = await res.json();
+    if (data.bookId) setBookId(data.bookId);
     setSaving(false);
   }
 
@@ -113,6 +116,14 @@ function SearchResultCard({ book }: { book: SearchResult }) {
               {STATUS_LABELS[s]}
             </button>
           ))}
+          {bookId != null && (
+            <Link
+              href={`/books/${bookId}/reviews/new`}
+              className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              感想を書く
+            </Link>
+          )}
         </div>
       </div>
     </div>
