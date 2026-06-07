@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import DeleteReviewButton from "./_components/DeleteReviewButton";
 import EditReviewForm from "./_components/EditReviewForm";
+import { WriteReviewModal } from "./_components/WriteReviewModal";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +25,17 @@ export default async function MyReviewsPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8">
-      <h1 className="mb-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-        投稿した感想
-      </h1>
-      <p className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
-        {reviews.length} 件
-      </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="mb-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            投稿した感想
+          </h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            {reviews.length} 件
+          </p>
+        </div>
+        <WriteReviewModal />
+      </div>
 
       {reviews.length === 0 ? (
         <p className="text-sm text-zinc-500">まだ感想を投稿していません。</p>
