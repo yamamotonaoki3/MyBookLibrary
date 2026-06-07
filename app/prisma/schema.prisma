@@ -19,6 +19,7 @@ model User {
   reviews         Review[]
   likes           Like[]
   notifications   Notification[]
+  reports         Report[]
 
   @@map("users")
 }
@@ -103,6 +104,7 @@ model Review {
   user      User     @relation(fields: [userId], references: [id])
   book      Book     @relation(fields: [bookId], references: [id])
   likes     Like[]
+  reports   Report[]
 
   @@map("reviews")
 }
@@ -116,6 +118,18 @@ model Like {
 
   @@unique([userId, reviewId])
   @@map("likes")
+}
+
+model Report {
+  id        Int      @id @default(autoincrement())
+  reviewId  Int      @map("review_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, reviewId])
+  @@map("reports")
 }
 
 model Notification {
