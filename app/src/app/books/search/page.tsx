@@ -209,7 +209,7 @@ function BookSearchContent() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
         本を探す
       </h1>
@@ -272,7 +272,7 @@ function BookSearchContent() {
         </p>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {results.map((book, i) => (
           <SearchResultCard key={book.isbn || i} book={book} />
         ))}
@@ -306,7 +306,7 @@ function BookSearchContent() {
 
 export default function BookSearchPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-2xl px-4 py-8 text-sm text-zinc-500">読み込み中...</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-6xl px-4 py-8 text-sm text-zinc-500">読み込み中...</div>}>
       <BookSearchContent />
     </Suspense>
   );
