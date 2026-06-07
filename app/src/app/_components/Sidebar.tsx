@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import {
   BookOpen,
   Trophy,
@@ -12,6 +12,7 @@ import {
   Bell,
   Library,
   ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 
 const MAIN_LINKS = [
@@ -28,6 +29,20 @@ const ACCOUNT_LINKS = [
 export function Sidebar() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) {
+      startTransition(() => setIsCollapsed(saved === "true"));
+    }
+  }, []);
+
+  function toggleCollapsed() {
+    const next = !isCollapsed;
+    setIsCollapsed(next);
+    localStorage.setItem("sidebar-collapsed", String(next));
+  }
 
   useEffect(() => {
     fetch("/api/notifications")
@@ -41,24 +56,59 @@ export function Sidebar() {
   }, [pathname]);
 
   return (
-    <aside className="hidden lg:flex w-52 shrink-0 flex-col bg-emerald-700 min-h-screen">
-      {/* アプリ名 */}
-      <div className="px-6 py-7">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-600">
+    <aside
+      className={`hidden lg:flex shrink-0 flex-col bg-emerald-700 min-h-screen transition-all duration-300 ${
+        isCollapsed ? "w-14" : "w-52"
+      }`}
+    >
+      {/* ロゴ + 折りたたみボタン */}
+      <div className={`flex items-center py-7 ${isCollapsed ? "justify-center px-0" : "justify-between px-6"}`}>
+        {!isCollapsed && (
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-600">
+              <Library className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-base font-semibold text-white">MyBookLibrary</span>
+          </Link>
+        )}
+        {isCollapsed && (
+          <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-600">
             <Library className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-base font-semibold text-white">MyBookLibrary</span>
-        </Link>
+          </Link>
+        )}
+        {!isCollapsed && (
+          <button
+            onClick={toggleCollapsed}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            aria-label="サイドバーを閉じる"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
+      {/* 折りたたみ時の開くボタン */}
+      {isCollapsed && (
+        <div className="flex justify-center px-0 pb-2">
+          <button
+            onClick={toggleCollapsed}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            aria-label="サイドバーを開く"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* ナビゲーション */}
-      <nav className="flex flex-1 flex-col gap-7 px-4">
+      <nav className={`flex flex-1 flex-col gap-7 ${isCollapsed ? "px-1" : "px-4"}`}>
         {/* CURRENT セクション */}
         <div>
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-widest text-white/50">
-            Current
-          </p>
+          {!isCollapsed && (
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-widest text-white/50">
+              Current
+            </p>
+          )}
           <div className="flex flex-col gap-1">
             {MAIN_LINKS.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(href + "/");
@@ -66,14 +116,17 @@ export function Sidebar() {
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-colors ${
+                  title={isCollapsed ? label : undefined}
+                  className={`flex items-center rounded-lg transition-colors ${
+                    isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
+                  } text-base font-medium ${
                     isActive
                       ? "bg-violet-600 text-white"
                       : "text-white/80 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
-                  {label}
+                  {!isCollapsed && label}
                 </Link>
               );
             })}
@@ -82,9 +135,11 @@ export function Sidebar() {
 
         {/* ACCOUNT セクション */}
         <div>
-          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-widest text-white/50">
-            Account
-          </p>
+          {!isCollapsed && (
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-widest text-white/50">
+              Account
+            </p>
+          )}
           <div className="flex flex-col gap-1">
             {ACCOUNT_LINKS.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(href + "/");
@@ -92,14 +147,17 @@ export function Sidebar() {
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-colors ${
+                  title={isCollapsed ? label : undefined}
+                  className={`flex items-center rounded-lg transition-colors ${
+                    isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
+                  } text-base font-medium ${
                     isActive
                       ? "bg-violet-600 text-white"
                       : "text-white/80 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
-                  {label}
+                  {!isCollapsed && label}
                 </Link>
               );
             })}
@@ -107,7 +165,10 @@ export function Sidebar() {
             {/* 通知 */}
             <Link
               href="/notifications"
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium transition-colors ${
+              title={isCollapsed ? "通知" : undefined}
+              className={`flex items-center rounded-lg transition-colors ${
+                isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
+              } text-base font-medium ${
                 pathname === "/notifications"
                   ? "bg-violet-600 text-white"
                   : "text-white/80 hover:bg-white/10 hover:text-white"
@@ -121,23 +182,29 @@ export function Sidebar() {
                   </span>
                 )}
               </div>
-              通知
+              {!isCollapsed && "通知"}
             </Link>
           </div>
         </div>
       </nav>
 
       {/* ユーザー欄 */}
-      <div className="border-t border-white/10 px-4 py-5">
-        <div className="flex items-center gap-3 rounded-lg px-3 py-3 hover:bg-white/10 cursor-pointer transition-colors">
+      <div className="border-t border-white/10 px-2 py-5">
+        <div
+          className={`flex items-center rounded-lg hover:bg-white/10 cursor-pointer transition-colors ${
+            isCollapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-3"
+          }`}
+        >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-600 text-sm font-bold text-white">
             T
           </div>
-          <div className="flex flex-1 flex-col min-w-0">
-            <span className="text-sm font-medium text-white leading-none">テストユーザー</span>
-            <span className="text-xs text-white/50 leading-none mt-1 truncate">test@example.com</span>
-          </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-white/40" />
+          {!isCollapsed && (
+            <div className="flex flex-1 flex-col min-w-0">
+              <span className="text-sm font-medium text-white leading-none">テストユーザー</span>
+              <span className="text-xs text-white/50 leading-none mt-1 truncate">test@example.com</span>
+            </div>
+          )}
+          {!isCollapsed && <ChevronRight className="h-4 w-4 shrink-0 text-white/40" />}
         </div>
       </div>
     </aside>
