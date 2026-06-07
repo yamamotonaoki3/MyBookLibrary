@@ -16,10 +16,17 @@ export default function ReviewForm({ bookId, bookTitle }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const bodyLength = body.trim().length;
+  const isBodyInvalid = bodyLength < 10 || bodyLength > 2000;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (body.trim() === "") {
-      setError("感想を入力してください。");
+    if (bodyLength < 10) {
+      setError("感想は10文字以上で入力してください。");
+      return;
+    }
+    if (bodyLength > 2000) {
+      setError("感想は2000文字以内で入力してください。");
       return;
     }
 
@@ -72,9 +79,12 @@ export default function ReviewForm({ bookId, bookTitle }: Props) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={8}
-            placeholder="この本の感想を書いてください..."
+            placeholder="この本の感想を書いてください...（10文字以上2000文字以内）"
             className="w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-500 dark:focus:border-zinc-400"
           />
+          <p className={`text-right text-xs ${bodyLength > 2000 ? "text-red-500" : "text-zinc-400 dark:text-zinc-500"}`}>
+            {bodyLength} / 2000
+          </p>
         </div>
 
         <label className="flex cursor-pointer items-center gap-3">
@@ -98,7 +108,7 @@ export default function ReviewForm({ bookId, bookTitle }: Props) {
         <div className="flex gap-3">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || isBodyInvalid}
             className="rounded-lg bg-zinc-900 px-5 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {submitting ? "送信中..." : "投稿する"}

@@ -54,8 +54,11 @@ export function WriteReviewModal() {
     }
   }
 
+  const bodyLength = body.trim().length;
+  const isBodyInvalid = bodyLength < 10 || bodyLength > 2000;
+
   async function handleSubmit() {
-    if (!selectedBook || !body.trim()) return;
+    if (!selectedBook || isBodyInvalid) return;
     setSaving(true);
     setError(null);
     const res = await fetch("/api/reviews", {
@@ -190,9 +193,12 @@ export function WriteReviewModal() {
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   rows={8}
-                  placeholder="感想を入力してください"
+                  placeholder="感想を入力してください...（10文字以上2000文字以内）"
                   className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
                 />
+                <p className={`text-right text-xs ${bodyLength > 2000 ? "text-red-500" : "text-zinc-400 dark:text-zinc-500"}`}>
+                  {bodyLength} / 2000
+                </p>
 
                 <label className="mt-2 flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                   <input
@@ -210,7 +216,7 @@ export function WriteReviewModal() {
 
                 <button
                   onClick={handleSubmit}
-                  disabled={saving || !body.trim()}
+                  disabled={saving || isBodyInvalid || !selectedBook}
                   className="mt-4 w-full rounded-md bg-zinc-900 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                 >
                   {saving ? "投稿中..." : "投稿する"}

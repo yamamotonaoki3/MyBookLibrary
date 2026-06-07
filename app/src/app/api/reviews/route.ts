@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ReviewSchema } from "@/lib/validations";
 
 const TEMP_USER_ID = 1;
 
@@ -23,14 +24,17 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { bookId, body, isSpoiler } = await request.json();
+    const json = await request.json();
 
-    if (typeof body !== "string" || body.trim() === "") {
+    const parsed = ReviewSchema.safeParse(json);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "感想を入力してください。" },
+        { error: parsed.error.issues[0].message },
         { status: 400 }
       );
     }
+
+    const { bookId, body, isSpoiler } = parsed.data;
 
     if (typeof bookId !== "number") {
       return NextResponse.json({ error: "bookId が不正です。" }, { status: 400 });
@@ -40,8 +44,8 @@ export async function POST(request: NextRequest) {
       data: {
         userId: TEMP_USER_ID,
         bookId,
-        body: body.trim(),
-        isSpoiler: Boolean(isSpoiler),
+        body,
+        isSpoiler: isSpoiler ?? false,
       },
     });
 

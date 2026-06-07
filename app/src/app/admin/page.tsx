@@ -71,6 +71,24 @@ export default function AdminPage() {
   const [registering, setRegistering] = useState(false);
   const [registerResult, setRegisterResult] = useState<string | null>(null);
 
+  function formatSalesDate(raw: string): string {
+    if (!raw) return "";
+    // "20240101" → "2024年01月01日"
+    const m8 = raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if (m8) {
+      const day = m8[3] === "00" ? "" : `${m8[3]}日`;
+      return `${m8[1]}年${m8[2]}月${day}`;
+    }
+    // "2024年1月15日" → "2024年01月15日"、"2024年1月" → "2024年01月"
+    const mJa = raw.match(/^(\d{4})年(\d{1,2})月(?:(\d{1,2})日)?/);
+    if (mJa) {
+      const month = String(mJa[2]).padStart(2, "0");
+      const day = mJa[3] ? `${String(mJa[3]).padStart(2, "0")}日` : "";
+      return `${mJa[1]}年${month}月${day}`;
+    }
+    return raw;
+  }
+
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; errors: string[] } | null>(
@@ -152,7 +170,7 @@ export default function AdminPage() {
       author: book.author,
       isbn: book.isbn ?? "",
       coverImageUrl: book.coverImageUrl ?? "",
-      publishedAt: book.salesDate ?? "",
+      publishedAt: formatSalesDate(book.salesDate ?? ""),
     }));
     setRegisterResult(null);
   }
@@ -349,7 +367,7 @@ export default function AdminPage() {
               type="text"
               value={form.publishedAt}
               onChange={(e) => setForm((f) => ({ ...f, publishedAt: e.target.value }))}
-              placeholder="例: 2024年01月"
+              placeholder="例: 2024年01月15日（日付不明な場合は 2024年01月）"
               className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
             />
           </div>

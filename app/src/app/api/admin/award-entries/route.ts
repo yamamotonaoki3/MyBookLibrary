@@ -18,11 +18,18 @@ export async function GET() {
   }
 }
 
-// "2024年01月" "2024年01月中旬" などを Date に変換する
+// "2024年01月15日" "2024年01月" "20240115" などを Date に変換する
 function parsePublishedAt(raw: string | null | undefined): Date {
   if (!raw) return new Date();
-  const m = raw.match(/(\d{4})年(\d{2})月/);
-  if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, 1);
+  // "2024年01月15日" or "2024年01月"
+  const mJa = raw.match(/(\d{4})年(\d{1,2})月(?:(\d{1,2})日)?/);
+  if (mJa) {
+    return new Date(
+      parseInt(mJa[1]),
+      parseInt(mJa[2]) - 1,
+      mJa[3] ? parseInt(mJa[3]) : 1
+    );
+  }
   const d = new Date(raw);
   return isNaN(d.getTime()) ? new Date() : d;
 }

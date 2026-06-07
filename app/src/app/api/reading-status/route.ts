@@ -1,19 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
+import { ReadingStatusSchema } from "@/lib/validations";
 
 const TEMP_USER_ID = 1;
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { isbn, title, author, coverImageUrl, status } = body;
-
-    if (!title || !author || !status) {
+    const parsed = ReadingStatusSchema.safeParse(body);
+    if (!parsed.success) {
       return Response.json(
-        { error: "title, author, status are required" },
+        { error: parsed.error.issues[0].message },
         { status: 400 }
       );
     }
+
+    const { isbn, title, author, coverImageUrl, status } = parsed.data;
 
     // 著者名を正規化してからDB検索・保存（スペース違いによる分裂防止）
     const normalizedAuthor = normalizeAuthorName(author);

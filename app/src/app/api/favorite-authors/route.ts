@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
+import { FavoriteAuthorSchema } from "@/lib/validations";
 
 const TEMP_USER_ID = 1;
 
@@ -49,11 +50,17 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const authorName = normalizeAuthorName(String(body.authorName ?? "").trim());
+    const rawName = normalizeAuthorName(String(body.authorName ?? "").trim());
 
-    if (!authorName) {
-      return Response.json({ error: "authorName is required" }, { status: 400 });
+    const parsed = FavoriteAuthorSchema.safeParse({ authorName: rawName });
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.issues[0].message },
+        { status: 400 }
+      );
     }
+
+    const authorName = parsed.data.authorName;
 
     // 著者名でDBを検索し、なければ新規作成
     let author = await prisma.author.findFirst({ where: { name: authorName } });
