@@ -41,7 +41,7 @@ export function Sidebar() {
   }, [pathname]);
 
   return (
-    <aside className="hidden md:flex w-52 shrink-0 flex-col bg-emerald-700 min-h-screen">
+    <aside className="hidden lg:flex w-52 shrink-0 flex-col bg-emerald-700 min-h-screen">
       {/* アプリ名 */}
       <div className="px-6 py-7">
         <Link href="/" className="flex items-center gap-3">

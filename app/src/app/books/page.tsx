@@ -104,32 +104,32 @@ export default async function BooksPage({ searchParams }: Props) {
   }));
 
   return (
-    <div className="flex flex-col px-4 py-6 md:px-8 md:py-8">
-      <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight md:mb-6 md:text-3xl">
+    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+      <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         私の本一覧
       </h1>
 
       {/* ステータスサマリー */}
       <div className="mb-6 grid grid-cols-3 gap-3">
-        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-3 text-white shadow-md md:flex-row md:gap-3 md:p-4">
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-3 text-white shadow-md lg:flex-row lg:gap-3 lg:p-4">
           <Heart className="h-5 w-5 opacity-80 shrink-0" />
-          <div className="text-center md:text-left">
+          <div className="text-center lg:text-left">
             <p className="text-lg font-bold leading-none">{wantToRead}</p>
-            <p className="text-[10px] opacity-75 md:text-xs">読みたい</p>
+            <p className="text-[10px] opacity-75 lg:text-xs">読みたい</p>
           </div>
         </div>
-        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-500 p-3 text-white shadow-md md:flex-row md:gap-3 md:p-4">
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-500 p-3 text-white shadow-md lg:flex-row lg:gap-3 lg:p-4">
           <BookOpen className="h-5 w-5 opacity-80 shrink-0" />
-          <div className="text-center md:text-left">
+          <div className="text-center lg:text-left">
             <p className="text-lg font-bold leading-none">{reading}</p>
-            <p className="text-[10px] opacity-75 md:text-xs">読書中</p>
+            <p className="text-[10px] opacity-75 lg:text-xs">読書中</p>
           </div>
         </div>
-        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 p-3 text-white shadow-md md:flex-row md:gap-3 md:p-4">
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-green-400 to-emerald-600 p-3 text-white shadow-md lg:flex-row lg:gap-3 lg:p-4">
           <BookCheck className="h-5 w-5 opacity-80 shrink-0" />
-          <div className="text-center md:text-left">
+          <div className="text-center lg:text-left">
             <p className="text-lg font-bold leading-none">{read}</p>
-            <p className="text-[10px] opacity-75 md:text-xs">読了</p>
+            <p className="text-[10px] opacity-75 lg:text-xs">読了</p>
           </div>
         </div>
       </div>
