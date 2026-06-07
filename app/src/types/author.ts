@@ -26,6 +26,8 @@ export type FavoriteAuthorItem = {
   id: number;
   authorId: number;
   authorName: string;
+  bookCount: number;
   readingCount: number;
+  readCount: number;
   notify: boolean;
 };
