@@ -70,6 +70,18 @@ export default async function Home() {
     return { id: fa.id, authorId: fa.authorId, name: fa.author.name, dbTotal, dbRead, pct };
   });
 
+  const favoriteAuthorIds = new Set(favoriteAuthors.map((fa) => fa.authorId));
+  const othersStatuses = await prisma.readingStatus.findMany({
+    where: {
+      userId: TEMP_USER_ID,
+      book: { authorId: { notIn: [...favoriteAuthorIds] } },
+    },
+    select: { status: true },
+  });
+  const othersTotal = othersStatuses.length;
+  const othersRead = othersStatuses.filter((s) => s.status === "read").length;
+  const othersPct = othersTotal > 0 ? Math.round((othersRead / othersTotal) * 100) : 0;
+
   const [recentReads, myReviews] = await Promise.all([
     prisma.readingStatus.findMany({
       where: { userId: TEMP_USER_ID, status: { in: ["reading", "read"] } },
@@ -185,6 +197,25 @@ export default async function Home() {
                   )}
                 </li>
               ))}
+              {othersTotal > 0 && (
+                <li>
+                  <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                    その他
+                  </span>
+                  <div className="mt-1">
+                    <div className="mb-0.5 flex justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                      <span>{othersRead} / {othersTotal}冊 読了</span>
+                      <span>{othersPct}%</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-700">
+                      <div
+                        className="h-1.5 rounded-full bg-zinc-900 transition-all dark:bg-zinc-50"
+                        style={{ width: `${othersPct}%` }}
+                      />
+                    </div>
+                  </div>
+                </li>
+              )}
             </ul>
           )}
           <div className="mt-4">
