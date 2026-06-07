@@ -1,3 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const TEMP_USER_ID = 1;
@@ -24,5 +25,31 @@ export async function DELETE(
   } catch (error) {
     console.error("[DELETE /api/favorite-authors/[authorId]]", error);
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ authorId: string }> }
+) {
+  try {
+    const { authorId: authorIdParam } = await params;
+    const authorId = Number(authorIdParam);
+
+    if (!authorId || isNaN(authorId)) {
+      return NextResponse.json({ error: "Invalid authorId" }, { status: 400 });
+    }
+
+    const { notify } = (await request.json()) as { notify: boolean };
+
+    await prisma.favoriteAuthor.update({
+      where: { userId_authorId: { userId: TEMP_USER_ID, authorId } },
+      data: { notify },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[PATCH /api/favorite-authors/[authorId]]", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

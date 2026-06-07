@@ -81,6 +81,23 @@ export function deduplicateByTitle(books: RakutenBook[]): RakutenBook[] {
   });
 }
 
+export async function getAuthorBookCount(authorName: string): Promise<number> {
+  const { appId, accessKey } = getCredentials();
+
+  const url = new URL(RAKUTEN_API_BASE);
+  url.searchParams.set("applicationId", appId);
+  url.searchParams.set("accessKey", accessKey);
+  url.searchParams.set("formatVersion", "2");
+  url.searchParams.set("hits", "1");
+  url.searchParams.set("author", authorName);
+
+  const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+  if (!res.ok) return 0;
+
+  const data = await res.json();
+  return data.count ?? 0;
+}
+
 export async function searchBooksByIsbn(isbn: string): Promise<RakutenBook | null> {
   const { appId, accessKey } = getCredentials();
 

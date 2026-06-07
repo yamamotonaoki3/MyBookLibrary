@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
+import { getAuthorBookCount } from "@/lib/rakuten";
 import { AuthorCard } from "./_components/AuthorCard";
 import { AddAuthorDialog } from "./_components/AddAuthorDialog";
 import type { FavoriteAuthorItem } from "@/types/author";
@@ -19,8 +20,8 @@ async function FavoriteAuthorList() {
           books: {
             select: {
               readingStatuses: {
-                where: { userId: 1, status: "reading" },
-                select: { id: true },
+                where: { userId: 1 },
+                select: { status: true },
               },
             },
           },
@@ -30,12 +31,21 @@ async function FavoriteAuthorList() {
     orderBy: { author: { name: "asc" } },
   });
 
-  const authors: FavoriteAuthorItem[] = favoriteAuthors.map((f) => ({
+  const bookCounts = await Promise.all(
+    favoriteAuthors.map((f) => getAuthorBookCount(f.author.name))
+  );
+
+  const authors: FavoriteAuthorItem[] = favoriteAuthors.map((f, i) => ({
     id: f.id,
     authorId: f.authorId,
     authorName: f.author.name,
+    bookCount: bookCounts[i],
     readingCount: f.author.books.reduce(
-      (sum, book) => sum + book.readingStatuses.length,
+      (sum, b) => sum + b.readingStatuses.filter((s) => s.status === "reading").length,
+      0
+    ),
+    readCount: f.author.books.reduce(
+      (sum, b) => sum + b.readingStatuses.filter((s) => s.status === "read").length,
       0
     ),
     notify: f.notify,
