@@ -6,47 +6,45 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "本一覧 | MyBookLibrary",
+  title: "私の本一覧 | MyBookLibrary",
 };
 
 const TEMP_USER_ID = 1;
 
 async function BookGrid() {
-  const books = await prisma.book.findMany({
+  const myStatuses = await prisma.readingStatus.findMany({
+    where: { userId: TEMP_USER_ID },
+    orderBy: { updatedAt: "desc" },
     include: {
-      author: { select: { name: true } },
-      readingStatuses: {
-        where: { userId: TEMP_USER_ID },
-        select: { status: true },
-        take: 1,
+      book: {
+        include: { author: { select: { name: true } } },
       },
     },
-    orderBy: { title: "asc" },
   });
 
-  if (books.length === 0) {
-    return <p className="text-zinc-500">書籍データが登録されていません。</p>;
+  if (myStatuses.length === 0) {
+    return (
+      <p className="text-zinc-500">
+        まだ本が登録されていません。「本を探す」からステータスを設定してください。
+      </p>
+    );
   }
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {books.map((book) => (
+      {myStatuses.map((rs) => (
         <BookCard
-          key={book.id}
+          key={rs.bookId}
           book={{
-            id: book.id,
-            title: book.title,
-            coverImageUrl: book.coverImageUrl,
-            isbn: book.isbn,
-            publishedAt: book.publishedAt.toISOString(),
-            author: { name: book.author.name },
+            id: rs.book.id,
+            title: rs.book.title,
+            coverImageUrl: rs.book.coverImageUrl,
+            isbn: rs.book.isbn,
+            publishedAt: rs.book.publishedAt.toISOString(),
+            author: { name: rs.book.author.name },
           }}
           initialStatus={
-            (book.readingStatuses[0]?.status as
-              | "unread"
-              | "want_to_read"
-              | "reading"
-              | "read") ?? "unread"
+            rs.status as "unread" | "want_to_read" | "reading" | "read"
           }
         />
       ))}
@@ -58,7 +56,7 @@ export default function BooksPage() {
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8">
       <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-        本一覧
+        私の本一覧
       </h1>
 
       <Suspense
