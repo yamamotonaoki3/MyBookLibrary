@@ -61,7 +61,7 @@ export function BookCard({ entry }: Props) {
 
       <div className="flex flex-1 flex-col justify-between gap-2">
         <div>
-          <div className="mb-1 flex items-center gap-2">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <span
               className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
                 type === "winner"
@@ -72,6 +72,11 @@ export function BookCard({ entry }: Props) {
               {type === "winner" ? "受賞" : "ノミネート"}
             </span>
             <span className="text-xs text-zinc-500">{year}年</span>
+            {entry.awardName && (
+              <span className="inline-block rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                {entry.awardName}
+              </span>
+            )}
           </div>
 
           <Link href={`/books/${book.id}`}>

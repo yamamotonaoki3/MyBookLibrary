@@ -5,14 +5,16 @@ import { prisma } from "@/lib/prisma";
 const TEMP_USER_ID = 1;
 
 type Props = {
-  awardId: number;
+  awardId: number | "all";
   year?: number;
 };
 
 export async function BookList({ awardId, year }: Props) {
+  const showAll = awardId === "all";
+
   const awardEntries = await prisma.awardEntry.findMany({
     where: {
-      awardId,
+      ...(showAll ? {} : { awardId: awardId as number }),
       ...(year !== undefined ? { year } : {}),
     },
     orderBy: [{ year: "desc" }, { type: "asc" }],
@@ -20,6 +22,7 @@ export async function BookList({ awardId, year }: Props) {
       id: true,
       year: true,
       type: true,
+      award: showAll ? { select: { name: true } } : false,
       book: {
         select: {
           id: true,
@@ -53,6 +56,7 @@ export async function BookList({ awardId, year }: Props) {
     awardEntryId: entry.id,
     year: entry.year,
     type: entry.type,
+    awardName: showAll && "award" in entry && entry.award ? (entry.award as { name: string }).name : undefined,
     status: (entry.book.readingStatuses[0]?.status ?? "unread") as ReadingStatus,
     hasReview: reviewedBookIds.has(entry.book.id),
     book: {
