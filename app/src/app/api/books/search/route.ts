@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchBooks } from "@/lib/rakuten";
 import { prisma } from "@/lib/prisma";
 
+const TEMP_USER_ID = 1;
+
 export type SearchResult = {
   title: string;
   author: string;
@@ -10,6 +12,7 @@ export type SearchResult = {
   salesDate: string;
   coverImageUrl: string | null;
   awards: { name: string; year: number; type: string }[];
+  status: string;
 };
 
 export async function GET(request: NextRequest) {
@@ -41,6 +44,10 @@ export async function GET(request: NextRequest) {
         awardEntries: {
           select: { year: true, type: true, award: { select: { name: true } } },
         },
+        readingStatuses: {
+          where: { userId: TEMP_USER_ID },
+          select: { status: true },
+        },
       },
     });
 
@@ -50,6 +57,13 @@ export async function GET(request: NextRequest) {
     const awardsByIsbn = new Map(dbBooks.filter((b) => b.isbn).map((b) => [b.isbn, toAwards(b.awardEntries)]));
     const awardsByTitle = new Map(dbBooks.map((b) => [b.title, toAwards(b.awardEntries)]));
 
+    const statusByIsbn = new Map(
+      dbBooks.filter((b) => b.isbn).map((b) => [b.isbn, b.readingStatuses[0]?.status ?? "unread"])
+    );
+    const statusByTitle = new Map(
+      dbBooks.map((b) => [b.title, b.readingStatuses[0]?.status ?? "unread"])
+    );
+
     const results: SearchResult[] = items.map((b) => ({
       title: b.title,
       author: b.author,
@@ -58,6 +72,7 @@ export async function GET(request: NextRequest) {
       salesDate: b.salesDate,
       coverImageUrl: b.largeImageUrl || null,
       awards: awardsByIsbn.get(b.isbn) ?? awardsByTitle.get(b.title) ?? [],
+      status: statusByIsbn.get(b.isbn) ?? statusByTitle.get(b.title) ?? "unread",
     }));
 
     return NextResponse.json({ items: results });
