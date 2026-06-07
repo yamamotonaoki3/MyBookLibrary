@@ -9,9 +9,18 @@ export const metadata: Metadata = {
   title: "本一覧 | MyBookLibrary",
 };
 
+const TEMP_USER_ID = 1;
+
 async function BookGrid() {
   const books = await prisma.book.findMany({
-    include: { author: { select: { name: true } } },
+    include: {
+      author: { select: { name: true } },
+      readingStatuses: {
+        where: { userId: TEMP_USER_ID },
+        select: { status: true },
+        take: 1,
+      },
+    },
     orderBy: { title: "asc" },
   });
 
@@ -22,7 +31,24 @@ async function BookGrid() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {books.map((book) => (
-        <BookCard key={book.id} book={book} />
+        <BookCard
+          key={book.id}
+          book={{
+            id: book.id,
+            title: book.title,
+            coverImageUrl: book.coverImageUrl,
+            isbn: book.isbn,
+            publishedAt: book.publishedAt.toISOString(),
+            author: { name: book.author.name },
+          }}
+          initialStatus={
+            (book.readingStatuses[0]?.status as
+              | "unread"
+              | "want_to_read"
+              | "reading"
+              | "read") ?? "unread"
+          }
+        />
       ))}
     </div>
   );

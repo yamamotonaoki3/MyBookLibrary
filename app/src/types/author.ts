@@ -18,7 +18,7 @@ export type AuthorBook = {
   publisherName: string;
   salesDate: string;
   bookId: number | null;
-  status: "unread" | "reading" | "read";
+  status: "unread" | "want_to_read" | "reading" | "read";
   awards: { name: string; year: number; type: string }[];
 };
 

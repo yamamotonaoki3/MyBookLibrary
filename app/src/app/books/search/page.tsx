@@ -6,6 +6,118 @@ import { useState, useEffect } from "react";
 import type { SearchResult } from "@/app/api/books/search/route";
 
 type SearchType = "title" | "author";
+type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
+
+const STATUS_LABELS: Record<ReadingStatus, string> = {
+  unread: "未読",
+  want_to_read: "読みたい",
+  reading: "読書中",
+  read: "読了",
+};
+
+function SearchResultCard({ book }: { book: SearchResult }) {
+  const [status, setStatus] = useState<ReadingStatus>("unread");
+  const [saving, setSaving] = useState(false);
+
+  async function handleStatusChange(newStatus: ReadingStatus) {
+    setSaving(true);
+    setStatus(newStatus);
+    await fetch("/api/reading-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        isbn: book.isbn,
+        title: book.title,
+        author: book.author,
+        coverImageUrl: book.coverImageUrl,
+        publishedAt: book.salesDate,
+        status: newStatus,
+      }),
+    });
+    setSaving(false);
+  }
+
+  return (
+    <div className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+      <Link
+        href={book.isbn ? `/books/isbn/${book.isbn}` : "#"}
+        className="shrink-0"
+      >
+        <div className="relative h-32 w-20 overflow-hidden rounded">
+          {book.coverImageUrl ? (
+            <Image
+              src={book.coverImageUrl}
+              alt={`${book.title}の書影`}
+              fill
+              className="object-cover"
+              sizes="80px"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-xs text-zinc-400 dark:bg-zinc-800">
+              No Image
+            </div>
+          )}
+        </div>
+      </Link>
+
+      <div className="flex flex-1 flex-col justify-between gap-2">
+        <div>
+          <Link href={book.isbn ? `/books/isbn/${book.isbn}` : "#"}>
+            <h3 className="font-semibold leading-tight text-zinc-900 hover:underline dark:text-zinc-50">
+              {book.title}
+            </h3>
+          </Link>
+          <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+            {book.author}
+          </p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">
+            {book.publisherName}
+            {book.salesDate ? ` · ${book.salesDate}` : ""}
+          </p>
+          {book.awards.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {book.awards.map((award) => (
+                <span
+                  key={`${award.name}-${award.year}`}
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    award.type === "winner"
+                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                      : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
+                  }`}
+                >
+                  {award.type === "winner" ? "受賞" : "ノミネート"}　{award.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-1">
+          {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => handleStatusChange(s)}
+              disabled={saving}
+              className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+                status === s
+                  ? s === "read"
+                    ? "bg-green-600 text-white"
+                    : s === "reading"
+                      ? "bg-blue-600 text-white"
+                      : s === "want_to_read"
+                        ? "bg-orange-500 text-white"
+                        : "bg-zinc-600 text-white"
+                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
+              }`}
+            >
+              {STATUS_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function BookSearchPage() {
   const [query, setQuery] = useState("");
@@ -119,55 +231,7 @@ export default function BookSearchPage() {
 
       <div className="flex flex-col gap-3">
         {results.map((book, i) => (
-          <Link
-            key={book.isbn || i}
-            href={book.isbn ? `/books/isbn/${book.isbn}` : "#"}
-            className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900"
-          >
-            <div className="relative h-32 w-20 shrink-0 overflow-hidden rounded">
-              {book.coverImageUrl ? (
-                <Image
-                  src={book.coverImageUrl}
-                  alt={`${book.title}の書影`}
-                  fill
-                  className="object-cover"
-                  sizes="80px"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-xs text-zinc-400 dark:bg-zinc-800">
-                  No Image
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col justify-center gap-1">
-              <h3 className="font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
-                {book.title}
-              </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                {book.author}
-              </p>
-              <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                {book.publisherName}
-                {book.salesDate ? ` · ${book.salesDate}` : ""}
-              </p>
-              {book.awards.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {book.awards.map((award) => (
-                    <span
-                      key={`${award.name}-${award.year}`}
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        award.type === "winner"
-                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      {award.type === "winner" ? "受賞" : "ノミネート"}　{award.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Link>
+          <SearchResultCard key={book.isbn || i} book={book} />
         ))}
       </div>
     </div>
