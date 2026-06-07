@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const NAV_LINKS = [
-  { href: "/books", label: "本一覧" },
+  { href: "/books", label: "私の本一覧" },
   { href: "/awards", label: "賞別一覧" },
   { href: "/books/search", label: "本を探す" },
   { href: "/favorite-authors", label: "お気に入り著者" },
