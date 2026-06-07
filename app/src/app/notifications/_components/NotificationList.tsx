@@ -67,7 +67,7 @@ export function NotificationList({ initialNotifications }: Props) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
+        <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
           🔔 通知
         </h1>
         {unreadCount > 0 && (

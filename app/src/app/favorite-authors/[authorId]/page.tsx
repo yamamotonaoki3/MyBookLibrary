@@ -185,15 +185,15 @@ export default async function AuthorBooksPage({ params, searchParams }: Props) {
   if (!author) notFound();
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <div className="mb-6">
+    <main className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+      <div className="mb-5 shrink-0 lg:mb-6">
         <Link
           href="/favorite-authors"
           className="text-sm text-blue-600 hover:underline dark:text-blue-400"
         >
           ← お気に入り著者一覧に戻る
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="mt-2 text-2xl font-bold tracking-tight lg:text-3xl">
           {author.name} の作品一覧
         </h1>
       </div>
