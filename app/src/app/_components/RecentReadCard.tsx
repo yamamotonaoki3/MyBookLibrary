@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
 
@@ -23,6 +25,13 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
   want_to_read: "読みたい",
   reading: "読書中",
   read: "読了",
+};
+
+const STATUS_COLORS: Record<ReadingStatus, string> = {
+  unread: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+  want_to_read: "bg-orange-100 text-orange-700 hover:bg-orange-200",
+  reading: "bg-blue-100 text-blue-700 hover:bg-blue-200",
+  read: "bg-green-100 text-green-700 hover:bg-green-200",
 };
 
 export function RecentReadCard({ book, initialStatus, hasReview }: Props) {
@@ -48,21 +57,21 @@ export function RecentReadCard({ book, initialStatus, hasReview }: Props) {
   }
 
   return (
-    <li className="flex flex-col gap-1.5">
+    <li className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
       <Link
         href={`/books/${book.id}`}
-        className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+        className="text-sm font-medium leading-snug transition-colors hover:text-muted-foreground"
       >
         {book.title}
       </Link>
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">{book.authorName}</p>
+      <p className="text-xs text-muted-foreground">{book.authorName}</p>
       <div className="flex flex-wrap gap-1">
         {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
           <button
             key={s}
             onClick={() => handleStatusChange(s)}
             disabled={saving}
-            className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-50 ${
               status === s
                 ? s === "read"
                   ? "bg-green-600 text-white"
@@ -70,21 +79,21 @@ export function RecentReadCard({ book, initialStatus, hasReview }: Props) {
                     ? "bg-blue-600 text-white"
                     : s === "want_to_read"
                       ? "bg-orange-500 text-white"
-                      : "bg-zinc-600 text-white"
-                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
+                      : "bg-secondary-foreground text-secondary"
+                : STATUS_COLORS[s]
             }`}
           >
             {STATUS_LABELS[s]}
           </button>
         ))}
         {hasReview ? (
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+          <Badge variant="secondary" className="rounded-full font-normal text-muted-foreground">
             感想投稿済み
-          </span>
+          </Badge>
         ) : (
           <Link
             href={`/books/${book.id}/reviews/new`}
-            className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className={buttonVariants({ variant: "outline", size: "sm", className: "h-auto rounded-full px-2.5 py-0.5 text-xs" })}
           >
             感想を書く
           </Link>
