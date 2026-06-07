@@ -153,7 +153,7 @@ export default async function Home() {
         {/* お気に入り著者 */}
         <section className="rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
           <h2 className="mb-4 text-base font-semibold text-zinc-800 dark:text-zinc-200">
-            ⭐ お気に入り著者 読みたい本 進捗
+            ⭐ 私の読みたい本進捗
           </h2>
           {favoriteAuthorsWithProgress.length === 0 ? (
             <p className="text-sm text-zinc-500">
