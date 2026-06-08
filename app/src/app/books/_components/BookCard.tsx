@@ -125,17 +125,19 @@ export function BookCard({ book, initialStatus, hasReview }: Props) {
                   {STATUS_LABELS[s]}
                 </button>
               ))}
-              {hasReview ? (
-                <Badge variant="secondary" className="rounded-full font-normal text-muted-foreground">
-                  感想投稿済み
-                </Badge>
-              ) : (
-                <Link
-                  href={`/books/${book.id}/reviews/new`}
-                  className={buttonVariants({ variant: "outline", size: "sm", className: "h-auto rounded-full px-2.5 py-0.5 text-xs" })}
-                >
-                  感想を書く
-                </Link>
+              {(status === "reading" || status === "read") && (
+                hasReview ? (
+                  <Badge variant="secondary" className="rounded-full font-normal text-muted-foreground">
+                    感想投稿済み
+                  </Badge>
+                ) : (
+                  <Link
+                    href={`/books/${book.id}/reviews/new`}
+                    className={buttonVariants({ variant: "outline", size: "sm", className: "h-auto rounded-full px-2.5 py-0.5 text-xs" })}
+                  >
+                    感想を書く
+                  </Link>
+                )
               )}
             </div>
           </div>
