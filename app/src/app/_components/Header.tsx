@@ -21,7 +21,7 @@ export function Header() {
   }, [pathname]);
 
   return (
-    <header className="lg:hidden flex h-10 shrink-0 items-center border-b border-emerald-800 bg-emerald-700 px-4">
+    <header className="lg:hidden fixed left-0 right-0 top-0 z-50 flex h-10 shrink-0 items-center border-b border-emerald-800 bg-emerald-700 px-4">
       <Link href="/" className="text-sm font-bold text-white">
         MyBookLibrary
       </Link>
