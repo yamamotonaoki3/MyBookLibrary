@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Bell, BellOff } from "lucide-react";
 import type { FavoriteAuthorItem } from "@/types/author";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -35,33 +36,33 @@ export function AuthorCard({ author }: Props) {
 
   return (
     <>
-      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div>
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex items-center justify-between gap-2">
           <Link
             href={`/favorite-authors/${author.authorId}`}
-            className="font-semibold text-blue-600 hover:underline dark:text-blue-400"
+            className="min-w-0 truncate font-semibold text-blue-600 hover:underline dark:text-blue-400"
           >
             {author.authorName}
           </Link>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            登録作品: {author.bookCount}冊 &nbsp;／&nbsp; 読書中: {author.readingCount}冊 &nbsp;／&nbsp; 読了: {author.readCount}冊
-          </p>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              onClick={handleNotifyToggle}
+              title={notify ? "新刊通知ON（クリックでOFF）" : "新刊通知OFF（クリックでON）"}
+              className="rounded-md px-2 py-1.5 text-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {notify ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={() => setOpen(true)}
+              className="rounded-md px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+            >
+              削除
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleNotifyToggle}
-            title={notify ? "新刊通知ON（クリックでOFF）" : "新刊通知OFF（クリックでON）"}
-            className="rounded-md px-2 py-1.5 text-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            {notify ? "🔔" : "🔕"}
-          </button>
-          <button
-            onClick={() => setOpen(true)}
-            className="rounded-md px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-          >
-            削除
-          </button>
-        </div>
+        <p className="mt-1 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+          登録作品: {author.bookCount}冊 &nbsp;／&nbsp; 読書中: {author.readingCount}冊 &nbsp;／&nbsp; 読了: {author.readCount}冊
+        </p>
       </div>
 
       <ConfirmDialog
