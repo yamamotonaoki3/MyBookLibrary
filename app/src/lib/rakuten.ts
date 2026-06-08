@@ -85,14 +85,23 @@ export async function searchBooks(params: {
   return deduplicateByTitle(allItems);
 }
 
-/** タイトルで重複除去し、最初に登場したものを残す */
+function parseSalesDateForSort(salesDate: string): number {
+  const match = salesDate.match(/(\d{4})年(\d{2})月(?:(\d{2})日)?/);
+  if (!match) return Infinity;
+  const [, year, month, day = "01"] = match;
+  return new Date(`${year}-${month}-${day}`).getTime();
+}
+
+/** タイトルで重複除去し、出版年が最も古いものを残す */
 export function deduplicateByTitle(books: RakutenBook[]): RakutenBook[] {
-  const seen = new Set<string>();
-  return books.filter((book) => {
-    if (seen.has(book.title)) return false;
-    seen.add(book.title);
-    return true;
-  });
+  const map = new Map<string, RakutenBook>();
+  for (const book of books) {
+    const existing = map.get(book.title);
+    if (!existing || parseSalesDateForSort(book.salesDate) < parseSalesDateForSort(existing.salesDate)) {
+      map.set(book.title, book);
+    }
+  }
+  return Array.from(map.values());
 }
 
 export async function getAuthorBookCount(authorName: string): Promise<number> {
