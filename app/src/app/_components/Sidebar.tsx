@@ -111,7 +111,7 @@ export function Sidebar() {
           )}
           <div className="flex flex-col gap-1">
             {MAIN_LINKS.map(({ href, label, icon: Icon }) => {
-              const isActive = pathname === href || pathname.startsWith(href + "/");
+              const isActive = pathname === href;
               return (
                 <Link
                   key={href}
