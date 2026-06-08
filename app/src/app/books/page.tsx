@@ -35,7 +35,7 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
   const [myStatuses, myReviews] = await Promise.all([
     prisma.readingStatus.findMany({
       where: { userId: TEMP_USER_ID, ...authorFilter, ...statusFilter },
-      orderBy: { book: { publishedAt: "desc" } },
+      orderBy: { updatedAt: "desc" },
       include: {
         book: {
           include: { author: { select: { name: true } } },
