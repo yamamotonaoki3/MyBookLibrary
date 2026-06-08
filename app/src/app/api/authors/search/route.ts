@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   try {
     // 楽天APIで著者名検索
-    const rakutenBooks = await searchBooks({ author: q });
+    const rakutenBooks = await searchBooks({ author: q, maxPages: 3 });
     let authorNames: string[] = [];
 
     if (rakutenBooks.length > 0) {

@@ -36,35 +36,49 @@ export async function fetchBookPage(params: {
   if (params.author) url.searchParams.set("author", params.author);
   if (params.title) url.searchParams.set("title", params.title);
 
-  const res = await fetch(url.toString(), {
-    next: { revalidate: 3600 },
-  });
-  if (!res.ok) {
-    console.error(`楽天API エラー: ${res.status} ${res.statusText}`);
-    return { items: [], pageCount: 0 };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+
+    if (res.status === 429) {
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      console.error("楽天API 429: リトライ上限に達しました");
+      return { items: [], pageCount: 0 };
+    }
+
+    if (!res.ok) {
+      console.error(`楽天API エラー: ${res.status} ${res.statusText}`);
+      return { items: [], pageCount: 0 };
+    }
+
+    const data = await res.json();
+    return {
+      items: (data.Items ?? []) as RakutenBook[],
+      pageCount: data.pageCount ?? 1,
+    };
   }
 
-  const data = await res.json();
-  return {
-    items: (data.Items ?? []) as RakutenBook[],
-    pageCount: data.pageCount ?? 1,
-  };
+  return { items: [], pageCount: 0 };
 }
 
 export async function searchBooks(params: {
   title?: string;
   author?: string;
+  maxPages?: number;
 }): Promise<RakutenBook[]> {
-  const { items, pageCount } = await fetchBookPage({ ...params, page: 1, hits: 30 });
+  const { maxPages = 100, ...fetchParams } = params;
+  const { items, pageCount } = await fetchBookPage({ ...fetchParams, page: 1, hits: 30 });
 
   if (pageCount <= 1) return deduplicateByTitle(items);
 
   // 2ページ目以降を逐次取得（並列だと429 Too Many Requestsになるため）
   const allItems = [...items];
-  const maxPage = Math.min(pageCount, 100);
+  const maxPage = Math.min(pageCount, maxPages);
 
   for (let page = 2; page <= maxPage; page++) {
-    const { items: pageItems } = await fetchBookPage({ ...params, page, hits: 30 });
+    const { items: pageItems } = await fetchBookPage({ ...fetchParams, page, hits: 30 });
     allItems.push(...pageItems);
   }
 
