@@ -1,5 +1,6 @@
 "use client";
 
+import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -67,8 +68,9 @@ export function NotificationList({ initialNotifications }: Props) {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
-          🔔 通知
+        <h1 className="mb-5 flex shrink-0 items-center gap-2 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
+          <Bell className="h-7 w-7 lg:h-8 lg:w-8" />
+          通知
         </h1>
         {unreadCount > 0 && (
           <button
