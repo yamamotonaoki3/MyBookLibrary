@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
 
@@ -39,8 +40,9 @@ export function RecentReadCard({ book, initialStatus, hasReview }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<ReadingStatus>(initialStatus);
   const [saving, setSaving] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<ReadingStatus | null>(null);
 
-  async function handleStatusChange(newStatus: ReadingStatus) {
+  async function applyStatusChange(newStatus: ReadingStatus) {
     setSaving(true);
     setStatus(newStatus);
     await fetch("/api/reading-status", {
@@ -59,7 +61,25 @@ export function RecentReadCard({ book, initialStatus, hasReview }: Props) {
     router.refresh();
   }
 
+  function handleStatusChange(newStatus: ReadingStatus) {
+    if (newStatus === "unread" || newStatus === "want_to_read") {
+      setPendingStatus(newStatus);
+      return;
+    }
+    applyStatusChange(newStatus);
+  }
+
   return (
+    <>
+    <ConfirmDialog
+      open={pendingStatus !== null}
+      onOpenChange={(open) => { if (!open) setPendingStatus(null); }}
+      title={`「${pendingStatus ? STATUS_LABELS[pendingStatus] : ""}」に変更しますか？`}
+      description="このステータスに変更すると、最近の読書記録から除外されます。"
+      confirmLabel="変更する"
+      confirmVariant="default"
+      onConfirm={() => { if (pendingStatus) applyStatusChange(pendingStatus); setPendingStatus(null); }}
+    />
     <li className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
       <Link
         href={`/books/${book.id}`}
@@ -103,5 +123,6 @@ export function RecentReadCard({ book, initialStatus, hasReview }: Props) {
         )}
       </div>
     </li>
+    </>
   );
 }
