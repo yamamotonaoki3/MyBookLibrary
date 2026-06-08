@@ -60,7 +60,7 @@ async function FavoriteAuthorList() {
   }
 
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       {authors.map((author) => (
         <li key={author.id}>
           <AuthorCard author={author} />

@@ -115,7 +115,7 @@ async function BookList({
         / {currentPage}/{totalPages}ページ
       </p>
 
-      <ul className="flex flex-col gap-3">
+      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         {books.map((book) => (
           <li key={book.isbn || book.title}>
             <BookStatusCard book={book} canonicalAuthorName={authorName} />
