@@ -21,7 +21,7 @@ export function SearchInput() {
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex max-w-2xl gap-2">
       <div className="relative flex-1">
         <input
           ref={inputRef}

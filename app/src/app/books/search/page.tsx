@@ -216,7 +216,7 @@ function BookSearchContent() {
         本を探す
       </h1>
 
-      <form onSubmit={handleSearch} className="mb-6 flex flex-col gap-3">
+      <form onSubmit={handleSearch} className="mb-6 flex max-w-2xl flex-col gap-3">
         <div className="flex gap-2">
           <label className="flex items-center gap-1 text-sm text-zinc-700 dark:text-zinc-300">
             <input
