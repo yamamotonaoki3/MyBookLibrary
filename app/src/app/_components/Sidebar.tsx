@@ -106,7 +106,7 @@ export function Sidebar() {
         <div>
           {!isCollapsed && (
             <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-widest text-white/50">
-              Current
+              ライブラリ
             </p>
           )}
           <div className="flex flex-col gap-1">
@@ -137,7 +137,7 @@ export function Sidebar() {
         <div>
           {!isCollapsed && (
             <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-widest text-white/50">
-              Account
+              メニュー
             </p>
           )}
           <div className="flex flex-col gap-1">
