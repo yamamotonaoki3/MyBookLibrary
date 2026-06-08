@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+﻿import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { getAuthorBookCount } from "@/lib/rakuten";
 import { AuthorCard } from "./_components/AuthorCard";
@@ -73,7 +73,7 @@ async function FavoriteAuthorList() {
 
 export default function FavoriteAuthorsPage() {
   return (
-    <main className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+    <main className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <div className="mb-5 flex shrink-0 items-center justify-between lg:mb-6">
         <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
           お気に入り著者
@@ -81,13 +81,15 @@ export default function FavoriteAuthorsPage() {
         <AddAuthorDialog />
       </div>
 
-      <Suspense
-        fallback={
-          <p className="text-center text-gray-500">読み込み中...</p>
-        }
-      >
-        <FavoriteAuthorList />
-      </Suspense>
+      <div className="flex-1 overflow-y-auto">
+        <Suspense
+          fallback={
+            <p className="text-center text-gray-500">読み込み中...</p>
+          }
+        >
+          <FavoriteAuthorList />
+        </Suspense>
+      </div>
     </main>
   );
 }

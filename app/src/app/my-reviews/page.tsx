@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import DeleteReviewButton from "./_components/DeleteReviewButton";
@@ -24,7 +24,7 @@ export default async function MyReviewsPage() {
   });
 
   return (
-    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+    <div className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <div className="mb-5 flex shrink-0 items-center justify-between lg:mb-6">
         <div>
           <h1 className="mb-1 text-2xl font-bold tracking-tight lg:text-3xl">
@@ -37,6 +37,7 @@ export default async function MyReviewsPage() {
         <WriteReviewModal />
       </div>
 
+      <div className="flex-1 overflow-y-auto">
       {reviews.length === 0 ? (
         <p className="text-sm text-zinc-500">まだ感想を投稿していません。</p>
       ) : (
@@ -77,6 +78,7 @@ export default async function MyReviewsPage() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }

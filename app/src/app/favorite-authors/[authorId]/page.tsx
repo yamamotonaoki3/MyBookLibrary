@@ -9,22 +9,18 @@ import type { AuthorBook } from "@/types/author";
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 10;
-
 type Props = {
   params: Promise<{ authorId: string }>;
-  searchParams: Promise<{ page?: string; q?: string }>;
+  searchParams: Promise<{ q?: string }>;
 };
 
 async function BookList({
   authorId,
   authorName,
-  page,
   query,
 }: {
   authorId: number;
   authorName: string;
-  page: number;
   query?: string;
 }) {
   const author = await prisma.author.findUnique({
@@ -35,7 +31,7 @@ async function BookList({
   if (!author) notFound();
 
   const allBooks = deduplicateByTitle(
-    await searchBooks({ author: author.name })
+    await searchBooks({ author: author.name, maxPages: 5 })
   );
 
   const filteredBooks = query
@@ -44,19 +40,12 @@ async function BookList({
       )
     : allBooks;
 
-  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / PAGE_SIZE));
-  const currentPage = Math.min(Math.max(1, page), totalPages);
-  const pagedRakutenBooks = filteredBooks.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
-
-  const isbnList = pagedRakutenBooks.map((b) => b.isbn).filter(Boolean);
+  const isbnList = filteredBooks.map((b) => b.isbn).filter(Boolean);
   const dbBooks = await prisma.book.findMany({
     where: {
       OR: [
         { isbn: { in: isbnList } },
-        { authorId, title: { in: pagedRakutenBooks.map((b) => b.title) } },
+        { authorId, title: { in: filteredBooks.map((b) => b.title) } },
       ],
     },
     select: {
@@ -80,7 +69,7 @@ async function BookList({
   const bookByIsbn = new Map(dbBooks.filter((b) => b.isbn).map((b) => [b.isbn, b]));
   const bookByTitle = new Map(dbBooks.map((b) => [b.title, b]));
 
-  const books: AuthorBook[] = pagedRakutenBooks.map((book) => {
+  const books: AuthorBook[] = filteredBooks.map((book) => {
     const dbBook =
       (book.isbn ? bookByIsbn.get(book.isbn) : undefined) ??
       bookByTitle.get(book.title);
@@ -111,8 +100,7 @@ async function BookList({
       <p className="text-sm text-gray-500 dark:text-gray-400">
         {query
           ? `「${query}」の絞り込み結果: ${filteredBooks.length}件`
-          : `全${allBooks.length}冊`}{" "}
-        / {currentPage}/{totalPages}ページ
+          : `全${allBooks.length}冊`}
       </p>
 
       <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3">
@@ -122,57 +110,14 @@ async function BookList({
           </li>
         ))}
       </ul>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Link
-            href={`?page=${currentPage - 1}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
-            aria-disabled={currentPage === 1}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              currentPage === 1
-                ? "pointer-events-none text-gray-300 dark:text-gray-600"
-                : "text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
-            }`}
-          >
-            ← 前へ
-          </Link>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`?page=${p}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
-              className={`rounded-md px-3 py-1.5 text-sm ${
-                p === currentPage
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-              }`}
-            >
-              {p}
-            </Link>
-          ))}
-
-          <Link
-            href={`?page=${currentPage + 1}${query ? `&q=${encodeURIComponent(query)}` : ""}`}
-            aria-disabled={currentPage === totalPages}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              currentPage === totalPages
-                ? "pointer-events-none text-gray-300 dark:text-gray-600"
-                : "text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
-            }`}
-          >
-            次へ →
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
 
 export default async function AuthorBooksPage({ params, searchParams }: Props) {
   const { authorId: authorIdParam } = await params;
-  const { page: pageParam, q } = await searchParams;
+  const { q } = await searchParams;
   const authorId = Number(authorIdParam);
-  const page = Number(pageParam ?? "1");
   const query = q?.trim() || undefined;
 
   if (!authorId || isNaN(authorId)) notFound();
@@ -185,7 +130,7 @@ export default async function AuthorBooksPage({ params, searchParams }: Props) {
   if (!author) notFound();
 
   return (
-    <main className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+    <main className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <div className="mb-5 shrink-0 lg:mb-6">
         <Link
           href="/favorite-authors"
@@ -198,16 +143,18 @@ export default async function AuthorBooksPage({ params, searchParams }: Props) {
         </h1>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 shrink-0">
         <SearchInput />
       </div>
 
-      <Suspense
-        fallback={<p className="text-center text-gray-500">読み込み中...</p>}
-        key={`${page}-${query ?? ""}`}
-      >
-        <BookList authorId={authorId} authorName={author.name} page={page} query={query} />
-      </Suspense>
+      <div className="flex-1 overflow-y-auto">
+        <Suspense
+          fallback={<p className="text-center text-gray-500">読み込み中...</p>}
+          key={query ?? ""}
+        >
+          <BookList authorId={authorId} authorName={author.name} query={query} />
+        </Suspense>
+      </div>
     </main>
   );
 }

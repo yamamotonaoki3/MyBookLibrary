@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+﻿import { Suspense } from "react";
 import { BookOpen, BookMarked, BookCheck, Heart } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -104,13 +104,13 @@ export default async function BooksPage({ searchParams }: Props) {
   }));
 
   return (
-    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+    <div className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         私の本一覧
       </h1>
 
       {/* ステータスサマリー */}
-      <div className="mb-6 grid grid-cols-3 gap-3">
+      <div className="mb-6 shrink-0 grid grid-cols-3 gap-3">
         <div className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 p-3 text-white shadow-md lg:flex-row lg:gap-3 lg:p-4">
           <Heart className="h-5 w-5 opacity-80 shrink-0" />
           <div className="text-center lg:text-left">
@@ -135,6 +135,7 @@ export default async function BooksPage({ searchParams }: Props) {
       </div>
 
       {/* フィルター + 一覧 */}
+      <div className="flex-1 overflow-y-auto">
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
@@ -163,6 +164,7 @@ export default async function BooksPage({ searchParams }: Props) {
           </Suspense>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
