@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense } from "react";
 import Image from "next/image";
@@ -211,12 +211,12 @@ function BookSearchContent() {
   }
 
   return (
-    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+    <div className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         本を探す
       </h1>
 
-      <form onSubmit={handleSearch} className="mb-6 flex max-w-2xl flex-col gap-3">
+      <form onSubmit={handleSearch} className="mb-6 shrink-0 flex max-w-2xl flex-col gap-3">
         <div className="flex gap-2">
           <label className="flex items-center gap-1 text-sm text-zinc-700 dark:text-zinc-300">
             <input
@@ -260,48 +260,50 @@ function BookSearchContent() {
         </p>
       </form>
 
-      {error && (
-        <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
-          {error}
-        </p>
-      )}
+      <div className="flex-1 overflow-y-auto">
+        {error && (
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+            {error}
+          </p>
+        )}
 
-      {searched && !loading && !error && (
-        <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
-          {results.length > 0
-            ? `${results.length} 件表示中`
-            : "該当する本が見つかりませんでした"}
-        </p>
-      )}
+        {searched && !loading && !error && (
+          <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+            {results.length > 0
+              ? `${results.length} 件表示中`
+              : "該当する本が見つかりませんでした"}
+          </p>
+        )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {results.map((book, i) => (
-          <SearchResultCard key={book.isbn || i} book={book} />
-        ))}
-      </div>
-
-      {/* ページング UI */}
-      {totalPages > 1 && (
-        <div className="mt-8 flex items-center justify-center gap-4">
-          <button
-            onClick={() => handlePageChange(urlPage - 1)}
-            disabled={urlPage <= 1 || loading}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            ← 前へ
-          </button>
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            {urlPage} / {totalPages}
-          </span>
-          <button
-            onClick={() => handlePageChange(urlPage + 1)}
-            disabled={urlPage >= totalPages || loading}
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            次へ →
-          </button>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {results.map((book, i) => (
+            <SearchResultCard key={book.isbn || i} book={book} />
+          ))}
         </div>
-      )}
+
+        {/* ページング UI */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center gap-4">
+            <button
+              onClick={() => handlePageChange(urlPage - 1)}
+              disabled={urlPage <= 1 || loading}
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              ← 前へ
+            </button>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+              {urlPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(urlPage + 1)}
+              disabled={urlPage >= totalPages || loading}
+              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              次へ →
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

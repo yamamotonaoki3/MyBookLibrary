@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+﻿import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { AwardTabs } from "./_components/AwardTabs";
 import { YearFilter } from "./_components/YearFilter";
@@ -71,10 +71,11 @@ export default async function AwardsPage({ searchParams }: PageProps) {
   const pct = totalEntries > 0 ? Math.round((readCount / totalEntries) * 100) : 0;
 
   return (
-    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+    <div className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         賞別作品一覧
       </h1>
+      <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-5xl">
 
       {awards.length === 0 ? (
@@ -123,6 +124,7 @@ export default async function AwardsPage({ searchParams }: PageProps) {
           </Suspense>
         </>
       )}
+      </div>
       </div>
     </div>
   );

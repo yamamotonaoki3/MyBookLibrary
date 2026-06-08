@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { BookOpen, Star, TrendingUp, Clock } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,7 +94,7 @@ export default async function Home() {
   ]);
 
   return (
-    <div className="flex flex-col px-4 py-6 lg:h-full lg:overflow-hidden lg:px-8 lg:py-8">
+    <div className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         ダッシュボード
       </h1>

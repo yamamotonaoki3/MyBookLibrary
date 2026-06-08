@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
@@ -240,11 +240,12 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+    <main className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         📋 受賞・ノミネート作品の登録
       </h1>
 
+      <div className="flex-1 overflow-y-auto">
       {/* 統計情報 */}
       <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
         <h2 className="mb-4 text-base font-semibold text-zinc-800 dark:text-zinc-200">
@@ -628,6 +629,7 @@ export default function AdminPage() {
           </ul>
         )}
       </section>
+      </div>
     </main>
   );
 }
