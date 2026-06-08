@@ -77,7 +77,6 @@ export default async function Home() {
     prisma.readingStatus.findMany({
       where: { userId: TEMP_USER_ID, status: { in: ["reading", "read"] } },
       orderBy: { updatedAt: "desc" },
-      take: 5,
       include: { book: { include: { author: true } } },
     }),
     prisma.review.findMany({
