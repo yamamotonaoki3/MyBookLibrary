@@ -59,7 +59,7 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       {myStatuses.map((rs) => (
         <BookCard
           key={rs.bookId}
@@ -145,7 +145,7 @@ export default async function BooksPage({ searchParams }: Props) {
         <CardContent>
           <Suspense
             fallback={
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div
                     key={i}
