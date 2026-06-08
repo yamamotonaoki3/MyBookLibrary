@@ -120,7 +120,7 @@ function SearchResultCard({ book }: { book: SearchResult }) {
               {STATUS_LABELS[s]}
             </button>
           ))}
-          {bookId != null && (
+          {bookId != null && (status === "reading" || status === "read") && (
             <Link
               href={`/books/${bookId}/reviews/new`}
               className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
