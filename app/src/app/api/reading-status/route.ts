@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       await prisma.readingStatus.deleteMany({
         where: { userId: TEMP_USER_ID, bookId: book.id },
       });
-      return Response.json({ status: "unread" });
+      return Response.json({ status: "unread", bookId: book.id });
     }
 
     const readingStatus = await prisma.readingStatus.upsert({

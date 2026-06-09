@@ -21,12 +21,13 @@ const STATUS_LABELS: Record<AuthorBook["status"], string> = {
 export function BookStatusCard({ book, canonicalAuthorName }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState<AuthorBook["status"]>(book.status);
+  const [localBookId, setLocalBookId] = useState<number | null>(book.bookId);
   const [saving, setSaving] = useState(false);
 
   async function handleStatusChange(newStatus: AuthorBook["status"]) {
     setSaving(true);
     setStatus(newStatus);
-    await fetch("/api/reading-status", {
+    const res = await fetch("/api/reading-status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -38,8 +39,29 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
         status: newStatus,
       }),
     });
+    const data = await res.json();
+    if (data.bookId != null) setLocalBookId(data.bookId);
     setSaving(false);
     router.refresh();
+  }
+
+  async function handleBookClick() {
+    const res = await fetch("/api/reading-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        isbn: book.isbn,
+        title: book.title,
+        author: canonicalAuthorName,
+        coverImageUrl: book.coverImageUrl,
+        publishedAt: book.salesDate,
+        status: "unread",
+      }),
+    });
+    const data = await res.json();
+    if (data.bookId != null) {
+      router.push(`/books/${data.bookId}`);
+    }
   }
 
   const coverImage = book.coverImageUrl ? (
@@ -58,27 +80,32 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
 
   return (
     <div className="flex gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      {book.bookId != null ? (
-        <Link href={`/books/${book.bookId}`} className="flex-shrink-0">
+      {localBookId != null ? (
+        <Link href={`/books/${localBookId}`} className="flex-shrink-0">
           {coverImage}
         </Link>
       ) : (
-        coverImage
+        <button onClick={handleBookClick} className="flex-shrink-0 cursor-pointer">
+          {coverImage}
+        </button>
       )}
 
       <div className="flex flex-1 flex-col justify-between gap-2">
         <div>
-          {book.bookId != null ? (
+          {localBookId != null ? (
             <Link
-              href={`/books/${book.bookId}`}
+              href={`/books/${localBookId}`}
               className="font-semibold text-gray-900 hover:underline dark:text-gray-100 line-clamp-2"
             >
               {book.title}
             </Link>
           ) : (
-            <p className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">
+            <button
+              onClick={handleBookClick}
+              className="cursor-pointer text-left font-semibold text-gray-900 hover:underline dark:text-gray-100 line-clamp-2"
+            >
               {book.title}
-            </p>
+            </button>
           )}
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {book.publisherName}　{book.salesDate}
@@ -122,14 +149,14 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
               {STATUS_LABELS[s]}
             </button>
           ))}
-          {book.bookId != null && (status === "reading" || status === "read") && (
+          {localBookId != null && (status === "reading" || status === "read") && (
             book.hasReview ? (
               <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
                 感想投稿済み
               </span>
             ) : (
               <Link
-                href={`/books/${book.bookId}/reviews/new`}
+                href={`/books/${localBookId}/reviews/new`}
                 className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 感想を書く
