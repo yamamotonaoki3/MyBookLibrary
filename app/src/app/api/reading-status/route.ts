@@ -4,6 +4,15 @@ import { ReadingStatusSchema } from "@/lib/validations";
 
 const TEMP_USER_ID = 1;
 
+function parseSalesDate(salesDate: string): Date {
+  const match = salesDate.match(/(\d{4})年(\d{2})月(?:(\d{2})日)?/);
+  if (!match) return new Date();
+  const year = parseInt(match[1]);
+  const month = parseInt(match[2]) - 1;
+  const day = match[3] ? parseInt(match[3]) : 1;
+  return new Date(year, month, day);
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -15,7 +24,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { isbn, title, author, coverImageUrl, status } = parsed.data;
+    const { isbn, title, author, coverImageUrl, status, publishedAt } = parsed.data;
 
     // 著者名を正規化してからDB検索・保存（スペース違いによる分裂防止）
     const normalizedAuthor = normalizeAuthorName(author);
@@ -41,7 +50,7 @@ export async function POST(request: Request) {
           authorId: authorRecord.id,
           isbn: isbn || null,
           coverImageUrl: coverImageUrl ?? null,
-          publishedAt: new Date(),
+          publishedAt: publishedAt ? parseSalesDate(publishedAt) : new Date(),
         },
       });
     }
