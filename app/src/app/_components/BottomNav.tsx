@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Trophy, Search, Heart } from "lucide-react";
+import { Home, BookOpen, Trophy, Search, Heart, MessageSquare } from "lucide-react";
 
 const TAB_LINKS = [
   { href: "/", label: "ホーム", icon: Home },
@@ -10,6 +10,7 @@ const TAB_LINKS = [
   { href: "/awards", label: "賞別", icon: Trophy },
   { href: "/books/search", label: "探す", icon: Search },
   { href: "/favorite-authors", label: "著者", icon: Heart },
+  { href: "/my-reviews", label: "感想", icon: MessageSquare },
 ];
 
 export function BottomNav() {
@@ -18,7 +19,10 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-white/8 bg-emerald-700 lg:hidden">
       {TAB_LINKS.map(({ href, label, icon: Icon }) => {
-        const isActive = href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
+        const isActive =
+          href === "/" || href === "/books"
+            ? pathname === href
+            : pathname === href || pathname.startsWith(href + "/");
         return (
           <Link
             key={href}
