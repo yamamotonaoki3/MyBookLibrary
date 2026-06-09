@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { searchBooks } from "@/lib/rakuten";
 import type { Metadata } from "next";
 import LikeButton from "./_components/LikeButton";
 import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
@@ -77,11 +78,17 @@ export default async function BookDetailPage({ params }: Props) {
   const currentStatus = (readingStatusRecord?.status ?? "unread") as ReadingStatus;
   const hasReview = reviewRecord !== null;
 
-  const d = book.publishedAt;
-  const publishedLabel =
+  const buildPublishedLabel = (d: Date): string =>
     d.getDate() !== 1
       ? `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日`
       : `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月`;
+
+  const normalizeTitle = (t: string) => t.trim().replace(/\s+/g, "").normalize("NFKC");
+  const authorBooks = await searchBooks({ author: book.author.name, maxPages: 5 });
+  const matched = authorBooks.find(
+    (b) => normalizeTitle(b.title) === normalizeTitle(book.title)
+  );
+  const publishedLabel = matched?.salesDate ?? buildPublishedLabel(book.publishedAt);
 
   return (
     <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
