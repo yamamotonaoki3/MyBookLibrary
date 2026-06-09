@@ -77,7 +77,11 @@ export default async function BookDetailPage({ params }: Props) {
   const currentStatus = (readingStatusRecord?.status ?? "unread") as ReadingStatus;
   const hasReview = reviewRecord !== null;
 
-  const publishedYear = book.publishedAt.getFullYear();
+  const d = book.publishedAt;
+  const publishedLabel =
+    d.getDate() !== 1
+      ? `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日`
+      : `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月`;
 
   return (
     <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
@@ -112,7 +116,7 @@ export default async function BookDetailPage({ params }: Props) {
             />
           </div>
           <p className="text-sm text-zinc-500 dark:text-zinc-500">
-            {publishedYear}年
+            {publishedLabel}
           </p>
           <ReadingStatusButtons
             book={{
