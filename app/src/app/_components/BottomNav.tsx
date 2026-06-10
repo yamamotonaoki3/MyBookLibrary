@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Trophy, Search, Heart, MessageSquare } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Home, BookOpen, Trophy, Search, Heart, MessageSquare, Settings } from "lucide-react";
 
 const TAB_LINKS = [
   { href: "/", label: "ホーム", icon: Home },
@@ -15,6 +16,8 @@ const TAB_LINKS = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-white/8 bg-emerald-700 lg:hidden">
@@ -36,6 +39,17 @@ export function BottomNav() {
           </Link>
         );
       })}
+      {isAdmin && (
+        <Link
+          href="/admin"
+          className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
+            pathname === "/admin" || pathname.startsWith("/admin/") ? "text-white" : "text-white/50"
+          }`}
+        >
+          <Settings className={`h-5 w-5 ${pathname === "/admin" || pathname.startsWith("/admin/") ? "text-white" : "text-white/50"}`} />
+          管理
+        </Link>
+      )}
     </nav>
   );
 }

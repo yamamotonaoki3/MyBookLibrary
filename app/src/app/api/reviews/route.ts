@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ReviewSchema } from "@/lib/validations";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function GET() {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const reviews = await prisma.review.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: userId },
       include: {
         book: { select: { id: true, title: true, coverImageUrl: true } },
       },
@@ -24,6 +26,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const json = await request.json();
 
     const parsed = ReviewSchema.safeParse(json);
@@ -42,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const review = await prisma.review.create({
       data: {
-        userId: TEMP_USER_ID,
+        userId: userId,
         bookId,
         body,
         isSpoiler: isSpoiler ?? false,

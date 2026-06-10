@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { ReadingStatusSchema } from "@/lib/validations";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 function parseSalesDate(salesDate: string): Date {
   const match = salesDate.match(/(\d{4})年(\d{2})月(?:(\d{2})日)?/);
@@ -15,6 +15,8 @@ function parseSalesDate(salesDate: string): Date {
 
 export async function POST(request: Request) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const body = await request.json();
     const parsed = ReadingStatusSchema.safeParse(body);
     if (!parsed.success) {
@@ -58,15 +60,15 @@ export async function POST(request: Request) {
     // 未読はデフォルト状態（レコードなし）なので削除、それ以外はupsert
     if (status === "unread") {
       await prisma.readingStatus.deleteMany({
-        where: { userId: TEMP_USER_ID, bookId: book.id },
+        where: { userId: userId, bookId: book.id },
       });
       return Response.json({ status: "unread", bookId: book.id });
     }
 
     const readingStatus = await prisma.readingStatus.upsert({
-      where: { userId_bookId: { userId: TEMP_USER_ID, bookId: book.id } },
+      where: { userId_bookId: { userId: userId, bookId: book.id } },
       update: { status },
-      create: { userId: TEMP_USER_ID, bookId: book.id, status },
+      create: { userId: userId, bookId: book.id, status },
     });
 
     return Response.json(readingStatus);

@@ -2,12 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell } from "lucide-react";
+import { Bell, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 
 export function Header() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
+  const { data: session } = useSession();
+  const userName = session?.user?.name ?? "ゲスト";
+  const initial = userName.charAt(0).toUpperCase();
 
   useEffect(() => {
     fetch("/api/notifications")
@@ -21,7 +25,7 @@ export function Header() {
   }, [pathname]);
 
   return (
-    <header className="lg:hidden fixed left-0 right-0 top-0 z-50 flex h-10 shrink-0 items-center border-b border-emerald-800 bg-emerald-700 px-4">
+    <header className="lg:hidden fixed left-0 right-0 top-0 z-50 flex h-14 shrink-0 items-center border-b border-emerald-800 bg-emerald-700 px-4">
       <Link href="/" className="text-sm font-bold text-white">
         MyBookLibrary
       </Link>
@@ -41,12 +45,21 @@ export function Header() {
           )}
         </Link>
 
-        {/* ユーザーアバター＋名前 */}
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
-            T
+        {/* ユーザーアバター＋名前＋ログアウト */}
+        <div className="flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
+              {initial}
+            </div>
+            <span className="text-xs font-medium text-white leading-none">{userName}</span>
           </div>
-          <span className="text-sm font-medium text-white">テストユーザー</span>
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="flex items-center gap-1 text-[11px] text-white/70 hover:text-white transition-colors"
+          >
+            <LogOut className="h-3 w-3" />
+            ログアウト
+          </button>
         </div>
       </div>
     </header>

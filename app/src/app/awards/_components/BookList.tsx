@@ -1,8 +1,7 @@
 import type { BookWithAwardEntry, ReadingStatus } from "@/types/award";
 import { BookCard } from "./BookCard";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = 1;
+import { auth } from "@/auth";
 
 type Props = {
   awardId: number | "all";
@@ -10,6 +9,8 @@ type Props = {
 };
 
 export async function BookList({ awardId, year }: Props) {
+  const session = await auth();
+  const userId = Number(session!.user.id);
   const showAll = awardId === "all";
 
   const awardEntries = await prisma.awardEntry.findMany({
@@ -36,7 +37,7 @@ export async function BookList({ awardId, year }: Props) {
             },
           },
           readingStatuses: {
-            where: { userId: TEMP_USER_ID },
+            where: { userId: userId },
             select: { status: true },
             take: 1,
           },
@@ -47,7 +48,7 @@ export async function BookList({ awardId, year }: Props) {
 
   const reviewedBookIds = new Set(
     (await prisma.review.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: userId },
       select: { bookId: true },
     })).map((r) => r.bookId)
   );

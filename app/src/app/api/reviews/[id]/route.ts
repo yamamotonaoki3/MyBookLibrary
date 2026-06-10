@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ReviewSchema } from "@/lib/validations";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -10,6 +10,8 @@ type Props = {
 
 export async function DELETE(_request: NextRequest, { params }: Props) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const { id } = await params;
     const reviewId = Number(id);
 
@@ -26,7 +28,7 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
       );
     }
 
-    if (review.userId !== TEMP_USER_ID) {
+    if (review.userId !== userId) {
       return NextResponse.json(
         { error: "他のユーザーのレビューは削除できません。" },
         { status: 403 }
@@ -46,6 +48,8 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
 
 export async function PATCH(request: NextRequest, { params }: Props) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const { body, isSpoiler } = await request.json();
     const { id } = await params;
     const reviewId = Number(id);
@@ -63,7 +67,7 @@ export async function PATCH(request: NextRequest, { params }: Props) {
       );
     }
 
-    if (review.userId !== TEMP_USER_ID) {
+    if (review.userId !== userId) {
       return NextResponse.json(
         { error: "他のユーザーのレビューは編集できません。" },
         { status: 403 }

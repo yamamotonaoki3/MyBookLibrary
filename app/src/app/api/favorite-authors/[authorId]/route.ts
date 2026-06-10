@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ authorId: string }> }
 ) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const { authorId: authorIdParam } = await params;
     const authorId = Number(authorIdParam);
 
@@ -17,7 +19,7 @@ export async function DELETE(
 
     await prisma.favoriteAuthor.delete({
       where: {
-        userId_authorId: { userId: TEMP_USER_ID, authorId },
+        userId_authorId: { userId: userId, authorId },
       },
     });
 
@@ -33,6 +35,8 @@ export async function PATCH(
   { params }: { params: Promise<{ authorId: string }> }
 ) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const { authorId: authorIdParam } = await params;
     const authorId = Number(authorIdParam);
 
@@ -43,7 +47,7 @@ export async function PATCH(
     const { notify } = (await request.json()) as { notify: boolean };
 
     await prisma.favoriteAuthor.update({
-      where: { userId_authorId: { userId: TEMP_USER_ID, authorId } },
+      where: { userId_authorId: { userId: userId, authorId } },
       data: { notify },
     });
 

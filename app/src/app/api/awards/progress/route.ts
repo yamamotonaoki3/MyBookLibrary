@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function GET() {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const awards = await prisma.award.findMany({
       orderBy: { id: "asc" },
       select: {
@@ -22,7 +24,7 @@ export async function GET() {
         const total = bookIds.length;
         const read = await prisma.readingStatus.count({
           where: {
-            userId: TEMP_USER_ID,
+            userId: userId,
             status: "read",
             bookId: { in: bookIds },
           },

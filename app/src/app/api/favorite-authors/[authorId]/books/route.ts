@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { searchBooks } from "@/lib/rakuten";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ authorId: string }> }
 ) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const { authorId: authorIdParam } = await params;
     const authorId = Number(authorIdParam);
 
@@ -42,7 +44,7 @@ export async function GET(
         isbn: true,
         title: true,
         readingStatuses: {
-          where: { userId: TEMP_USER_ID },
+          where: { userId: userId },
           select: { status: true },
         },
         awardEntries: {

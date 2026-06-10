@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -9,6 +9,8 @@ type Props = {
 
 export async function POST(_request: NextRequest, { params }: Props) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const { id } = await params;
     const reviewId = Number(id);
 
@@ -29,7 +31,7 @@ export async function POST(_request: NextRequest, { params }: Props) {
     }
 
     const existing = await prisma.like.findUnique({
-      where: { userId_reviewId: { userId: TEMP_USER_ID, reviewId } },
+      where: { userId_reviewId: { userId: userId, reviewId } },
     });
 
     if (existing) {
@@ -40,10 +42,10 @@ export async function POST(_request: NextRequest, { params }: Props) {
     }
 
     await prisma.like.create({
-      data: { userId: TEMP_USER_ID, reviewId },
+      data: { userId: userId, reviewId },
     });
 
-    if (review.userId !== TEMP_USER_ID) {
+    if (review.userId !== userId) {
       const alreadyNotified = await prisma.notification.findFirst({
         where: { userId: review.userId, type: "like", bookIsbn: review.book.isbn },
       });
@@ -73,6 +75,8 @@ export async function POST(_request: NextRequest, { params }: Props) {
 
 export async function DELETE(_request: NextRequest, { params }: Props) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const { id } = await params;
     const reviewId = Number(id);
 
@@ -81,7 +85,7 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
     }
 
     const existing = await prisma.like.findUnique({
-      where: { userId_reviewId: { userId: TEMP_USER_ID, reviewId } },
+      where: { userId_reviewId: { userId: userId, reviewId } },
     });
 
     if (!existing) {
@@ -92,7 +96,7 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
     }
 
     await prisma.like.delete({
-      where: { userId_reviewId: { userId: TEMP_USER_ID, reviewId } },
+      where: { userId_reviewId: { userId: userId, reviewId } },
     });
 
     const count = await prisma.like.count({ where: { reviewId } });

@@ -1,14 +1,13 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { searchBooks } from "@/lib/rakuten";
 import type { Metadata } from "next";
 import LikeButton from "./_components/LikeButton";
 import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
 import { ReadingStatusButtons } from "./_components/ReadingStatusButtons";
 import { ReportButton } from "./_components/ReportButton";
-
-const TEMP_USER_ID = 1;
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +25,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BookDetailPage({ params }: Props) {
+  const session = await auth();
+  const userId = Number(session!.user.id);
   const { id } = await params;
   const bookId = Number(id);
 
@@ -44,11 +45,11 @@ export default async function BookDetailPage({ params }: Props) {
           user: { select: { name: true, id: true } },
           _count: { select: { likes: true } },
           likes: {
-            where: { userId: TEMP_USER_ID },
+            where: { userId: userId },
             select: { id: true },
           },
           reports: {
-            where: { userId: TEMP_USER_ID },
+            where: { userId: userId },
             select: { id: true },
           },
         },
@@ -61,15 +62,15 @@ export default async function BookDetailPage({ params }: Props) {
 
   const [favoriteRecord, readingStatusRecord, reviewRecord] = await Promise.all([
     prisma.favoriteAuthor.findUnique({
-      where: { userId_authorId: { userId: TEMP_USER_ID, authorId: book.authorId } },
+      where: { userId_authorId: { userId: userId, authorId: book.authorId } },
       select: { authorId: true },
     }),
     prisma.readingStatus.findUnique({
-      where: { userId_bookId: { userId: TEMP_USER_ID, bookId } },
+      where: { userId_bookId: { userId: userId, bookId } },
       select: { status: true },
     }),
     prisma.review.findFirst({
-      where: { userId: TEMP_USER_ID, bookId },
+      where: { userId: userId, bookId },
       select: { id: true },
     }),
   ]);
@@ -209,7 +210,7 @@ export default async function BookDetailPage({ params }: Props) {
                   {review.body}
                 </p>
                 <div className="mt-2 flex items-center justify-end gap-3">
-                  {review.user.id !== TEMP_USER_ID && (
+                  {review.user.id !== userId && (
                     <ReportButton
                       reviewId={review.id}
                       initialReported={review.reports.length > 0}

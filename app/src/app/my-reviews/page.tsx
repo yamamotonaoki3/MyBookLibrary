@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import type { Metadata } from "next";
 import DeleteReviewButton from "./_components/DeleteReviewButton";
 import EditReviewForm from "./_components/EditReviewForm";
@@ -11,11 +12,12 @@ export const metadata: Metadata = {
   title: "投稿した感想 | MyBookLibrary",
 };
 
-const TEMP_USER_ID = 1;
-
 export default async function MyReviewsPage() {
+  const session = await auth();
+  const userId = Number(session!.user.id);
+
   const reviews = await prisma.review.findMany({
-    where: { userId: TEMP_USER_ID },
+    where: { userId },
     include: {
       book: { select: { id: true, title: true } },
       _count: { select: { likes: true } },

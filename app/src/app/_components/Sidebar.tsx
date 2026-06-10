@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
+import { useSession, signOut } from "next-auth/react";
 import {
   BookOpen,
   Trophy,
@@ -13,6 +14,8 @@ import {
   Library,
   ChevronRight,
   ChevronLeft,
+  LogOut,
+  Settings,
 } from "lucide-react";
 
 const MAIN_LINKS = [
@@ -30,6 +33,11 @@ export function Sidebar() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { data: session } = useSession();
+  const userName = session?.user?.name ?? "ゲスト";
+  const userEmail = session?.user?.email ?? "";
+  const isAdmin = session?.user?.role === "admin";
+  const initial = userName.charAt(0).toUpperCase();
 
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
@@ -186,26 +194,70 @@ export function Sidebar() {
             </Link>
           </div>
         </div>
+
+        {/* ADMIN セクション */}
+        {isAdmin && (
+          <div>
+            {!isCollapsed && (
+              <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-widest text-white/50">
+                管理
+              </p>
+            )}
+            <div className="flex flex-col gap-1">
+              <Link
+                href="/admin"
+                title={isCollapsed ? "管理画面" : undefined}
+                className={`flex items-center rounded-lg transition-colors ${
+                  isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
+                } text-base font-medium ${
+                  pathname === "/admin" || pathname.startsWith("/admin/")
+                    ? "bg-violet-600 text-white"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <Settings className="h-5 w-5 shrink-0" />
+                {!isCollapsed && "管理画面"}
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* ユーザー欄 */}
-      <div className="border-t border-white/10 px-2 py-5">
+      <div className="border-t border-white/10 px-2 py-3">
         <div
-          className={`flex items-center rounded-lg hover:bg-white/10 cursor-pointer transition-colors ${
+          className={`flex items-center rounded-lg transition-colors ${
             isCollapsed ? "justify-center px-0 py-3" : "gap-3 px-3 py-3"
           }`}
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-600 text-sm font-bold text-white">
-            T
+            {initial}
           </div>
           {!isCollapsed && (
             <div className="flex flex-1 flex-col min-w-0">
-              <span className="text-sm font-medium text-white leading-none">テストユーザー</span>
-              <span className="text-xs text-white/50 leading-none mt-1 truncate">test@example.com</span>
+              <span className="text-sm font-medium text-white leading-none">{userName}</span>
+              <span className="text-xs text-white/50 leading-none mt-1 truncate">{userEmail}</span>
             </div>
           )}
-          {!isCollapsed && <ChevronRight className="h-4 w-4 shrink-0 text-white/40" />}
         </div>
+        {!isCollapsed && (
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            ログアウト
+          </button>
+        )}
+        {isCollapsed && (
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="mt-1 flex w-full items-center justify-center rounded-lg py-2 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+            title="ログアウト"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </aside>
   );

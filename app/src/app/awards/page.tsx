@@ -1,11 +1,10 @@
 ﻿import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { AwardTabs } from "./_components/AwardTabs";
 import { YearFilter } from "./_components/YearFilter";
 import { BookList } from "./_components/BookList";
 import type { Metadata } from "next";
-
-const TEMP_USER_ID = 1;
 
 export const metadata: Metadata = {
   title: "賞別作品一覧 | MyBookLibrary",
@@ -19,6 +18,8 @@ type PageProps = {
 };
 
 export default async function AwardsPage({ searchParams }: PageProps) {
+  const session = await auth();
+  const userId = Number(session!.user.id);
   const { awardId: awardIdParam, year: yearParam } = await searchParams;
 
   const awards = await prisma.award.findMany({
@@ -62,7 +63,7 @@ export default async function AwardsPage({ searchParams }: PageProps) {
 
   const readCount = await prisma.readingStatus.count({
     where: {
-      userId: TEMP_USER_ID,
+      userId: userId,
       status: "read",
       bookId: { in: bookIds.map((e) => e.bookId) },
     },
