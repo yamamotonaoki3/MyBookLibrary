@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function GET() {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const totalLikes = await prisma.like.count({
-      where: { review: { userId: TEMP_USER_ID } },
+      where: { review: { userId: userId } },
     });
 
     return NextResponse.json({ totalLikes });

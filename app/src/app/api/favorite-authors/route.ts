@@ -1,13 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { FavoriteAuthorSchema } from "@/lib/validations";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function GET() {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const favoriteAuthors = await prisma.favoriteAuthor.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: userId },
       select: {
         id: true,
         authorId: true,
@@ -18,7 +20,7 @@ export async function GET() {
             books: {
               select: {
                 readingStatuses: {
-                  where: { userId: TEMP_USER_ID, status: "reading" },
+                  where: { userId: userId, status: "reading" },
                   select: { id: true },
                 },
               },
@@ -49,6 +51,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const body = await request.json();
     const rawName = normalizeAuthorName(String(body.authorName ?? "").trim());
 
@@ -69,7 +73,7 @@ export async function POST(request: Request) {
     }
 
     const favoriteAuthor = await prisma.favoriteAuthor.create({
-      data: { userId: TEMP_USER_ID, authorId: author.id },
+      data: { userId: userId, authorId: author.id },
     });
 
     return Response.json(favoriteAuthor, { status: 201 });

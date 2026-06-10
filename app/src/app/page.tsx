@@ -1,14 +1,15 @@
 ﻿import Link from "next/link";
 import { BookOpen, Star, TrendingUp, Clock } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { RecentReadCard } from "./_components/RecentReadCard";
 
-const TEMP_USER_ID = 1;
-
 export default async function Home() {
+  const session = await auth();
+  const userId = Number(session!.user.id);
   const awards = await prisma.award.findMany({
     orderBy: { id: "asc" },
     select: {
@@ -23,7 +24,7 @@ export default async function Home() {
       const bookIds = award.awardEntries.map((e) => e.bookId);
       const total = bookIds.length;
       const read = await prisma.readingStatus.count({
-        where: { userId: TEMP_USER_ID, status: "read", bookId: { in: bookIds } },
+        where: { userId: userId, status: "read", bookId: { in: bookIds } },
       });
       const pct = total > 0 ? Math.round((read / total) * 100) : 0;
       return { id: award.id, name: award.name, total, read, pct };
@@ -34,12 +35,12 @@ export default async function Home() {
   const uniqueBookIds = [...new Set(allBookIds)];
   const totalAll = uniqueBookIds.length;
   const readAll = await prisma.readingStatus.count({
-    where: { userId: TEMP_USER_ID, status: "read", bookId: { in: uniqueBookIds } },
+    where: { userId: userId, status: "read", bookId: { in: uniqueBookIds } },
   });
   const pctAll = totalAll > 0 ? Math.round((readAll / totalAll) * 100) : 0;
 
   const favoriteAuthors = await prisma.favoriteAuthor.findMany({
-    where: { userId: TEMP_USER_ID },
+    where: { userId: userId },
     take: 3,
     include: {
       author: {
@@ -47,7 +48,7 @@ export default async function Home() {
           books: {
             include: {
               readingStatuses: {
-                where: { userId: TEMP_USER_ID },
+                where: { userId: userId },
                 select: { status: true },
               },
             },
@@ -66,7 +67,7 @@ export default async function Home() {
 
   const favoriteAuthorIds = new Set(favoriteAuthors.map((fa) => fa.authorId));
   const othersStatuses = await prisma.readingStatus.findMany({
-    where: { userId: TEMP_USER_ID, book: { authorId: { notIn: [...favoriteAuthorIds] } } },
+    where: { userId: userId, book: { authorId: { notIn: [...favoriteAuthorIds] } } },
     select: { status: true },
   });
   const othersTotal = othersStatuses.length;
@@ -75,12 +76,12 @@ export default async function Home() {
 
   const [recentReads, myReviews] = await Promise.all([
     prisma.readingStatus.findMany({
-      where: { userId: TEMP_USER_ID, status: { in: ["reading", "read"] } },
+      where: { userId: userId, status: { in: ["reading", "read"] } },
       orderBy: { updatedAt: "desc" },
       include: { book: { include: { author: true } } },
     }),
     prisma.review.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: userId },
       select: { bookId: true },
     }),
   ]);
@@ -88,9 +89,9 @@ export default async function Home() {
   const reviewedBookIds = new Set(myReviews.map((r) => r.bookId));
 
   const [totalBooks, totalReadBooks, totalAuthors] = await Promise.all([
-    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID } }),
-    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID, status: "read" } }),
-    prisma.favoriteAuthor.count({ where: { userId: TEMP_USER_ID } }),
+    prisma.readingStatus.count({ where: { userId: userId } }),
+    prisma.readingStatus.count({ where: { userId: userId, status: "read" } }),
+    prisma.favoriteAuthor.count({ where: { userId: userId } }),
   ]);
 
   return (

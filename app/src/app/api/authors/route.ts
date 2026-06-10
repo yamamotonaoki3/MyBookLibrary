@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function GET() {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const [authors, favoriteAuthors] = await Promise.all([
       prisma.author.findMany({
         orderBy: { name: "asc" },
@@ -14,7 +16,7 @@ export async function GET() {
         },
       }),
       prisma.favoriteAuthor.findMany({
-        where: { userId: TEMP_USER_ID },
+        where: { userId: userId },
         select: { authorId: true },
       }),
     ]);

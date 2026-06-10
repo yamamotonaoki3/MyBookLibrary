@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBookPage } from "@/lib/rakuten";
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 const HITS_PER_PAGE = 30;
 
 export type SearchResult = {
@@ -39,6 +39,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     const params = type === "title" ? { title: q } : { author: q };
     const { items: rawItems, pageCount } = await fetchBookPage({
       ...params,
@@ -57,7 +59,7 @@ export async function GET(request: NextRequest) {
           select: { year: true, type: true, award: { select: { name: true } } },
         },
         readingStatuses: {
-          where: { userId: TEMP_USER_ID },
+          where: { userId: userId },
           select: { status: true },
         },
       },

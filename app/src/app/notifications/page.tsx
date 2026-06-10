@@ -1,11 +1,13 @@
 ﻿import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { NotificationList } from "./_components/NotificationList";
 
-const TEMP_USER_ID = 1;
-
 export default async function NotificationsPage() {
+  const session = await auth();
+  const userId = Number(session!.user.id);
+
   const notifications = await prisma.notification.findMany({
-    where: { userId: TEMP_USER_ID },
+    where: { userId },
     orderBy: { createdAt: "desc" },
   });
 

@@ -1,6 +1,7 @@
 ﻿import { Suspense } from "react";
 import { BookOpen, BookMarked, BookCheck, Heart } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookCard } from "./_components/BookCard";
 import { BooksFilter } from "./_components/BooksFilter";
@@ -12,8 +13,6 @@ export const metadata: Metadata = {
   title: "私の本一覧 | MyBookLibrary",
 };
 
-const TEMP_USER_ID = 1;
-
 type BookGridProps = {
   status: string;
   author: string;
@@ -21,6 +20,8 @@ type BookGridProps = {
 };
 
 async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
+  const session = await auth();
+  const userId = Number(session!.user.id);
   const authorIdNum = Number(author);
   const authorFilter =
     !isNaN(authorIdNum) && author !== "all" && author !== "others"
@@ -34,7 +35,7 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
 
   const [myStatuses, myReviews] = await Promise.all([
     prisma.readingStatus.findMany({
-      where: { userId: TEMP_USER_ID, ...authorFilter, ...statusFilter },
+      where: { userId: userId, ...authorFilter, ...statusFilter },
       orderBy: { updatedAt: "desc" },
       include: {
         book: {
@@ -43,7 +44,7 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
       },
     }),
     prisma.review.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: userId },
       select: { bookId: true },
     }),
   ]);
@@ -86,16 +87,18 @@ type Props = {
 };
 
 export default async function BooksPage({ searchParams }: Props) {
+  const session = await auth();
+  const userId = Number(session!.user.id);
   const { status = "all", author = "all" } = await searchParams;
 
   const [favoriteAuthors, wantToRead, reading, read] = await Promise.all([
     prisma.favoriteAuthor.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: userId },
       include: { author: { select: { name: true } } },
     }),
-    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID, status: "want_to_read" } }),
-    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID, status: "reading" } }),
-    prisma.readingStatus.count({ where: { userId: TEMP_USER_ID, status: "read" } }),
+    prisma.readingStatus.count({ where: { userId: userId, status: "want_to_read" } }),
+    prisma.readingStatus.count({ where: { userId: userId, status: "reading" } }),
+    prisma.readingStatus.count({ where: { userId: userId, status: "read" } }),
   ]);
 
   const favoriteAuthorList = favoriteAuthors.map((fa) => ({

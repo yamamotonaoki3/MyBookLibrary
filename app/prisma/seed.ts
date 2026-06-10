@@ -1,4 +1,5 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma";
 
 const prisma = new PrismaClient();
@@ -184,18 +185,35 @@ async function main() {
 
   console.log("受賞・ノミネート情報を登録しました");
 
+  // 管理者ユーザー
+  const adminPassword = await bcrypt.hash("admin1234", 12);
+  await prisma.user.upsert({
+    where: { email: "admin@mybooklibrary.local" },
+    update: {},
+    create: {
+      name: "管理者",
+      email: "admin@mybooklibrary.local",
+      password: adminPassword,
+      role: "admin",
+    },
+  });
+
   // テストユーザー
+  const testPassword = await bcrypt.hash("test1234", 12);
   await prisma.user.upsert({
     where: { email: "test@example.com" },
-    update: {},
+    update: { password: testPassword },
     create: {
       name: "テストユーザー",
       email: "test@example.com",
+      password: testPassword,
       role: "user",
     },
   });
 
-  console.log("テストユーザーを登録しました");
+  console.log("ユーザーを登録しました");
+  console.log("  管理者: admin@mybooklibrary.local / admin1234");
+  console.log("  テスト: test@example.com / test1234");
   console.log("シードデータの投入が完了しました！");
 }
 

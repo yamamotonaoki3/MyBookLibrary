@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function PATCH() {
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     await prisma.notification.updateMany({
-      where: { userId: TEMP_USER_ID, isRead: false },
+      where: { userId: userId, isRead: false },
       data: { isRead: true },
     });
     return NextResponse.json({ success: true });

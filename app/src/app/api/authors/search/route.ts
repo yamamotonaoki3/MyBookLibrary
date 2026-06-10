@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { searchAuthorsByName } from "@/lib/ndl";
 import { searchBooks } from "@/lib/rakuten";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,6 +14,8 @@ export async function GET(request: Request) {
   }
 
   try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
     // 楽天APIで著者名検索
     const rakutenBooks = await searchBooks({ author: q, maxPages: 3 });
     let authorNames: string[] = [];
@@ -36,7 +38,7 @@ export async function GET(request: Request) {
 
     // お気に入り登録済みの著者名セットを正規化して取得
     const favorites = await prisma.favoriteAuthor.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: userId },
       select: { author: { select: { name: true } } },
     });
     const favoriteNames = new Set(

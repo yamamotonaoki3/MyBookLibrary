@@ -1,12 +1,11 @@
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { searchBooksByIsbn } from "@/lib/rakuten";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import type { Metadata } from "next";
 import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
-
-const TEMP_USER_ID = 1;
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BookIsbnPage({ params }: Props) {
+  const session = await auth();
+  const userId = Number(session!.user.id);
   const { isbn } = await params;
 
   const dbBook = await prisma.book.findUnique({ where: { isbn } });
@@ -37,7 +38,7 @@ export default async function BookIsbnPage({ params }: Props) {
 
   const favoriteRecord = await prisma.favoriteAuthor.findFirst({
     where: {
-      userId: TEMP_USER_ID,
+      userId: userId,
       author: { name: normalizedAuthorName },
     },
     select: { authorId: true },

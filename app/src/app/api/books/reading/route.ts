@@ -1,22 +1,24 @@
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedUserId } from "@/lib/session";
 
-const TEMP_USER_ID = 1;
 
 export async function GET(request: Request) {
+  const { userId, error } = await getAuthenticatedUserId();
+  if (error) return error;
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "";
 
   const [statuses, reviews] = await Promise.all([
     prisma.readingStatus.findMany({
       where: {
-        userId: TEMP_USER_ID,
+        userId: userId,
         status: { in: ["reading", "read"] },
         ...(q ? { book: { title: { contains: q } } } : {}),
       },
       include: { book: { include: { author: { select: { name: true } } } } },
     }),
     prisma.review.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: userId },
       select: { bookId: true },
     }),
   ]);
