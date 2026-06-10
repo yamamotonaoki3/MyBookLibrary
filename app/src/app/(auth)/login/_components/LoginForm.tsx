@@ -56,7 +56,13 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
             : "メールアドレスまたはパスワードが正しくありません。";
         setFormError(msg);
       } else {
-        localStorage.setItem("rememberMe", rememberMe ? "1" : "0");
+        if (rememberMe) {
+          localStorage.setItem("rememberMe", "1");
+          sessionStorage.removeItem("sessionActive");
+        } else {
+          localStorage.setItem("rememberMe", "0");
+          sessionStorage.setItem("sessionActive", "1");
+        }
         router.push(callbackUrl ?? "/");
         router.refresh();
       }
