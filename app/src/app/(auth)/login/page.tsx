@@ -7,7 +7,7 @@ export const metadata = { title: "ログイン | MyBookLibrary" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
+  searchParams: Promise<{ error?: string; callbackUrl?: string; message?: string }>;
 }) {
   const params = await searchParams;
   return (
@@ -20,6 +20,11 @@ export default async function LoginPage({
         <p className="text-sm text-muted-foreground lg:text-base">アカウントにログイン</p>
       </CardHeader>
       <CardContent className="px-6 pb-6 lg:px-8 lg:pb-8">
+        {params.message === "password_reset" && (
+          <p className="mb-4 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-700 lg:px-4 lg:py-3 lg:text-sm">
+            パスワードを変更しました。新しいパスワードでログインしてください。
+          </p>
+        )}
         <LoginForm error={params.error} callbackUrl={params.callbackUrl} />
       </CardContent>
     </Card>
