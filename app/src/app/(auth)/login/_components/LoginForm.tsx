@@ -175,9 +175,10 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
         type="button"
         variant="outline"
         className="h-9 w-full gap-2 text-sm lg:h-11 lg:text-base"
-        onClick={() =>
-          signIn("google", { callbackUrl: callbackUrl ?? "/" })
-        }
+        onClick={() => {
+          sessionStorage.setItem("sessionActive", "1");
+          signIn("google", { callbackUrl: callbackUrl ?? "/" });
+        }}
       >
         <svg className="h-4 w-4 lg:h-5 lg:w-5" viewBox="0 0 24 24" aria-hidden="true">
           <path
