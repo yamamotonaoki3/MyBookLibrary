@@ -2,37 +2,64 @@
 
 ```mermaid
 flowchart TD
-    START([アプリアクセス]) --> LOGIN[ログイン画面]
+    START([アプリアクセス]) --> LOGIN[ログイン画面\n/login]
 
-    LOGIN --> |新規登録| REGISTER[ユーザー登録画面]
+    LOGIN --> |新規登録| REGISTER[ユーザー登録画面\n/register]
+    LOGIN --> |パスワード忘れ| FORGOT[パスワードリセット画面\n/forgot-password]
     REGISTER --> |登録完了| LOGIN
-    LOGIN --> |ログイン成功| DASHBOARD[ダッシュボード]
+    FORGOT --> |リセット完了| LOGIN
+    LOGIN --> |ログイン成功| DASHBOARD[ダッシュボード\n/]
 
-    DASHBOARD --> AWARD[賞別作品一覧画面]
-    DASHBOARD --> FAVORITE[お気に入り著者一覧画面]
-    DASHBOARD --> NOTIFY[通知画面]
-    DASHBOARD --> |管理者のみ| ADMIN[管理者画面]
+    DASHBOARD --> BOOKS[マイ本一覧\n/books]
+    DASHBOARD --> SEARCH[本の検索\n/books/search]
+    DASHBOARD --> AWARD[受賞作品一覧\n/awards]
+    DASHBOARD --> FAVORITE[お気に入り著者一覧\n/favorite-authors]
+    DASHBOARD --> MYREVIEWS[マイレビュー\n/my-reviews]
+    DASHBOARD --> NOTIFY[通知\n/notifications]
+    DASHBOARD --> |管理者のみ| ADMIN[管理者パネル\n/admin]
 
-    AWARD --> |作品をクリック| REVIEW[感想投稿・一覧画面]
-    AWARD --> |著者名をクリック| AUTHOR[著者別作品一覧画面]
+    BOOKS --> BOOKDETAIL[本の詳細\n/books/id]
+    SEARCH --> BOOKDETAIL
+    AWARD --> BOOKDETAIL
 
-    FAVORITE --> AUTHOR
-    AUTHOR --> |作品をクリック| REVIEW
+    BOOKDETAIL --> REVIEWNEW[レビュー作成\n/books/id/reviews/new]
+    REVIEWNEW --> BOOKDETAIL
 
-    NOTIFY --> |新刊通知をクリック| AUTHOR
-    NOTIFY --> |いいね通知をクリック| REVIEW
+    FAVORITE --> AUTHORDETAIL[著者別書籍一覧\n/favorite-authors/authorId]
+    AUTHORDETAIL --> BOOKDETAIL
+
+    NOTIFY --> |新刊通知| AUTHORDETAIL
+    NOTIFY --> |いいね通知| BOOKDETAIL
 ```
 
 ## 画面一覧
 
-| 画面名 | 説明 |
-| --- | --- |
-| ログイン画面 | 未ログインユーザーの入口 |
-| ユーザー登録画面 | 新規アカウント作成 |
-| ダッシュボード | ログイン後のトップ画面 |
-| 賞別作品一覧画面 | 文学賞ごとの受賞・ノミネート作品一覧 |
-| お気に入り著者一覧画面 | 登録済み著者の一覧 |
-| 著者別作品一覧画面 | 著者の全作品一覧 |
-| 感想投稿・一覧画面 | 本ごとの感想投稿・閲覧 |
-| 通知画面 | 新刊・いいね通知の一覧 |
-| 管理者画面 | 受賞・ノミネート作品の登録（管理者のみ） |
+### 認証画面
+
+| パス | 画面名 | 認証 |
+| --- | --- | --- |
+| `/login` | ログイン画面 | 不要 |
+| `/register` | ユーザー登録画面 | 不要 |
+| `/forgot-password` | パスワードリセット画面 | 不要 |
+
+### メイン画面
+
+| パス | 画面名 | 認証 |
+| --- | --- | --- |
+| `/` | ダッシュボード | 必要 |
+| `/books` | マイ本一覧 | 必要 |
+| `/books/search` | 本の検索 | 必要 |
+| `/books/[id]` | 本の詳細 | 必要 |
+| `/books/[id]/reviews/new` | レビュー作成 | 必要 |
+| `/books/isbn/[isbn]` | ISBN 書籍詳細 | 必要 |
+| `/awards` | 受賞作品一覧 | 必要 |
+| `/favorite-authors` | お気に入り著者一覧 | 必要 |
+| `/favorite-authors/[authorId]` | 著者別書籍一覧 | 必要 |
+| `/my-reviews` | マイレビュー | 必要 |
+| `/notifications` | 通知 | 必要 |
+
+### 管理者画面
+
+| パス | 画面名 | 認証 |
+| --- | --- | --- |
+| `/admin` | 管理者パネル | 必要（admin ロール） |
