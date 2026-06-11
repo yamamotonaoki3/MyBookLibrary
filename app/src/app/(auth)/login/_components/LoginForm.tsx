@@ -16,6 +16,33 @@ function getErrorMessage(error?: string) {
   if (!error) return null;
   if (error === "ACCOUNT_LOCKED")
     return "アカウントがロックされています。しばらくお待ちください。";
+  if (error === "OAuthAccountNotLinked")
+    return "このメールアドレスはパスワードで登録済みです。メールアドレスとパスワードでログインしてください。";
+  if (error === "OAuthCallbackError")
+    return "Googleログイン中にエラーが発生しました。しばらくしてから再度お試しください。";
+  return null;
+}
+
+async function buildErrorMessage(error: string, email: string): Promise<string> {
+  const fixed = getErrorMessage(error);
+  if (fixed) return fixed;
+
+  // パスワード誤入力時は残り試行回数を取得して表示
+  try {
+    const res = await fetch(
+      `/api/auth/remaining-attempts?email=${encodeURIComponent(email)}`
+    );
+    if (res.ok) {
+      const data = (await res.json()) as { remaining: number | null };
+      if (data.remaining !== null) {
+        if (data.remaining > 0)
+          return `パスワードが正しくありません。あと${data.remaining}回間違えるとアカウントがロックされます。`;
+        return "アカウントがロックされています。しばらくお待ちください。";
+      }
+    }
+  } catch {
+    // fetch 失敗時はデフォルトメッセージにフォールバック
+  }
   return "メールアドレスまたはパスワードが正しくありません。";
 }
 
@@ -50,10 +77,8 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
       });
 
       if (result?.error) {
-        const msg =
-          result.error === "ACCOUNT_LOCKED"
-            ? "アカウントがロックされています。しばらくお待ちください。"
-            : "メールアドレスまたはパスワードが正しくありません。";
+        const email = form.get("email") as string;
+        const msg = await buildErrorMessage(result.error, email);
         setFormError(msg);
       } else {
         if (rememberMe) {
