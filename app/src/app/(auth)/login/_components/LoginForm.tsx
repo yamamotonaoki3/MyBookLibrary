@@ -202,6 +202,15 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
       </Button>
 
       <p className="text-center text-xs text-muted-foreground lg:text-sm">
+        <Link
+          href="/forgot-password"
+          className="text-violet-600 underline underline-offset-4 hover:text-violet-700"
+        >
+          パスワードを忘れた方はこちら
+        </Link>
+      </p>
+
+      <p className="text-center text-xs text-muted-foreground lg:text-sm">
         アカウントをお持ちでない方{" "}
         <Link
           href="/register"

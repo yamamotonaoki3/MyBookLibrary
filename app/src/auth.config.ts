@@ -20,6 +20,7 @@ export const authConfig: NextAuthConfig = {
       const isPublicPath =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/register") ||
+        nextUrl.pathname.startsWith("/forgot-password") ||
         nextUrl.pathname.startsWith("/api/auth");
 
       if (isPublicPath) return true;
