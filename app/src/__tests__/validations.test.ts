@@ -1,4 +1,4 @@
-import { ReviewSchema, ReadingStatusSchema, FavoriteAuthorSchema } from "@/lib/validations";
+import { ReviewSchema, ReadingStatusSchema, FavoriteAuthorSchema, RegisterSchema, LoginSchema, ResetPasswordSchema } from "@/lib/validations";
 
 // ─── ReviewSchema ────────────────────────────────────────────────────────────
 
@@ -92,6 +92,123 @@ describe("ReadingStatusSchema", () => {
   it("isbn は省略可能", () => {
     const result = ReadingStatusSchema.safeParse({ ...base, status: "read" });
     expect(result.success).toBe(true);
+  });
+});
+
+// ─── RegisterSchema ──────────────────────────────────────────────────────────
+
+describe("RegisterSchema", () => {
+  const valid = {
+    name: "テストユーザー",
+    email: "test@example.com",
+    password: "password123",
+    confirmPassword: "password123",
+  };
+
+  it("正常系: 有効なデータは合格する", () => {
+    const result = RegisterSchema.safeParse(valid);
+    expect(result.success).toBe(true);
+  });
+
+  it("パスワードが7文字は失敗する", () => {
+    const result = RegisterSchema.safeParse({ ...valid, password: "1234567", confirmPassword: "1234567" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("パスワードは8文字以上で入力してください");
+    }
+  });
+
+  it("パスワードが101文字は失敗する", () => {
+    const long = "a".repeat(101);
+    const result = RegisterSchema.safeParse({ ...valid, password: long, confirmPassword: long });
+    expect(result.success).toBe(false);
+  });
+
+  it("無効なメールアドレスは失敗する", () => {
+    const result = RegisterSchema.safeParse({ ...valid, email: "not-an-email" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("有効なメールアドレスを入力してください");
+    }
+  });
+
+  it("名前が空は失敗する", () => {
+    const result = RegisterSchema.safeParse({ ...valid, name: "" });
+    expect(result.success).toBe(false);
+  });
+
+  it("名前が51文字は失敗する", () => {
+    const result = RegisterSchema.safeParse({ ...valid, name: "あ".repeat(51) });
+    expect(result.success).toBe(false);
+  });
+
+  it("パスワードと確認パスワードが不一致は失敗する", () => {
+    const result = RegisterSchema.safeParse({ ...valid, confirmPassword: "different123" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("パスワードが一致しません");
+    }
+  });
+});
+
+// ─── LoginSchema ─────────────────────────────────────────────────────────────
+
+describe("LoginSchema", () => {
+  it("正常系: 有効なメール・パスワードは合格する", () => {
+    const result = LoginSchema.safeParse({ email: "user@example.com", password: "anypassword" });
+    expect(result.success).toBe(true);
+  });
+
+  it("無効なメールアドレスは失敗する", () => {
+    const result = LoginSchema.safeParse({ email: "invalid", password: "pass" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("有効なメールアドレスを入力してください");
+    }
+  });
+
+  it("パスワードが空は失敗する", () => {
+    const result = LoginSchema.safeParse({ email: "user@example.com", password: "" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("パスワードを入力してください");
+    }
+  });
+});
+
+// ─── ResetPasswordSchema ──────────────────────────────────────────────────────
+
+describe("ResetPasswordSchema", () => {
+  const valid = {
+    email: "user@example.com",
+    password: "newpassword1",
+    confirmPassword: "newpassword1",
+  };
+
+  it("正常系: 有効なデータは合格する", () => {
+    const result = ResetPasswordSchema.safeParse(valid);
+    expect(result.success).toBe(true);
+  });
+
+  it("パスワードが7文字は失敗する", () => {
+    const result = ResetPasswordSchema.safeParse({ ...valid, password: "1234567", confirmPassword: "1234567" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("パスワードは8文字以上で入力してください");
+    }
+  });
+
+  it("パスワード不一致は失敗する", () => {
+    const result = ResetPasswordSchema.safeParse({ ...valid, confirmPassword: "different" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("パスワードが一致しません");
+    }
+  });
+
+  it("無効なメールアドレスは失敗する", () => {
+    const result = ResetPasswordSchema.safeParse({ ...valid, email: "bad-email" });
+    expect(result.success).toBe(false);
   });
 });
 
