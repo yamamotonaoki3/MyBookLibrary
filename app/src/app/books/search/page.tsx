@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult, SearchResponse } from "@/app/api/books/search/route";
+import BarcodeScannerModal from "./_components/BarcodeScannerModal";
 
 type SearchType = "title" | "author";
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
@@ -149,6 +150,9 @@ function BookSearchContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [registeringIsbn, setRegisteringIsbn] = useState(false);
+  const [registerMessage, setRegisterMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fetchResults = useCallback(async (q: string, t: SearchType, page: number) => {
     setLoading(true);
@@ -210,11 +214,79 @@ function BookSearchContent() {
     pushUrl(urlQ, urlType, page);
   }
 
+  async function handleIsbnScanned(isbn: string) {
+    setRegisteringIsbn(true);
+    setRegisterMessage(null);
+    try {
+      const bookRes = await fetch(`/api/books/isbn?isbn=${encodeURIComponent(isbn)}`);
+      if (!bookRes.ok) {
+        const data = await bookRes.json();
+        setRegisterMessage({ type: "error", text: data.error ?? "本が見つかりませんでした" });
+        return;
+      }
+      const book = await bookRes.json();
+
+      if (book.currentStatus === "reading") {
+        setRegisterMessage({ type: "error", text: `「${book.title}」はすでに読書中として登録されています` });
+        return;
+      }
+
+      const registerRes = await fetch("/api/reading-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isbn: book.isbn,
+          title: book.title,
+          author: book.author,
+          coverImageUrl: book.coverImageUrl,
+          publishedAt: book.salesDate,
+          status: "reading",
+        }),
+      });
+      if (!registerRes.ok) {
+        setRegisterMessage({ type: "error", text: "登録に失敗しました" });
+        return;
+      }
+      setRegisterMessage({ type: "success", text: `「${book.title}」を読書中として登録しました` });
+      router.refresh();
+    } catch {
+      setRegisterMessage({ type: "error", text: "通信エラーが発生しました" });
+    } finally {
+      setRegisteringIsbn(false);
+    }
+  }
+
   return (
     <div className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
-      <h1 className="mb-5 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
-        本を探す
-      </h1>
+      <div className="mb-5 flex shrink-0 items-center justify-between lg:mb-6">
+        <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
+          本を探す
+        </h1>
+        <button
+          type="button"
+          onClick={() => { setRegisterMessage(null); setScannerOpen(true); }}
+          disabled={registeringIsbn}
+          className="flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          {registeringIsbn ? "登録中…" : "バーコードで登録"}
+        </button>
+      </div>
+
+      {registerMessage && (
+        <div
+          className={`mb-4 shrink-0 rounded-lg px-4 py-3 text-sm ${
+            registerMessage.type === "success"
+              ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+              : "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+          }`}
+        >
+          {registerMessage.text}
+        </div>
+      )}
 
       <form onSubmit={handleSearch} className="mb-6 shrink-0 flex max-w-2xl flex-col gap-3">
         <div className="flex gap-2">
@@ -304,6 +376,13 @@ function BookSearchContent() {
           </div>
         )}
       </div>
+
+      {scannerOpen && (
+        <BarcodeScannerModal
+          onClose={() => setScannerOpen(false)}
+          onScanned={handleIsbnScanned}
+        />
+      )}
     </div>
   );
 }
