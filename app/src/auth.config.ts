@@ -21,7 +21,9 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/register") ||
         nextUrl.pathname.startsWith("/forgot-password") ||
-        nextUrl.pathname.startsWith("/api/auth");
+        nextUrl.pathname.startsWith("/api/auth") ||
+        nextUrl.pathname === "/manifest.json" ||
+        nextUrl.pathname.startsWith("/icons/");
 
       if (isPublicPath) return true;
       if (!isLoggedIn) return false; // /login へリダイレクト
