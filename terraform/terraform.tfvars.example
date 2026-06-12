@@ -1,0 +1,15 @@
+# terraform.tfvars.example
+# このファイルをコピーして terraform.tfvars を作成し、実際の値を記入してください。
+# terraform.tfvars は .gitignore で除外されており、Git にはコミットされません。
+
+aws_region    = "ap-northeast-1"
+project       = "mybooklibrary"
+
+# 自分の IP アドレス（curl ifconfig.me で確認）
+my_ip         = "xxx.xxx.xxx.xxx/32"
+
+# AWS コンソールで事前に作成した EC2 キーペア名
+key_pair_name = "mybooklibrary-key"
+
+# RDS MySQL パスワード（8文字以上、英大文字・小文字・数字・記号を含むこと）
+db_password   = "ChangeMe123!"
