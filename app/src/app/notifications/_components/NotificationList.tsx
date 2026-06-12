@@ -9,6 +9,7 @@ type Notification = {
   type: string;
   content: string;
   bookIsbn: string | null;
+  bookTitle: string | null;
   isRead: boolean;
   createdAt: string;
 };
@@ -24,6 +25,7 @@ function formatDate(dateStr: string) {
 
 function NotificationIcon({ type }: { type: string }) {
   if (type === "like") return <span className="text-xl">♡</span>;
+  if (type === "review_deleted" || type === "report") return <span className="text-xl">⚠️</span>;
   return <span className="text-xl">📚</span>;
 }
 
@@ -32,6 +34,13 @@ function TypeBadge({ type }: { type: string }) {
     return (
       <span className="rounded bg-pink-100 px-1.5 py-0.5 text-xs font-medium text-pink-700 dark:bg-pink-900/30 dark:text-pink-300">
         いいね
+      </span>
+    );
+  }
+  if (type === "review_deleted" || type === "report") {
+    return (
+      <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+        注意
       </span>
     );
   }
@@ -102,8 +111,13 @@ export function NotificationList({ initialNotifications }: Props) {
                 <NotificationIcon type={notification.type} />
               </div>
               <div className="flex flex-1 flex-col gap-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <TypeBadge type={notification.type} />
+                  {notification.bookTitle && (
+                    <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      「{notification.bookTitle}」
+                    </span>
+                  )}
                   {!notification.isRead && (
                     <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                       未読

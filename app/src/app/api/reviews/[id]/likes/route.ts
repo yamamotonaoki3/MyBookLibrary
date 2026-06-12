@@ -54,8 +54,9 @@ export async function POST(_request: NextRequest, { params }: Props) {
           data: {
             userId: review.userId,
             type: "like",
-            content: `「${review.book.title}」のレビューにいいねが付きました`,
+            content: "レビューにいいねが付きました",
             bookIsbn: review.book.isbn ?? null,
+            bookTitle: review.book.title,
           },
         });
       }
