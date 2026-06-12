@@ -24,6 +24,26 @@ export async function POST(_req: Request, { params }: Params) {
     await prisma.report.create({
       data: { userId: userId, reviewId },
     });
+
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      include: { book: true },
+    });
+    const admins = await prisma.user.findMany({
+      where: { role: "admin" },
+      select: { id: true },
+    });
+    if (review && admins.length > 0) {
+      await prisma.notification.createMany({
+        data: admins.map((admin) => ({
+          userId: admin.id,
+          type: "report",
+          content: `「${review.book.title}」のレビューが通報されました。`,
+          bookIsbn: review.book.isbn ?? null,
+        })),
+      });
+    }
+
     return Response.json({ reported: true });
   } catch {
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
