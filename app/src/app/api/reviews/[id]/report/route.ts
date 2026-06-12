@@ -40,6 +40,7 @@ export async function POST(_req: Request, { params }: Params) {
           type: "report",
           content: `「${review.book.title}」のレビューが通報されました。`,
           bookIsbn: review.book.isbn ?? null,
+          bookTitle: review.book.title,
         })),
       });
     }

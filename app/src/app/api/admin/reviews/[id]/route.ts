@@ -23,6 +23,7 @@ export async function DELETE(_req: Request, { params }: Params) {
         type: "review_deleted",
         content: "不適切な内容があったため、レビューは削除されました。",
         bookIsbn: review.book.isbn ?? null,
+        bookTitle: review.book.title,
       },
     });
     await prisma.review.delete({ where: { id: reviewId } });
