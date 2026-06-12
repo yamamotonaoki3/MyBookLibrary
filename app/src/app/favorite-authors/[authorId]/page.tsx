@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { deduplicateByTitle, searchBooks } from "@/lib/rakuten";
 import { BookStatusCard } from "./_components/BookStatusCard";
 import { SearchInput } from "./_components/SearchInput";
@@ -18,10 +19,12 @@ async function BookList({
   authorId,
   authorName,
   query,
+  userId,
 }: {
   authorId: number;
   authorName: string;
   query?: string;
+  userId: number;
 }) {
   const author = await prisma.author.findUnique({
     where: { id: authorId },
@@ -53,11 +56,11 @@ async function BookList({
       isbn: true,
       title: true,
       readingStatuses: {
-        where: { userId: 1 },
+        where: { userId },
         select: { status: true },
       },
       reviews: {
-        where: { userId: 1 },
+        where: { userId },
         select: { id: true },
       },
       awardEntries: {
@@ -115,6 +118,8 @@ async function BookList({
 }
 
 export default async function AuthorBooksPage({ params, searchParams }: Props) {
+  const session = await auth();
+  const userId = Number(session!.user.id);
   const { authorId: authorIdParam } = await params;
   const { q } = await searchParams;
   const authorId = Number(authorIdParam);
@@ -152,7 +157,7 @@ export default async function AuthorBooksPage({ params, searchParams }: Props) {
           fallback={<p className="text-center text-gray-500">読み込み中...</p>}
           key={query ?? ""}
         >
-          <BookList authorId={authorId} authorName={author.name} query={query} />
+          <BookList authorId={authorId} authorName={author.name} query={query} userId={userId} />
         </Suspense>
       </div>
     </main>
