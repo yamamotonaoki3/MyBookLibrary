@@ -11,10 +11,20 @@ export default async function NotificationsPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  const isbnList = notifications.map((n) => n.bookIsbn).filter(Boolean) as string[];
+  const books = isbnList.length > 0
+    ? await prisma.book.findMany({
+        where: { isbn: { in: isbnList } },
+        select: { isbn: true, title: true },
+      })
+    : [];
+  const bookTitleMap = Object.fromEntries(books.map((b) => [b.isbn, b.title]));
+
   const serialized = notifications.map((n) => ({
     ...n,
     createdAt: n.createdAt.toISOString(),
     expiresAt: n.expiresAt?.toISOString() ?? null,
+    bookTitle: n.bookIsbn ? (bookTitleMap[n.bookIsbn] ?? null) : null,
   }));
 
   return (
