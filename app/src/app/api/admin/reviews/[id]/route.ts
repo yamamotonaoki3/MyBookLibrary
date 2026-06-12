@@ -10,8 +10,23 @@ export async function DELETE(_req: Request, { params }: Params) {
   }
 
   try {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      include: { book: true },
+    });
+    if (!review) {
+      return Response.json({ error: "レビューが見つかりません。" }, { status: 404 });
+    }
+    await prisma.notification.create({
+      data: {
+        userId: review.userId,
+        type: "review_deleted",
+        content: "不適切な内容があったため、レビューは削除されました。",
+        bookIsbn: review.book.isbn ?? null,
+      },
+    });
     await prisma.review.delete({ where: { id: reviewId } });
-    return Response.json({ deleted: true });
+    return new Response(null, { status: 204 });
   } catch {
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }

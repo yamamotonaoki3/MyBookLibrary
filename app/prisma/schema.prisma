@@ -159,7 +159,7 @@ model Like {
   userId   Int    @map("user_id")
   reviewId Int    @map("review_id")
   user     User   @relation(fields: [userId], references: [id])
-  review   Review @relation(fields: [reviewId], references: [id])
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
   @@unique([userId, reviewId])
   @@map("likes")
