@@ -5,7 +5,7 @@ import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
 import { Header } from "./Header";
 
-const AUTH_PATHS = ["/login", "/register"];
+const AUTH_PATHS = ["/login", "/register", "/forgot-password"];
 
 export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
