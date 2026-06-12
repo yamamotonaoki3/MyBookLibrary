@@ -10,8 +10,12 @@ export async function DELETE(_req: Request, { params }: Params) {
   }
 
   try {
+    const review = await prisma.review.findUnique({ where: { id: reviewId } });
+    if (!review) {
+      return Response.json({ error: "レビューが見つかりません。" }, { status: 404 });
+    }
     await prisma.review.delete({ where: { id: reviewId } });
-    return Response.json({ deleted: true });
+    return new Response(null, { status: 204 });
   } catch {
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }

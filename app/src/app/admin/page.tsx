@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type SearchResult = {
   title: string;
@@ -152,6 +153,7 @@ export default function AdminPage() {
   } | null>(null);
   const [reportedReviews, setReportedReviews] = useState<ReportedReview[]>([]);
   const [deletingReviewId, setDeletingReviewId] = useState<number | null>(null);
+  const [deleteTargetReviewId, setDeleteTargetReviewId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -165,12 +167,22 @@ export default function AdminPage() {
       .then((data: ReportedReview[]) => setReportedReviews(data));
   }, []);
 
-  async function handleDeleteReview(id: number) {
-    if (!confirm("このレビューを削除しますか？")) return;
-    setDeletingReviewId(id);
-    await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
+  function handleDeleteReview(id: number) {
+    setDeleteTargetReviewId(id);
+  }
+
+  async function executeDeleteReview() {
+    if (deleteTargetReviewId === null) return;
+    const targetId = deleteTargetReviewId;
+    setDeletingReviewId(targetId);
+    setDeleteTargetReviewId(null);
+    const res = await fetch(`/api/admin/reviews/${targetId}`, { method: "DELETE" });
     setDeletingReviewId(null);
-    setReportedReviews((prev) => prev.filter((r) => r.id !== id));
+    if (!res.ok) {
+      alert("レビューの削除に失敗しました。");
+      return;
+    }
+    setReportedReviews((prev) => prev.filter((r) => r.id !== targetId));
   }
 
   useEffect(() => {
@@ -692,6 +704,15 @@ export default function AdminPage() {
         </Card>
 
       </div>
+
+      <ConfirmDialog
+        open={deleteTargetReviewId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTargetReviewId(null); }}
+        title="レビューを削除しますか？"
+        description="削除したレビューは元に戻せません。"
+        confirmLabel="削除する"
+        onConfirm={executeDeleteReview}
+      />
     </main>
   );
 }
