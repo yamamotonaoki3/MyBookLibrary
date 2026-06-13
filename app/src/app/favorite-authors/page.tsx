@@ -1,5 +1,6 @@
 ﻿import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { getAuthorBookCount } from "@/lib/rakuten";
 import { AuthorCard } from "./_components/AuthorCard";
 import { AddAuthorDialog } from "./_components/AddAuthorDialog";
@@ -8,8 +9,11 @@ import type { FavoriteAuthorItem } from "@/types/author";
 export const dynamic = "force-dynamic";
 
 async function FavoriteAuthorList() {
+  const session = await auth();
+  const userId = Number(session!.user.id);
+
   const favoriteAuthors = await prisma.favoriteAuthor.findMany({
-    where: { userId: 1 },
+    where: { userId },
     select: {
       id: true,
       authorId: true,
@@ -20,7 +24,7 @@ async function FavoriteAuthorList() {
           books: {
             select: {
               readingStatuses: {
-                where: { userId: 1 },
+                where: { userId },
                 select: { status: true },
               },
             },

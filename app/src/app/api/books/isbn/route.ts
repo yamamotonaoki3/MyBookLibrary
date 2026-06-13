@@ -1,24 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchBooksByIsbn } from "@/lib/rakuten";
+import { searchBookByIsbn as searchBookByIsbnNdl } from "@/lib/ndl";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-
-type OpenBdSummary = {
-  isbn: string;
-  title: string;
-  author: string;
-  publisher: string;
-  pubdate: string;
-  cover: string;
-};
-
-async function searchByOpenBd(isbn: string): Promise<OpenBdSummary | null> {
-  const res = await fetch(`https://api.openbd.jp/v1/get?isbn=${isbn}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (!Array.isArray(data) || !data[0]) return null;
-  return (data[0].summary as OpenBdSummary) ?? null;
-}
 
 async function getCurrentStatus(isbn: string, userId: number): Promise<string> {
   const dbBook = await prisma.book.findUnique({
@@ -59,21 +43,21 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // 楽天にない場合はOpenBDで検索
-  console.log("[ISBN検索] 楽天で見つからず、OpenBDにフォールバック:", isbn);
-  const openBdBook = await searchByOpenBd(isbn);
-  if (!openBdBook || !openBdBook.title) {
+  // 楽天にない場合は国立国会図書館APIで検索
+  console.log("[ISBN検索] 楽天で見つからず、国立国会図書館APIにフォールバック:", isbn);
+  const ndlBook = await searchBookByIsbnNdl(isbn);
+  if (!ndlBook || !ndlBook.title) {
     return NextResponse.json({ error: "本が見つかりませんでした" }, { status: 404 });
   }
 
   const currentStatus = await getCurrentStatus(isbn, userId);
   return NextResponse.json({
-    title: openBdBook.title,
-    author: openBdBook.author.replace(/／/g, " "),
-    isbn: openBdBook.isbn,
-    publisherName: openBdBook.publisher,
-    salesDate: openBdBook.pubdate,
-    coverImageUrl: openBdBook.cover || null,
+    title: ndlBook.title,
+    author: ndlBook.author,
+    isbn,
+    publisherName: ndlBook.publisher,
+    salesDate: ndlBook.pubdate,
+    coverImageUrl: null,
     currentStatus,
   });
 }

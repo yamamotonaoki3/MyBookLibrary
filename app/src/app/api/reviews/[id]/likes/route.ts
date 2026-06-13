@@ -46,19 +46,15 @@ export async function POST(_request: NextRequest, { params }: Props) {
     });
 
     if (review.userId !== userId) {
-      const alreadyNotified = await prisma.notification.findFirst({
-        where: { userId: review.userId, type: "like", bookIsbn: review.book.isbn },
+      await prisma.notification.create({
+        data: {
+          userId: review.userId,
+          type: "like",
+          content: "レビューにいいねが付きました",
+          bookIsbn: review.book.isbn ?? null,
+          bookTitle: review.book.title,
+        },
       });
-      if (!alreadyNotified) {
-        await prisma.notification.create({
-          data: {
-            userId: review.userId,
-            type: "like",
-            content: `「${review.book.title}」のレビューにいいねが付きました`,
-            bookIsbn: review.book.isbn ?? null,
-          },
-        });
-      }
     }
 
     const count = await prisma.like.count({ where: { reviewId } });
