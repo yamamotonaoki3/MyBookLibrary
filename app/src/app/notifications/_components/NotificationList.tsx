@@ -3,6 +3,7 @@
 import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { setAppBadge } from "@/lib/badge";
 
 type Notification = {
   id: number;
@@ -60,14 +61,17 @@ export function NotificationList({ initialNotifications }: Props) {
   async function handleReadAll() {
     await fetch("/api/notifications/read-all", { method: "PATCH" });
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setAppBadge(0);
   }
 
   async function handleClick(notification: Notification) {
     if (!notification.isRead) {
       await fetch(`/api/notifications/${notification.id}/read`, { method: "PATCH" });
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
-      );
+      setNotifications((prev) => {
+        const updated = prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n));
+        setAppBadge(updated.filter((n) => !n.isRead).length);
+        return updated;
+      });
     }
     if (notification.bookIsbn) {
       router.push(`/books/isbn/${notification.bookIsbn}`);
