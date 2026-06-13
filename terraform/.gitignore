@@ -1,0 +1,10 @@
+# シークレットを含む実値ファイル（絶対にコミットしない）
+terraform.tfvars
+
+# Terraform が生成するローカルファイル
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfplan
+crash.log
