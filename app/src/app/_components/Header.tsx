@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Bell, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { setAppBadge } from "@/lib/badge";
 
 export function Header() {
   const pathname = usePathname();
@@ -18,7 +19,9 @@ export function Header() {
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          setUnreadCount(data.filter((n: { isRead: boolean }) => !n.isRead).length);
+          const unread = data.filter((n: { isRead: boolean }) => !n.isRead).length;
+          setUnreadCount(unread);
+          setAppBadge(unread);
         }
       })
       .catch(() => {});
