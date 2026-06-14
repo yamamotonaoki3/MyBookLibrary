@@ -71,8 +71,15 @@ resource "aws_route_table_association" "public" {
 }
 
 # ──────────────────────────────────────────────
+# CloudFront のオリジン向け IP レンジ（マネージドプレフィックスリスト）
+# ──────────────────────────────────────────────
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
+# ──────────────────────────────────────────────
 # セキュリティグループ: EC2
-# Phase 1 は port 3000 を全公開（CloudFront 導入後に制限する）
+# port 3000 は CloudFront からのアクセスのみ許可
 # ──────────────────────────────────────────────
 resource "aws_security_group" "ec2" {
   name        = "${var.project}-ec2-sg"
@@ -80,11 +87,11 @@ resource "aws_security_group" "ec2" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "App port"
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "App port from CloudFront only"
+    from_port       = 3000
+    to_port         = 3000
+    protocol        = "tcp"
+    prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
   }
 
   ingress {

@@ -33,3 +33,9 @@ module "rds" {
   rds_sg_id          = module.networking.rds_sg_id
   db_password        = var.db_password
 }
+
+module "cloudfront" {
+  source         = "./modules/cloudfront"
+  project        = var.project
+  ec2_elastic_ip = module.ec2.elastic_ip
+}
