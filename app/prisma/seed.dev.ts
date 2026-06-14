@@ -161,11 +161,14 @@ async function main() {
   console.log("受賞・ノミネート情報を登録しました");
 
   // テストユーザー
-  const testEmail = process.env.SEED_TEST_EMAIL ?? "test@example.com";
-  const testPassword = await bcrypt.hash(
-    process.env.SEED_TEST_PASSWORD ?? "test1234",
-    12
-  );
+  const testEmail = process.env.SEED_TEST_EMAIL;
+  const testRawPassword = process.env.SEED_TEST_PASSWORD;
+  if (!testEmail || !testRawPassword) {
+    throw new Error(
+      "環境変数 SEED_TEST_EMAIL と SEED_TEST_PASSWORD の設定が必要です"
+    );
+  }
+  const testPassword = await bcrypt.hash(testRawPassword, 12);
   await prisma.user.upsert({
     where: { email: testEmail },
     update: { password: testPassword },
