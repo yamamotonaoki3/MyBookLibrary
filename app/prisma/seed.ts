@@ -186,34 +186,43 @@ async function main() {
   console.log("受賞・ノミネート情報を登録しました");
 
   // 管理者ユーザー
-  const adminPassword = await bcrypt.hash("admin1234", 12);
+  const adminEmail =
+    process.env.SEED_ADMIN_EMAIL ?? "admin@mybooklibrary.local";
+  const adminPassword = await bcrypt.hash(
+    process.env.SEED_ADMIN_PASSWORD ?? "admin1234",
+    12
+  );
   await prisma.user.upsert({
-    where: { email: "admin@mybooklibrary.local" },
+    where: { email: adminEmail },
     update: {},
     create: {
       name: "管理者",
-      email: "admin@mybooklibrary.local",
+      email: adminEmail,
       password: adminPassword,
       role: "admin",
     },
   });
 
   // テストユーザー
-  const testPassword = await bcrypt.hash("test1234", 12);
+  const testEmail = process.env.SEED_TEST_EMAIL ?? "test@example.com";
+  const testPassword = await bcrypt.hash(
+    process.env.SEED_TEST_PASSWORD ?? "test1234",
+    12
+  );
   await prisma.user.upsert({
-    where: { email: "test@example.com" },
+    where: { email: testEmail },
     update: { password: testPassword },
     create: {
       name: "テストユーザー",
-      email: "test@example.com",
+      email: testEmail,
       password: testPassword,
       role: "user",
     },
   });
 
   console.log("ユーザーを登録しました");
-  console.log("  管理者: admin@mybooklibrary.local / admin1234");
-  console.log("  テスト: test@example.com / test1234");
+  console.log(`  管理者: ${adminEmail}`);
+  console.log(`  テスト: ${testEmail}`);
   console.log("シードデータの投入が完了しました！");
 }
 
