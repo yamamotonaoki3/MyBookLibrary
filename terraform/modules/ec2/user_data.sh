@@ -78,8 +78,35 @@ cat > /opt/app/start.sh << 'EOF'
 # standalone の static ファイルを再同期（再ビルド後に備えて毎回実行）
 cp -r /opt/app/app/.next/static  /opt/app/app/.next/standalone/.next/static
 cp -r /opt/app/app/public        /opt/app/app/.next/standalone/public
+
+# AWS Parameter Store から環境変数を取得
+REGION="ap-northeast-1"
+PROJECT="mybooklibrary"
+
+get_param() {
+  aws ssm get-parameter \
+    --name "/${PROJECT}/$1" \
+    --with-decryption \
+    --query Parameter.Value \
+    --output text \
+    --region "${REGION}"
+}
+
+export AUTH_SECRET=$(get_param AUTH_SECRET)
+export AUTH_GOOGLE_ID=$(get_param AUTH_GOOGLE_ID)
+export AUTH_GOOGLE_SECRET=$(get_param AUTH_GOOGLE_SECRET)
+export DATABASE_URL=$(get_param DATABASE_URL)
+export RAKUTEN_APP_ID=$(get_param RAKUTEN_APP_ID)
+export RAKUTEN_ACCESS_KEY=$(get_param RAKUTEN_ACCESS_KEY)
+export CRON_SECRET=$(get_param CRON_SECRET)
+export NEXTAUTH_URL=$(get_param NEXTAUTH_URL)
+export SEED_ADMIN_EMAIL=$(get_param SEED_ADMIN_EMAIL)
+export SEED_ADMIN_PASSWORD=$(get_param SEED_ADMIN_PASSWORD)
+
 # AUTH_TRUST_HOST=true はリバースプロキシ（CloudFront等）越しの NextAuth に必要
-AUTH_TRUST_HOST=true node /opt/app/app/.next/standalone/server.js
+export AUTH_TRUST_HOST=true
+
+node /opt/app/app/.next/standalone/server.js
 EOF
 chmod +x /opt/app/start.sh
 chown ec2-user:ec2-user /opt/app/start.sh

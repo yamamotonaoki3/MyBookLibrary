@@ -39,3 +39,18 @@ module "cloudfront" {
   project        = var.project
   ec2_public_dns = module.ec2.public_dns
 }
+
+module "ssm" {
+  source              = "./modules/ssm"
+  project             = var.project
+  auth_secret         = var.auth_secret
+  auth_google_id      = var.auth_google_id
+  auth_google_secret  = var.auth_google_secret
+  database_url        = "mysql://admin:${var.db_password}@${module.rds.endpoint}/mybooklibrary"
+  rakuten_app_id      = var.rakuten_app_id
+  rakuten_access_key  = var.rakuten_access_key
+  cron_secret         = var.cron_secret
+  nextauth_url        = "https://${module.cloudfront.domain_name}"
+  seed_admin_email    = var.seed_admin_email
+  seed_admin_password = var.seed_admin_password
+}
