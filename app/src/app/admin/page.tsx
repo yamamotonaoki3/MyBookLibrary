@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   Settings,
   Users,
@@ -13,6 +14,7 @@ import {
   Upload,
   Trophy,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,14 @@ type AwardEntry = {
     coverImageUrl: string | null;
     author: { id: number; name: string };
   };
+};
+
+type UserRow = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
 };
 
 type ReportedReview = {
@@ -99,6 +109,9 @@ const STAT_CARDS = [
 ];
 
 export default function AdminPage() {
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id ? Number(session.user.id) : null;
+
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -154,6 +167,9 @@ export default function AdminPage() {
   const [reportedReviews, setReportedReviews] = useState<ReportedReview[]>([]);
   const [deletingReviewId, setDeletingReviewId] = useState<number | null>(null);
   const [deleteTargetReviewId, setDeleteTargetReviewId] = useState<number | null>(null);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
+  const [deleteTargetUser, setDeleteTargetUser] = useState<UserRow | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -166,6 +182,26 @@ export default function AdminPage() {
       .then((res) => res.json())
       .then((data: ReportedReview[]) => setReportedReviews(data));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/admin/users")
+      .then((res) => res.json())
+      .then((data: UserRow[]) => setUsers(data));
+  }, []);
+
+  async function executeDeleteUser() {
+    if (!deleteTargetUser) return;
+    const target = deleteTargetUser;
+    setDeletingUserId(target.id);
+    setDeleteTargetUser(null);
+    const res = await fetch(`/api/admin/users/${target.id}`, { method: "DELETE" });
+    setDeletingUserId(null);
+    if (!res.ok) {
+      alert("ユーザーの削除に失敗しました。");
+      return;
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== target.id));
+  }
 
   function handleDeleteReview(id: number) {
     setDeleteTargetReviewId(id);
@@ -655,6 +691,77 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
+        {/* ユーザー管理 */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+              <Trash2 className="h-4 w-4" />ユーザー管理
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {users.length === 0 ? (
+              <p className="text-sm text-muted-foreground">ユーザーがいません。</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                    <tr>
+                      <th className="px-4 py-3 text-left">名前</th>
+                      <th className="px-4 py-3 text-left">メールアドレス</th>
+                      <th className="px-4 py-3 text-left">ロール</th>
+                      <th className="px-4 py-3 text-left">登録日</th>
+                      <th className="px-4 py-3 text-left">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
+                    {users.map((user) => {
+                      const isMyself = currentUserId === user.id;
+                      const isAdmin = user.role === "admin";
+                      const canDelete = !isMyself && !isAdmin;
+                      return (
+                        <tr key={user.id}>
+                          <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
+                            {user.name}
+                          </td>
+                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                            {user.email}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                isAdmin
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                              }`}
+                            >
+                              {isAdmin ? "管理者" : "ユーザー"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                            {new Date(user.createdAt).toLocaleDateString("ja-JP")}
+                          </td>
+                          <td className="px-4 py-3">
+                            {canDelete && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setDeleteTargetUser(user)}
+                                disabled={deletingUserId === user.id}
+                              >
+                                {deletingUserId === user.id ? "削除中..." : "削除"}
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* 通報されたレビュー */}
         <Card>
           <CardHeader className="pb-3">
@@ -712,6 +819,15 @@ export default function AdminPage() {
         description="削除したレビューは元に戻せません。"
         confirmLabel="削除する"
         onConfirm={executeDeleteReview}
+      />
+
+      <ConfirmDialog
+        open={deleteTargetUser !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTargetUser(null); }}
+        title="ユーザーを削除しますか？"
+        description={`「${deleteTargetUser?.name}」のアカウントとすべての関連データ（レビュー・いいね・読書状態など）を完全に削除します。この操作は元に戻せません。`}
+        confirmLabel="削除する"
+        onConfirm={executeDeleteUser}
       />
     </main>
   );
