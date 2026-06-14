@@ -17,3 +17,8 @@ output "rds_db_name" {
   description = "RDS データベース名"
   value       = module.rds.db_name
 }
+
+output "cloudfront_domain" {
+  description = "CloudFront ドメイン（HTTPS アクセス用・NEXTAUTH_URL に設定）"
+  value       = "https://${module.cloudfront.domain_name}"
+}
