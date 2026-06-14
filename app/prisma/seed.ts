@@ -34,12 +34,14 @@ async function main() {
   console.log("文学賞を登録しました");
 
   // 管理者ユーザー
-  const adminEmail =
-    process.env.SEED_ADMIN_EMAIL ?? "admin@mybooklibrary.local";
-  const adminPassword = await bcrypt.hash(
-    process.env.SEED_ADMIN_PASSWORD ?? "admin1234",
-    12
-  );
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminRawPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!adminEmail || !adminRawPassword) {
+    throw new Error(
+      "環境変数 SEED_ADMIN_EMAIL と SEED_ADMIN_PASSWORD の設定が必要です"
+    );
+  }
+  const adminPassword = await bcrypt.hash(adminRawPassword, 12);
   await prisma.user.upsert({
     where: { email: adminEmail },
     update: {},
