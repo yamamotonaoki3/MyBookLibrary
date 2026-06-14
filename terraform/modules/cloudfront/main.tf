@@ -2,9 +2,9 @@ variable "project" {
   type = string
 }
 
-variable "ec2_elastic_ip" {
+variable "ec2_public_dns" {
   type        = string
-  description = "EC2 の Elastic IP（CloudFront のオリジン）"
+  description = "EC2 の パブリック DNS ホスト名（CloudFront のオリジン）"
 }
 
 # ──────────────────────────────────────────────
@@ -17,7 +17,7 @@ resource "aws_cloudfront_distribution" "main" {
   price_class     = "PriceClass_200"
 
   origin {
-    domain_name = var.ec2_elastic_ip
+    domain_name = var.ec2_public_dns
     origin_id   = "ec2-origin"
 
     custom_origin_config {
