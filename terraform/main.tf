@@ -37,5 +37,5 @@ module "rds" {
 module "cloudfront" {
   source         = "./modules/cloudfront"
   project        = var.project
-  ec2_elastic_ip = module.ec2.elastic_ip
+  ec2_public_dns = module.ec2.public_dns
 }
