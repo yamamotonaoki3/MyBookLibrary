@@ -14,7 +14,7 @@ resource "aws_cloudfront_distribution" "main" {
   enabled         = true
   is_ipv6_enabled = true
   comment         = "${var.project} distribution"
-  price_class     = "PriceClass_All"
+  price_class     = "PriceClass_200"
 
   origin {
     domain_name = var.ec2_elastic_ip
