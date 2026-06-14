@@ -1,0 +1,9 @@
+services:
+  app:
+    image: mybooklibrary-app:latest
+    container_name: mybooklibrary-app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.production
+    restart: unless-stopped
