@@ -150,6 +150,7 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
 
       <label className="flex cursor-pointer items-center gap-2 text-xs lg:text-sm">
         <input
+          id="rememberMe"
           type="checkbox"
           name="rememberMe"
           className="h-3.5 w-3.5 rounded border-input accent-emerald-700 lg:h-4 lg:w-4"
@@ -176,7 +177,14 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
         variant="outline"
         className="h-9 w-full gap-2 text-sm lg:h-11 lg:text-base"
         onClick={() => {
-          sessionStorage.setItem("sessionActive", "1");
+          const rememberMe = (document.getElementById("rememberMe") as HTMLInputElement)?.checked;
+          if (rememberMe) {
+            localStorage.setItem("rememberMe", "1");
+            sessionStorage.removeItem("sessionActive");
+          } else {
+            localStorage.setItem("rememberMe", "0");
+            sessionStorage.setItem("sessionActive", "1");
+          }
           signIn("google", { callbackUrl: callbackUrl ?? "/" });
         }}
       >
