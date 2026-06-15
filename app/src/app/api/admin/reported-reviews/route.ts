@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { requireAdminSession } from "@/lib/session";
 
 export async function GET() {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const reviews = await prisma.review.findMany({
       where: { reports: { some: {} } },

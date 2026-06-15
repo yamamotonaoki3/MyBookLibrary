@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
+import { requireAdminSession } from "@/lib/session";
 
 function parsePublishedAt(raw: string | null | undefined): Date {
   if (!raw) return new Date();
@@ -52,6 +53,9 @@ async function registerRow(row: string[]): Promise<void> {
 }
 
 export async function POST(request: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const formData = await request.formData();
     const file = formData.get("file");

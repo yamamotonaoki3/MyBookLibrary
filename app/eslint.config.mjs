@@ -14,6 +14,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Prisma auto-generated files:
     "src/generated/**",
+    // next-pwa auto-generated service worker files:
+    "public/sw.js",
+    "public/workbox-*.js",
+    "public/swe-worker-*.js",
   ]),
 ]);
 
