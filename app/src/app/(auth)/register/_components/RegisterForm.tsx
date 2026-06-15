@@ -34,19 +34,7 @@ export function RegisterForm() {
       });
 
       if (res.ok) {
-        // 登録成功後に自動ログイン
-        const result = await signIn("credentials", {
-          email: body.email,
-          password: body.password,
-          redirect: false,
-        });
-        if (result?.ok) {
-          localStorage.setItem("rememberMe", "1");
-          router.push("/");
-          router.refresh();
-        } else {
-          router.push("/login");
-        }
+        router.push("/login?registered=1");
       } else {
         const data = await res.json();
         if (data.error && typeof data.error === "object") {
