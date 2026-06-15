@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
+import { requireAdminSession } from "@/lib/session";
 
 export async function GET() {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const entries = await prisma.awardEntry.findMany({
       include: {
@@ -35,6 +39,9 @@ function parsePublishedAt(raw: string | null | undefined): Date {
 }
 
 export async function POST(request: NextRequest) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const { title, author, isbn, coverImageUrl, publishedAt, awardId, year, type } =
       await request.json();

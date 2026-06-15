@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { requireAdminSession } from "@/lib/session";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function DELETE(_req: Request, { params }: Params) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
   const { id } = await params;
   const reviewId = Number(id);
   if (isNaN(reviewId)) {

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminSession } from "@/lib/session";
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function DELETE(_request: NextRequest, { params }: Props) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const { id } = await params;
     const entryId = Number(id);
@@ -27,6 +31,9 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
 }
 
 export async function PATCH(request: NextRequest, { params }: Props) {
+  const { error } = await requireAdminSession();
+  if (error) return error;
+
   try {
     const { id } = await params;
     const entryId = Number(id);
