@@ -33,7 +33,7 @@ resource "aws_db_instance" "main" {
   identifier              = "${var.project}-mysql"
   engine                  = "mysql"
   engine_version          = "8.4"
-  instance_class          = "db.t3.micro"
+  instance_class          = "db.t2.micro"
   allocated_storage       = 20
   storage_type            = "gp2"
   db_name                 = "mybooklibrary"

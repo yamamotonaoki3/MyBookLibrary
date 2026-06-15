@@ -40,6 +40,13 @@ module "cloudfront" {
   ec2_public_dns = module.ec2.public_dns
 }
 
+module "lambda" {
+  source      = "./modules/lambda"
+  project     = var.project
+  cron_url    = "https://${module.cloudfront.domain_name}/api/cron/check-new-books"
+  cron_secret = var.cron_secret
+}
+
 module "ssm" {
   source              = "./modules/ssm"
   project             = var.project
