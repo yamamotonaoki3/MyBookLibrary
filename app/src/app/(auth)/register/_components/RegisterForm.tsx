@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -11,6 +12,8 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -95,14 +98,24 @@ export function RegisterForm() {
             (8文字以上)
           </span>
         </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          autoComplete="new-password"
-          className={inputClass}
-        />
+        <div className="relative">
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="new-password"
+            className={inputClass + " pr-10"}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
         {errors.password && (
           <p className="text-xs text-red-600">{errors.password[0]}</p>
         )}
@@ -112,14 +125,24 @@ export function RegisterForm() {
         <label className="text-sm font-medium" htmlFor="confirmPassword">
           パスワード（確認）
         </label>
-        <input
-          id="confirmPassword"
-          name="confirmPassword"
-          type="password"
-          required
-          autoComplete="new-password"
-          className={inputClass}
-        />
+        <div className="relative">
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type={showConfirmPassword ? "text" : "password"}
+            required
+            autoComplete="new-password"
+            className={inputClass + " pr-10"}
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label={showConfirmPassword ? "パスワードを隠す" : "パスワードを表示"}
+          >
+            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
         {errors.confirmPassword && (
           <p className="text-xs text-red-600">{errors.confirmPassword[0]}</p>
         )}
