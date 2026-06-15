@@ -231,6 +231,11 @@ export default function AdminPage() {
     setRefreshKey((k) => k + 1);
   }
 
+  useEffect(() => {
+    loadAwards();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function loadAwards() {
     if (awardsLoaded) return;
     const res = await fetch("/api/awards");
