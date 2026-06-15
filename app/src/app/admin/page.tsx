@@ -75,7 +75,7 @@ type FormState = {
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: 11 }, (_, i) => CURRENT_YEAR - i);
+const YEARS = Array.from({ length: CURRENT_YEAR - 1935 + 1 }, (_, i) => CURRENT_YEAR - i);
 
 const STAT_CARDS = [
   {
