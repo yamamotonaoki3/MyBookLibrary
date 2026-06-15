@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
@@ -48,6 +48,8 @@ async function buildErrorMessage(error: string, email: string): Promise<string> 
 
 export function LoginForm({ error, callbackUrl }: LoginFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registered = searchParams.get("registered");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(getErrorMessage(error));
@@ -100,6 +102,11 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 lg:gap-5">
+      {registered && (
+        <p className="rounded-md bg-green-50 px-3 py-2 text-xs text-green-700 lg:px-4 lg:py-3 lg:text-sm">
+          登録が完了しました。ログインしてください。
+        </p>
+      )}
       {formError && (
         <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-600 lg:px-4 lg:py-3 lg:text-sm">
           {formError}
