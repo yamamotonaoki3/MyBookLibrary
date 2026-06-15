@@ -22,6 +22,7 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname.startsWith("/register") ||
         nextUrl.pathname.startsWith("/forgot-password") ||
         nextUrl.pathname.startsWith("/api/auth") ||
+        nextUrl.pathname.startsWith("/api/cron/") ||
         nextUrl.pathname === "/manifest.json" ||
         nextUrl.pathname.startsWith("/icons/");
 

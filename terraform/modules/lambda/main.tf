@@ -42,19 +42,26 @@ data "archive_file" "lambda_zip" {
 
   source {
     content  = <<-PYTHON
-      import urllib.request
+      import http.client
       import os
+      from urllib.parse import urlparse
 
       def handler(event, context):
           url    = os.environ["CRON_URL"]
           secret = os.environ["CRON_SECRET"]
-          req = urllib.request.Request(
-              url,
+          parsed = urlparse(url)
+          conn = http.client.HTTPSConnection(parsed.netloc, timeout=30)
+          conn.request(
+              "GET",
+              parsed.path,
               headers={"Authorization": f"Bearer {secret}"},
-              method="POST",
           )
-          with urllib.request.urlopen(req, timeout=30) as res:
-              print(res.read().decode())
+          res = conn.getresponse()
+          print(f"Status: {res.status}")
+          print(res.read().decode())
+          conn.close()
+          if res.status >= 400:
+              raise Exception(f"Request failed with status {res.status}")
     PYTHON
     filename = "lambda_function.py"
   }
