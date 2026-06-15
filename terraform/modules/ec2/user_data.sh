@@ -129,4 +129,6 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
+systemctl daemon-reload
 systemctl enable mybooklibrary
+systemctl start mybooklibrary
