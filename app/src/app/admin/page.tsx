@@ -344,17 +344,15 @@ export default function AdminPage() {
           {STAT_CARDS.map(({ key, label, icon: Icon, gradient, shadow }) => (
             <div
               key={key}
-              className={`flex items-center gap-4 rounded-2xl bg-gradient-to-br ${gradient} p-5 text-white shadow-lg ${shadow}`}
+              className={`flex flex-col rounded-2xl bg-gradient-to-br ${gradient} p-4 text-white shadow-lg ${shadow}`}
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20">
+              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white/20">
                 <Icon className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-xs font-medium text-white/75">{label}</p>
-                <p className="text-2xl font-bold">
-                  {stats === null ? "..." : stats[key]}
-                </p>
-              </div>
+              <p className="text-xs font-medium text-white/75 leading-tight">{label}</p>
+              <p className="text-2xl font-bold">
+                {stats === null ? "..." : stats[key]}
+              </p>
             </div>
           ))}
         </div>
@@ -376,7 +374,7 @@ export default function AdminPage() {
                 placeholder="タイトルを入力..."
                 className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
-              <Button type="submit" disabled={searching} size="sm">
+              <Button type="submit" disabled={searching} size="sm" className="shrink-0 whitespace-nowrap">
                 {searching ? "検索中..." : "検索"}
               </Button>
             </form>
@@ -598,7 +596,7 @@ export default function AdminPage() {
               <p className="text-sm text-muted-foreground">登録されていません。</p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm whitespace-nowrap">
                   <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                     <tr>
                       <th className="px-4 py-3 text-left">文学賞</th>
@@ -703,7 +701,7 @@ export default function AdminPage() {
               <p className="text-sm text-muted-foreground">ユーザーがいません。</p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm whitespace-nowrap">
                   <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                     <tr>
                       <th className="px-4 py-3 text-left">名前</th>
