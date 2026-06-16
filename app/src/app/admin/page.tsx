@@ -154,6 +154,7 @@ export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [entries, setEntries] = useState<AwardEntry[]>([]);
+  const [selectedAwardTab, setSelectedAwardTab] = useState<string>("all");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingType, setEditingType] = useState<"winner" | "nominee">("winner");
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -252,7 +253,7 @@ export default function AdminPage() {
     setResults([]);
     await loadAwards();
     const res = await fetch(
-      `/api/books/search?q=${encodeURIComponent(query)}&type=title`
+      `/api/books/search?q=${encodeURIComponent(query)}&type=keyword`
     );
     const data = await res.json();
     setResults(Array.isArray(data.items) ? data.items : []);
@@ -268,6 +269,7 @@ export default function AdminPage() {
       coverImageUrl: book.coverImageUrl ?? "",
       publishedAt: formatSalesDate(book.salesDate ?? ""),
     }));
+    setResults([]);
     setRegisterResult(null);
   }
 
@@ -366,17 +368,17 @@ export default function AdminPage() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              <Search className="h-4 w-4" />書籍タイトルで検索
+              <Search className="h-4 w-4" />書籍キーワードで検索
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-3 text-xs text-muted-foreground">楽天ブックスAPIから自動取得</p>
+            <p className="mb-3 text-xs text-muted-foreground">楽天ブックスAPIから自動取得。スペース区切りで「タイトル 著者名」のようにAND検索で絞り込めます。</p>
             <form onSubmit={handleSearch} className="mb-4 flex gap-2">
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="タイトルを入力..."
+                placeholder="例: 容疑者Xの献身 東野圭吾（タイトル 著者名）"
                 className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
               <Button type="submit" disabled={searching} size="sm" className="shrink-0 whitespace-nowrap">
@@ -600,6 +602,36 @@ export default function AdminPage() {
             {entries.length === 0 ? (
               <p className="text-sm text-muted-foreground">登録されていません。</p>
             ) : (
+              <>
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedAwardTab("all")}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      selectedAwardTab === "all"
+                        ? "bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    すべて（{entries.length}）
+                  </button>
+                  {awards.map((a) => {
+                    const count = entries.filter((e) => e.award.name === a.name).length;
+                    if (count === 0) return null;
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={() => setSelectedAwardTab(a.name)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          selectedAwardTab === a.name
+                            ? "bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        {a.name}（{count}）
+                      </button>
+                    );
+                  })}
+                </div>
               <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
                 <table className="w-full text-sm whitespace-nowrap">
                   <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
@@ -613,7 +645,10 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
-                    {entries.map((entry) => (
+                    {(selectedAwardTab === "all"
+                      ? entries
+                      : entries.filter((e) => e.award.name === selectedAwardTab)
+                    ).map((entry) => (
                       <tr key={entry.id}>
                         <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                           {entry.award.name}
@@ -690,6 +725,7 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>
