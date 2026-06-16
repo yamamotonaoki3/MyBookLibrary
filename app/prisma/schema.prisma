@@ -189,5 +189,6 @@ model Notification {
   createdAt DateTime  @default(now()) @map("created_at")
   user      User      @relation(fields: [userId], references: [id])
 
+  @@unique([userId, type, bookIsbn])
   @@map("notifications")
 }
