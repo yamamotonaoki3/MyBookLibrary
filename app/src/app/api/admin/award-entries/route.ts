@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
@@ -91,6 +92,20 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(awardEntry, { status: 201 });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        return NextResponse.json(
+          { error: "この本・賞・年度の組み合わせは既に登録されています。" },
+          { status: 409 }
+        );
+      }
+      if (error.code === "P2003") {
+        return NextResponse.json(
+          { error: "指定した文学賞が存在しません。" },
+          { status: 400 }
+        );
+      }
+    }
     console.error("[POST /api/admin/award-entries]", error);
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }
