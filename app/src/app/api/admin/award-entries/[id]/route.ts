@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 
 type Props = { params: Promise<{ id: string }> };
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 export async function DELETE(_request: NextRequest, { params }: Props) {
   const { error } = await requireAdminSession();
@@ -42,23 +45,57 @@ export async function PATCH(request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "ID が不正です。" }, { status: 400 });
     }
 
-    const { type } = await request.json();
+    const { title, author, awardId, year, type } = await request.json();
 
-    if (type !== "winner" && type !== "nominee") {
+    if (type !== undefined && type !== "winner" && type !== "nominee") {
       return NextResponse.json(
         { error: "type は winner または nominee を指定してください。" },
         { status: 400 }
       );
     }
+    if (year !== undefined && (typeof year !== "number" || year < 1935 || year > CURRENT_YEAR)) {
+      return NextResponse.json(
+        { error: "year は 1935〜現在年 の数値を指定してください。" },
+        { status: 400 }
+      );
+    }
 
-    const entry = await prisma.awardEntry.findUnique({ where: { id: entryId } });
+    const entry = await prisma.awardEntry.findUnique({
+      where: { id: entryId },
+      include: { book: true },
+    });
     if (!entry) {
       return NextResponse.json({ error: "受賞登録が見つかりません。" }, { status: 404 });
     }
 
+    // 著者名が変更された場合は findOrCreate
+    if (author !== undefined) {
+      const normalizedAuthor = normalizeAuthorName(author);
+      let authorRecord = await prisma.author.findFirst({ where: { name: normalizedAuthor } });
+      if (!authorRecord) {
+        authorRecord = await prisma.author.create({ data: { name: normalizedAuthor } });
+      }
+      await prisma.book.update({
+        where: { id: entry.bookId },
+        data: {
+          ...(title !== undefined && { title }),
+          authorId: authorRecord.id,
+        },
+      });
+    } else if (title !== undefined) {
+      await prisma.book.update({
+        where: { id: entry.bookId },
+        data: { title },
+      });
+    }
+
     const updated = await prisma.awardEntry.update({
       where: { id: entryId },
-      data: { type },
+      data: {
+        ...(type !== undefined && { type }),
+        ...(year !== undefined && { year }),
+        ...(awardId !== undefined && { awardId }),
+      },
     });
 
     return NextResponse.json(updated);
