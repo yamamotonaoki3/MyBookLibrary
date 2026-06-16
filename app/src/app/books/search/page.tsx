@@ -347,7 +347,7 @@ function BookSearchContent() {
           </p>
         )}
 
-        <div className="grid gap-4 grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {results.map((book, i) => (
             <SearchResultCard key={book.isbn || i} book={book} />
           ))}
