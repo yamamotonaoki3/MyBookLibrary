@@ -157,6 +157,12 @@ export default function AdminPage() {
   const [selectedAwardTab, setSelectedAwardTab] = useState<string>("all");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingType, setEditingType] = useState<"winner" | "nominee">("winner");
+  const [editingYear, setEditingYear] = useState<number>(CURRENT_YEAR);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingAuthor, setEditingAuthor] = useState("");
+  const [editingAwardId, setEditingAwardId] = useState<number>(0);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState<{
@@ -325,15 +331,29 @@ export default function AdminPage() {
   function startEdit(entry: AwardEntry) {
     setEditingId(entry.id);
     setEditingType(entry.type as "winner" | "nominee");
+    setEditingYear(entry.year);
+    setEditingTitle(entry.book.title);
+    setEditingAuthor(entry.book.author.name);
+    setEditingAwardId(entry.award.id);
+    setEditModalOpen(true);
   }
 
   async function handleEditSave(id: number) {
+    setEditSaving(true);
     await fetch(`/api/admin/award-entries/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: editingType }),
+      body: JSON.stringify({
+        title: editingTitle,
+        author: editingAuthor,
+        awardId: editingAwardId,
+        year: editingYear,
+        type: editingType,
+      }),
     });
+    setEditSaving(false);
     setEditingId(null);
+    setEditModalOpen(false);
     refreshEntries();
   }
 
@@ -661,63 +681,33 @@ export default function AdminPage() {
                           {entry.book.author.name}
                         </td>
                         <td className="px-4 py-3">
-                          {editingId === entry.id ? (
-                            <select
-                              value={editingType}
-                              onChange={(e) =>
-                                setEditingType(e.target.value as "winner" | "nominee")
-                              }
-                              className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
-                            >
-                              <option value="winner">受賞作</option>
-                              <option value="nominee">ノミネート</option>
-                            </select>
-                          ) : (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                entry.type === "winner"
-                                  ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                              }`}
-                            >
-                              {entry.type === "winner" ? "受賞作" : "ノミネート"}
-                            </span>
-                          )}
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              entry.type === "winner"
+                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                            }`}
+                          >
+                            {entry.type === "winner" ? "受賞作" : "ノミネート"}
+                          </span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
-                            {editingId === entry.id ? (
-                              <>
-                                <Button size="sm" onClick={() => handleEditSave(entry.id)}>
-                                  保存
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditingId(null)}
-                                >
-                                  キャンセル
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => startEdit(entry)}
-                                >
-                                  編集
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => handleDelete(entry.id)}
-                                  disabled={deletingId === entry.id}
-                                >
-                                  {deletingId === entry.id ? "削除中..." : "削除"}
-                                </Button>
-                              </>
-                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startEdit(entry)}
+                            >
+                              編集
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDelete(entry.id)}
+                              disabled={deletingId === entry.id}
+                            >
+                              {deletingId === entry.id ? "削除中..." : "削除"}
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -868,6 +858,97 @@ export default function AdminPage() {
         confirmLabel="削除する"
         onConfirm={executeDeleteUser}
       />
+
+      {/* 受賞登録 編集モーダル */}
+      {editModalOpen && editingId !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) setEditModalOpen(false); }}
+        >
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">受賞登録を編集</h2>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">タイトル</label>
+                <input
+                  type="text"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">著者名</label>
+                <input
+                  type="text"
+                  value={editingAuthor}
+                  onChange={(e) => setEditingAuthor(e.target.value)}
+                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">文学賞</label>
+                <select
+                  value={editingAwardId}
+                  onChange={(e) => setEditingAwardId(Number(e.target.value))}
+                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                >
+                  {awards.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">受賞年度</label>
+                <select
+                  value={editingYear}
+                  onChange={(e) => setEditingYear(Number(e.target.value))}
+                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                >
+                  {YEARS.map((y) => (
+                    <option key={y} value={y}>{y}年</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">種別</label>
+                <div className="flex gap-6">
+                  {(["winner", "nominee"] as const).map((t) => (
+                    <label key={t} className="flex cursor-pointer items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="editingType"
+                        value={t}
+                        checked={editingType === t}
+                        onChange={() => setEditingType(t)}
+                      />
+                      {t === "winner" ? "受賞作" : "ノミネート"}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditModalOpen(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={() => handleEditSave(editingId)} disabled={editSaving}>
+                {editSaving ? "保存中..." : "保存"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
