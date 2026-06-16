@@ -1,6 +1,6 @@
 {
   "name": "MyBookLibrary",
-  "short_name": "本棚",
+  "short_name": "MyBookLibrary",
   "description": "本の管理・記録アプリ",
   "start_url": "/",
   "display": "standalone",
