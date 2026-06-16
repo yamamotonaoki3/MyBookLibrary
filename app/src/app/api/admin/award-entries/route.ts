@@ -84,10 +84,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const awardEntry = await prisma.awardEntry.upsert({
+    const existing = await prisma.awardEntry.findUnique({
       where: { bookId_awardId_year: { bookId: book.id, awardId, year } },
-      update: { type },
-      create: { bookId: book.id, awardId, year, type },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { error: "この本・賞・年度の組み合わせは既に登録されています。" },
+        { status: 409 }
+      );
+    }
+
+    const awardEntry = await prisma.awardEntry.create({
+      data: { bookId: book.id, awardId, year, type },
     });
 
     return NextResponse.json(awardEntry, { status: 201 });

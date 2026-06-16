@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
   if (!q) {
     return NextResponse.json({ error: "検索キーワードを入力してください" }, { status: 400 });
   }
-  if (type !== "title" && type !== "author") {
+  if (type !== "title" && type !== "author" && type !== "keyword") {
     return NextResponse.json(
-      { error: "type は title または author を指定してください" },
+      { error: "type は title / author / keyword を指定してください" },
       { status: 400 }
     );
   }
@@ -41,7 +41,14 @@ export async function GET(request: NextRequest) {
   try {
     const { userId, error } = await getAuthenticatedUserId();
     if (error) return error;
-    const params = type === "title" ? { title: q } : { author: q };
+    let params: { title?: string; author?: string };
+    if (type === "keyword") {
+      const parts = q.split(/\s+/);
+      const authorPart = parts.slice(1).join(" ") || undefined;
+      params = { title: parts[0], author: authorPart };
+    } else {
+      params = type === "title" ? { title: q } : { author: q };
+    }
     const { items: rawItems, pageCount } = await fetchBookPage({
       ...params,
       page,
