@@ -71,6 +71,23 @@ cp -r /opt/app/app/.next/static  /opt/app/app/.next/standalone/.next/static
 cp -r /opt/app/app/public        /opt/app/app/.next/standalone/public
 
 # ──────────────────────────────────────────────
+# DBマイグレーション実行
+# prisma migrate deploy は未適用のマイグレーションだけを実行するため
+# 毎回実行しても安全（適用済みのものはスキップされる）
+# ──────────────────────────────────────────────
+sudo -u ec2-user bash -c "
+  REGION=ap-northeast-1
+  PROJECT=mybooklibrary
+  export DATABASE_URL=\$(aws ssm get-parameter \
+    --name /\${PROJECT}/DATABASE_URL \
+    --with-decryption \
+    --query Parameter.Value \
+    --output text \
+    --region \${REGION})
+  cd /opt/app/app && npx prisma migrate deploy
+"
+
+# ──────────────────────────────────────────────
 # start.sh の配置（Node.js 直接起動方式）
 # ──────────────────────────────────────────────
 cat > /opt/app/start.sh << 'EOF'
