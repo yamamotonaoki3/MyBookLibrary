@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   LogOut,
   Settings,
+  UserCog,
 } from "lucide-react";
 
 const MAIN_LINKS = [
@@ -194,6 +195,33 @@ export function Sidebar() {
             </Link>
           </div>
         </div>
+
+        {/* 設定セクション（一般ユーザー）*/}
+        {!isAdmin && (
+          <div>
+            {!isCollapsed && (
+              <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-widest text-white/50">
+                設定
+              </p>
+            )}
+            <div className="flex flex-col gap-1">
+              <Link
+                href="/settings"
+                title={isCollapsed ? "設定" : undefined}
+                className={`flex items-center rounded-lg transition-colors ${
+                  isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
+                } text-base font-medium ${
+                  pathname === "/settings"
+                    ? "bg-violet-600 text-white"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <UserCog className="h-5 w-5 shrink-0" />
+                {!isCollapsed && "設定"}
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* ADMIN セクション */}
         {isAdmin && (
