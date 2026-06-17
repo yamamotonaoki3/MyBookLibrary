@@ -277,54 +277,55 @@ export default async function Home() {
               <p className="text-2xl font-bold">{totalAuthors}<span className="ml-1 text-sm font-normal">人</span></p>
             </div>
           </div>
-          <CollapsibleCard
-            title="お気に入り著者"
-            icon={<Star className="h-4 w-4" />}
-            className="flex flex-1 flex-col overflow-hidden"
-            contentClassName="flex flex-1 flex-col overflow-hidden"
-            footer={
+          <Card className="flex flex-1 flex-col overflow-hidden">
+            <CardHeader className="shrink-0 pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                <Star className="h-4 w-4" />お気に入り著者
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto">
+                {favoriteAuthorsWithProgress.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">まだお気に入り著者がいません。</p>
+                ) : (
+                  <ul className="flex flex-col gap-5">
+                    {favoriteAuthorsWithProgress.map((fa) => (
+                      <li key={fa.authorId}>
+                        <Link href={`/favorite-authors/${fa.authorId}`} className="text-sm font-medium transition-colors hover:text-muted-foreground">
+                          {fa.name}
+                        </Link>
+                        {fa.dbTotal > 0 && (
+                          <div className="mt-2">
+                            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                              <span>{fa.dbRead} / {fa.dbTotal}冊 読了</span>
+                              <span>{fa.pct}%</span>
+                            </div>
+                            <Progress value={fa.pct} className="h-1" />
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                    {othersTotal > 0 && (
+                      <li>
+                        <span className="text-sm font-medium text-muted-foreground">その他</span>
+                        <div className="mt-2">
+                          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                            <span>{othersRead} / {othersTotal}冊 読了</span>
+                            <span>{othersPct}%</span>
+                          </div>
+                          <Progress value={othersPct} className="h-1" />
+                        </div>
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+              <Separator className="my-4 shrink-0" />
               <Link href="/favorite-authors" className="shrink-0 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground">
                 著者一覧を見る →
               </Link>
-            }
-          >
-            <div className="flex-1 overflow-y-auto">
-              {favoriteAuthorsWithProgress.length === 0 ? (
-                <p className="text-sm text-muted-foreground">まだお気に入り著者がいません。</p>
-              ) : (
-                <ul className="flex flex-col gap-5">
-                  {favoriteAuthorsWithProgress.map((fa) => (
-                    <li key={fa.authorId}>
-                      <Link href={`/favorite-authors/${fa.authorId}`} className="text-sm font-medium transition-colors hover:text-muted-foreground">
-                        {fa.name}
-                      </Link>
-                      {fa.dbTotal > 0 && (
-                        <div className="mt-2">
-                          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                            <span>{fa.dbRead} / {fa.dbTotal}冊 読了</span>
-                            <span>{fa.pct}%</span>
-                          </div>
-                          <Progress value={fa.pct} className="h-1" />
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                  {othersTotal > 0 && (
-                    <li>
-                      <span className="text-sm font-medium text-muted-foreground">その他</span>
-                      <div className="mt-2">
-                        <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                          <span>{othersRead} / {othersTotal}冊 読了</span>
-                          <span>{othersPct}%</span>
-                        </div>
-                        <Progress value={othersPct} className="h-1" />
-                      </div>
-                    </li>
-                  )}
-                </ul>
-              )}
-            </div>
-          </CollapsibleCard>
+            </CardContent>
+          </Card>
         </div>
 
         {/* カラム3: いいね数 + 読書記録 */}
@@ -338,35 +339,39 @@ export default async function Home() {
               <p className="text-2xl font-bold">{totalLikesReceived}<span className="ml-1 text-sm font-normal">件</span></p>
             </div>
           </div>
-          <CollapsibleCard
-            title="読書記録"
-            icon={<Clock className="h-4 w-4" />}
-            badge={`${totalReadBooks}冊読了 / ${totalBooks}冊登録`}
-            className="flex flex-1 flex-col overflow-hidden"
-            contentClassName="flex-1 overflow-y-auto"
-          >
-            {recentReads.length === 0 ? (
-              <p className="text-sm text-muted-foreground">読書中・読了の本がまだありません。</p>
-            ) : (
-              <ul className="flex flex-col divide-y">
-                {recentReads.map((rs) => (
-                  <RecentReadCard
-                    key={rs.id}
-                    book={{
-                      id: rs.bookId,
-                      title: rs.book.title,
-                      authorName: rs.book.author.name,
-                      isbn: rs.book.isbn,
-                      coverImageUrl: rs.book.coverImageUrl,
-                      publishedAt: rs.book.publishedAt.toISOString(),
-                    }}
-                    initialStatus={rs.status as "unread" | "want_to_read" | "reading" | "read"}
-                    hasReview={reviewedBookIds.has(rs.bookId)}
-                  />
-                ))}
-              </ul>
-            )}
-          </CollapsibleCard>
+          <Card className="flex flex-1 flex-col overflow-hidden">
+            <CardHeader className="shrink-0 pb-4">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                <Clock className="h-4 w-4" />読書記録
+                <span className="ml-auto text-xs font-normal normal-case tracking-normal">
+                  {totalReadBooks}冊読了 / {totalBooks}冊登録
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto">
+              {recentReads.length === 0 ? (
+                <p className="text-sm text-muted-foreground">読書中・読了の本がまだありません。</p>
+              ) : (
+                <ul className="flex flex-col divide-y">
+                  {recentReads.map((rs) => (
+                    <RecentReadCard
+                      key={rs.id}
+                      book={{
+                        id: rs.bookId,
+                        title: rs.book.title,
+                        authorName: rs.book.author.name,
+                        isbn: rs.book.isbn,
+                        coverImageUrl: rs.book.coverImageUrl,
+                        publishedAt: rs.book.publishedAt.toISOString(),
+                      }}
+                      initialStatus={rs.status as "unread" | "want_to_read" | "reading" | "read"}
+                      hasReview={reviewedBookIds.has(rs.bookId)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
       </div>
