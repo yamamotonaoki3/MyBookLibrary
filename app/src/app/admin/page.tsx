@@ -15,6 +15,7 @@ import {
   Trophy,
   AlertTriangle,
   Trash2,
+  ChevronDown,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -177,6 +178,8 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const [deleteTargetUser, setDeleteTargetUser] = useState<UserRow | null>(null);
+  const [awardsOpen, setAwardsOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -614,11 +617,19 @@ export default function AdminPage() {
         {/* 受賞登録一覧 */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              <Trophy className="h-4 w-4" />受賞登録一覧
+            <CardTitle>
+              <button
+                onClick={() => setAwardsOpen(!awardsOpen)}
+                className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4" />受賞登録一覧
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${awardsOpen ? "rotate-180" : ""}`} />
+              </button>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          {awardsOpen && <CardContent>
             {entries.length === 0 ? (
               <p className="text-sm text-muted-foreground">登録されていません。</p>
             ) : (
@@ -717,17 +728,25 @@ export default function AdminPage() {
               </div>
               </>
             )}
-          </CardContent>
+          </CardContent>}
         </Card>
 
         {/* ユーザー管理 */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              <Trash2 className="h-4 w-4" />ユーザー管理
+            <CardTitle>
+              <button
+                onClick={() => setUsersOpen(!usersOpen)}
+                className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />ユーザー管理
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${usersOpen ? "rotate-180" : ""}`} />
+              </button>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          {usersOpen && <CardContent>
             {users.length === 0 ? (
               <p className="text-sm text-muted-foreground">ユーザーがいません。</p>
             ) : (
@@ -788,7 +807,7 @@ export default function AdminPage() {
                 </table>
               </div>
             )}
-          </CardContent>
+          </CardContent>}
         </Card>
 
         {/* 通報されたレビュー */}

@@ -46,26 +46,24 @@ export default async function AwardsPage({ searchParams }: PageProps) {
   });
   const availableYears = yearsData.map((e) => e.year);
 
-  const totalEntries = await prisma.awardEntry.count({
-    where: {
-      ...awardIdFilter,
-      ...(selectedYear !== undefined ? { year: selectedYear } : {}),
-    },
-  });
+  const entryWhere = {
+    ...awardIdFilter,
+    ...(selectedYear !== undefined ? { year: selectedYear } : {}),
+  };
 
-  const bookIds = await prisma.awardEntry.findMany({
-    where: {
-      ...awardIdFilter,
-      ...(selectedYear !== undefined ? { year: selectedYear } : {}),
-    },
+  const bookIdsRaw = await prisma.awardEntry.findMany({
+    where: entryWhere,
     select: { bookId: true },
+    distinct: ["bookId"],
   });
+  const uniqueBookIds = bookIdsRaw.map((e) => e.bookId);
+  const totalEntries = uniqueBookIds.length;
 
   const readCount = await prisma.readingStatus.count({
     where: {
       userId: userId,
       status: "read",
-      bookId: { in: bookIds.map((e) => e.bookId) },
+      bookId: { in: uniqueBookIds },
     },
   });
 

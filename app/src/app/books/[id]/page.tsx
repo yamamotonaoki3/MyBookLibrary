@@ -94,8 +94,8 @@ export default async function BookDetailPage({ params }: Props) {
   return (
     <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
       {/* 書籍ヘッダー */}
-      <div className="flex gap-6">
-        <div className="relative h-48 w-32 shrink-0 overflow-hidden rounded-lg">
+      <div className="flex gap-4">
+        <div className="relative h-36 w-24 shrink-0 overflow-hidden rounded-lg">
           {book.coverImageUrl ? (
             <Image
               src={book.coverImageUrl}
@@ -111,8 +111,8 @@ export default async function BookDetailPage({ params }: Props) {
           )}
         </div>
 
-        <div className="flex flex-col justify-center gap-2">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <div className="flex min-w-0 flex-col justify-center gap-2">
+          <h1 className="break-words text-2xl font-bold text-zinc-900 dark:text-zinc-50">
             {book.title}
           </h1>
           <div className="flex items-center gap-3">
