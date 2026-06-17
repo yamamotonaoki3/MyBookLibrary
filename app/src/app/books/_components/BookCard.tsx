@@ -31,15 +31,8 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
   read: "読了",
 };
 
-const STATUS_COLORS: Record<ReadingStatus, string> = {
-  unread: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-  want_to_read: "bg-orange-100 text-orange-700 hover:bg-orange-200",
-  reading: "bg-blue-100 text-blue-700 hover:bg-blue-200",
-  read: "bg-green-100 text-green-700 hover:bg-green-200",
-};
-
 const STATUS_ACTIVE_COLORS: Record<ReadingStatus, string> = {
-  unread: "bg-secondary-foreground text-secondary",
+  unread: "bg-zinc-600 text-white",
   want_to_read: "bg-orange-500 text-white",
   reading: "bg-blue-600 text-white",
   read: "bg-green-600 text-white",
@@ -119,7 +112,7 @@ export function BookCard({ book, initialStatus, hasReview }: Props) {
                   onClick={() => handleStatusChange(s)}
                   disabled={saving}
                   className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-50 ${
-                    status === s ? STATUS_ACTIVE_COLORS[s] : STATUS_COLORS[s]
+                    status === s ? STATUS_ACTIVE_COLORS[s] : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
                   }`}
                 >
                   {STATUS_LABELS[s]}
