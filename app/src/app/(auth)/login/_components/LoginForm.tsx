@@ -75,6 +75,7 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
       const result = await signIn("credentials", {
         email: form.get("email"),
         password: form.get("password"),
+        rememberMe: rememberMe ? "1" : "0",
         redirect: false,
       });
 
@@ -89,6 +90,8 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
         } else {
           localStorage.setItem("rememberMe", "0");
           sessionStorage.setItem("sessionActive", "1");
+          const secure = window.location.protocol === "https:";
+          document.cookie = `sessionBound=1; path=/; SameSite=Lax${secure ? "; Secure" : ""}`;
         }
         router.push(callbackUrl ?? "/");
         router.refresh();
@@ -191,6 +194,8 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
           } else {
             localStorage.setItem("rememberMe", "0");
             sessionStorage.setItem("sessionActive", "1");
+            const secure = window.location.protocol === "https:";
+            document.cookie = `sessionBound=1; path=/; SameSite=Lax${secure ? "; Secure" : ""}`;
           }
           signIn("google", { callbackUrl: callbackUrl ?? "/" });
         }}

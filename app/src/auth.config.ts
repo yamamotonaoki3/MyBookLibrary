@@ -12,11 +12,18 @@ export const authConfig: NextAuthConfig = {
     async session({ session, token }) {
       if (token) {
         session.user.role = (token.role as string) ?? "user";
+        if (token.sessionBound) {
+          session.sessionBound = true;
+        }
       }
       return session;
     },
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request }) {
+      const { nextUrl } = request;
       const isLoggedIn = !!auth?.user;
+      const sessionCookieMissing =
+        auth?.sessionBound === true && !request.cookies.has("sessionBound");
+      const effectivelyLoggedIn = isLoggedIn && !sessionCookieMissing;
       const isPublicPath =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/register") ||
@@ -26,11 +33,11 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname === "/manifest.json" ||
         nextUrl.pathname.startsWith("/icons/");
 
-      if (isLoggedIn && nextUrl.pathname.startsWith("/login")) {
+      if (effectivelyLoggedIn && nextUrl.pathname.startsWith("/login")) {
         return NextResponse.redirect(new URL("/", nextUrl.origin));
       }
       if (isPublicPath) return true;
-      if (!isLoggedIn) return false; // /login へリダイレクト
+      if (!effectivelyLoggedIn) return false;
 
       if (
         nextUrl.pathname.startsWith("/admin") &&
