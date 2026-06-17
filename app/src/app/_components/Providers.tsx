@@ -2,11 +2,9 @@
 
 import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 function RememberMeGuard() {
   const { status } = useSession();
-  const router = useRouter();
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -17,11 +15,9 @@ function RememberMeGuard() {
       return;
     }
     if (rememberMe === "0" && !sessionStorage.getItem("sessionActive")) {
-      signOut({ redirect: false })
-        .then(() => router.push("/login"))
-        .catch(() => router.push("/login"));
+      signOut({ callbackUrl: "/login" });
     }
-  }, [status, router]);
+  }, [status]);
 
   return null;
 }

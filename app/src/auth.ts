@@ -102,10 +102,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role ?? "user";
-        const rememberMe = (user as { rememberMe?: boolean }).rememberMe ?? true;
-        if (!rememberMe) {
-          token.sessionBound = true;
-        }
       }
       // Google OAuth: DBからroleを取得
       if (account?.provider === "google" && token.email) {
@@ -123,9 +119,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token) {
         session.user.id = token.id as string;
         session.user.role = (token.role as string) ?? "user";
-        if (token.sessionBound) {
-          session.sessionBound = true;
-        }
       }
       return session;
     },

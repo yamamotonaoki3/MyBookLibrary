@@ -9,6 +9,5 @@ declare module "next-auth" {
       image?: string | null;
       role: string;
     };
-    sessionBound?: boolean;
   }
 }
