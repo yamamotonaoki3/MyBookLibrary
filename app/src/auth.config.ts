@@ -17,6 +17,9 @@ export const authConfig: NextAuthConfig = {
     },
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
+      const sessionExpiry = auth?.sessionExpiry;
+      const isExpired = sessionExpiry !== undefined && Date.now() > sessionExpiry;
+      const effectivelyLoggedIn = isLoggedIn && !isExpired;
       const isPublicPath =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/register") ||
@@ -26,11 +29,11 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname === "/manifest.json" ||
         nextUrl.pathname.startsWith("/icons/");
 
-      if (isLoggedIn && nextUrl.pathname.startsWith("/login")) {
+      if (effectivelyLoggedIn && nextUrl.pathname.startsWith("/login")) {
         return NextResponse.redirect(new URL("/", nextUrl.origin));
       }
       if (isPublicPath) return true;
-      if (!isLoggedIn) return false; // /login へリダイレクト
+      if (!effectivelyLoggedIn) return false;
 
       if (
         nextUrl.pathname.startsWith("/admin") &&

@@ -17,7 +17,9 @@ function RememberMeGuard() {
       return;
     }
     if (rememberMe === "0" && !sessionStorage.getItem("sessionActive")) {
-      signOut({ redirect: false }).then(() => router.push("/login"));
+      signOut({ redirect: false })
+        .then(() => router.push("/login"))
+        .catch(() => router.push("/login"));
     }
   }, [status, router]);
 

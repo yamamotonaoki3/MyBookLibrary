@@ -75,6 +75,7 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
       const result = await signIn("credentials", {
         email: form.get("email"),
         password: form.get("password"),
+        rememberMe: rememberMe ? "1" : "0",
         redirect: false,
       });
 
