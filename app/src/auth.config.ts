@@ -12,14 +12,18 @@ export const authConfig: NextAuthConfig = {
     async session({ session, token }) {
       if (token) {
         session.user.role = (token.role as string) ?? "user";
+        if (token.sessionBound) {
+          session.sessionBound = true;
+        }
       }
       return session;
     },
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request }) {
+      const { nextUrl } = request;
       const isLoggedIn = !!auth?.user;
-      const sessionExpiry = auth?.sessionExpiry;
-      const isExpired = sessionExpiry !== undefined && Date.now() > sessionExpiry;
-      const effectivelyLoggedIn = isLoggedIn && !isExpired;
+      const sessionCookieMissing =
+        auth?.sessionBound === true && !request.cookies.has("sessionBound");
+      const effectivelyLoggedIn = isLoggedIn && !sessionCookieMissing;
       const isPublicPath =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/register") ||
