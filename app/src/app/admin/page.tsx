@@ -165,6 +165,7 @@ export default function AdminPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState<{
     userCount: number;
@@ -323,10 +324,15 @@ export default function AdminPage() {
     refreshEntries();
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm("この受賞登録を削除しますか？")) return;
-    setDeletingId(id);
-    await fetch(`/api/admin/award-entries/${id}`, { method: "DELETE" });
+  function handleDelete(id: number) {
+    setDeleteTargetId(id);
+  }
+
+  async function handleDeleteConfirm() {
+    if (deleteTargetId === null) return;
+    setDeletingId(deleteTargetId);
+    setDeleteTargetId(null);
+    await fetch(`/api/admin/award-entries/${deleteTargetId}`, { method: "DELETE" });
     setDeletingId(null);
     refreshEntries();
   }
@@ -859,6 +865,15 @@ export default function AdminPage() {
         </Card>
 
       </div>
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}
+        title="受賞登録を削除しますか？"
+        description="削除した受賞登録は元に戻せません。"
+        confirmLabel="削除する"
+        onConfirm={handleDeleteConfirm}
+      />
 
       <ConfirmDialog
         open={deleteTargetReviewId !== null}
