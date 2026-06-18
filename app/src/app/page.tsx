@@ -145,7 +145,7 @@ export default async function Home() {
                 {awardProgress.map((award) => (
                   <Link key={award.id} href={`/awards?awardId=${award.id}`} className="group block">
                     <div className="mb-1.5 flex items-center justify-between text-sm">
-                      <span className="font-medium text-muted-foreground">{award.name}</span>
+                      <span className="font-medium transition-colors hover:text-muted-foreground">{award.name}</span>
                       <span className="tabular-nums text-muted-foreground text-xs">{award.read} / {award.total}冊 · {award.pct}%</span>
                     </div>
                     <Progress value={award.pct} className="h-1.5" />
@@ -254,7 +254,7 @@ export default async function Home() {
                   {awardProgress.map((award) => (
                     <Link key={award.id} href={`/awards?awardId=${award.id}`} className="group block">
                       <div className="mb-2 flex items-center justify-between gap-2 text-sm">
-                        <span className="min-w-0 truncate font-medium transition-colors group-hover:text-foreground text-muted-foreground">{award.name}</span>
+                        <span className="min-w-0 truncate font-medium transition-colors hover:text-muted-foreground">{award.name}</span>
                         <span className="shrink-0 tabular-nums text-muted-foreground text-xs">{award.read} / {award.total}冊 · {award.pct}%</span>
                       </div>
                       <Progress value={award.pct} className="h-1.5" />
