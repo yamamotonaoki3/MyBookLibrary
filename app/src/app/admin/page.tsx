@@ -207,6 +207,7 @@ export default function AdminPage() {
   const [updatingInquiryId, setUpdatingInquiryId] = useState<number | null>(null);
   const [deletingInquiryId, setDeletingInquiryId] = useState<number | null>(null);
   const [deleteTargetInquiry, setDeleteTargetInquiry] = useState<Inquiry | null>(null);
+  const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -280,6 +281,7 @@ export default function AdminPage() {
     setInquiries((prev) =>
       prev.map((i) => (i.id === inquiry.id ? { ...i, status: newStatus } : i))
     );
+    setSelectedInquiry((prev) => (prev?.id === inquiry.id ? { ...prev, status: newStatus } : prev));
   }
 
   async function executeDeleteInquiry() {
@@ -1005,10 +1007,9 @@ export default function AdminPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleToggleInquiryStatus(inquiry)}
-                                disabled={updatingInquiryId === inquiry.id}
+                                onClick={() => setSelectedInquiry(inquiry)}
                               >
-                                {inquiry.status === "open" ? "対応済みにする" : "未対応に戻す"}
+                                詳細
                               </Button>
                               <Button
                                 size="sm"
@@ -1067,6 +1068,94 @@ export default function AdminPage() {
         confirmLabel="削除する"
         onConfirm={executeDeleteInquiry}
       />
+
+      {/* お問い合わせ 詳細モーダル */}
+      {selectedInquiry && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedInquiry(null); }}
+        >
+          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200 mx-4">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">お問い合わせ詳細</h2>
+              <button
+                onClick={() => setSelectedInquiry(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 text-sm">
+              {/* ステータス＆受信日時 */}
+              <div className="flex items-center gap-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    selectedInquiry.status === "open"
+                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                      : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                  }`}
+                >
+                  {selectedInquiry.status === "open" ? "未対応" : "対応済み"}
+                </span>
+                <span className="text-xs text-zinc-400">
+                  {new Date(selectedInquiry.createdAt).toLocaleString("ja-JP", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+
+              {/* カテゴリ */}
+              <div>
+                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">カテゴリ</p>
+                <p className="text-zinc-800 dark:text-zinc-200">
+                  {CATEGORY_LABEL[selectedInquiry.category] ?? selectedInquiry.category}
+                </p>
+              </div>
+
+              {/* 件名 */}
+              <div>
+                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">件名</p>
+                <p className="text-zinc-800 dark:text-zinc-200 font-medium">{selectedInquiry.subject}</p>
+              </div>
+
+              {/* 送信者情報 */}
+              <div>
+                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">送信者</p>
+                <p className="text-zinc-800 dark:text-zinc-200">{selectedInquiry.name}</p>
+                <p className="text-zinc-500 dark:text-zinc-400">{selectedInquiry.email}</p>
+              </div>
+
+              {/* 本文 */}
+              <div>
+                <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">本文</p>
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
+                  <p className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                    {selectedInquiry.body}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => handleToggleInquiryStatus(selectedInquiry)}
+                disabled={updatingInquiryId === selectedInquiry.id}
+              >
+                {selectedInquiry.status === "open" ? "対応済みにする" : "未対応に戻す"}
+              </Button>
+              <Button onClick={() => setSelectedInquiry(null)}>
+                閉じる
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 受賞登録 編集モーダル */}
       {editModalOpen && editingId !== null && (
