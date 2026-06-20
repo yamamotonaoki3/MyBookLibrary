@@ -12,12 +12,13 @@ export const authConfig: NextAuthConfig = {
     async session({ session, token }) {
       if (token) {
         session.user.role = (token.role as string) ?? "user";
+        session.user.rememberMe = (token.rememberMe as boolean) ?? true;
       }
       return session;
     },
-    authorized({ auth, request: { nextUrl } }) {
+    authorized({ auth, request }) {
+      const { nextUrl, cookies } = request;
       const isLoggedIn = !!auth?.user;
-      const effectivelyLoggedIn = isLoggedIn;
       const isPublicPath =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/register") ||
@@ -27,11 +28,29 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname === "/manifest.json" ||
         nextUrl.pathname.startsWith("/icons/");
 
-      if (effectivelyLoggedIn && nextUrl.pathname.startsWith("/login")) {
-        return NextResponse.redirect(new URL("/", nextUrl.origin));
+      if (isLoggedIn) {
+        // rememberMe=false かつ session-active クッキーなし → ブラウザ再起動と判断してログアウト
+        const rememberMe =
+          (auth.user as { rememberMe?: boolean }).rememberMe ?? true;
+        if (rememberMe === false) {
+          const sessionActive = cookies.get("session-active")?.value;
+          if (!sessionActive) {
+            const res = NextResponse.redirect(
+              new URL("/login", nextUrl.origin)
+            );
+            res.cookies.delete("authjs.session-token");
+            res.cookies.delete("__Secure-authjs.session-token");
+            return res;
+          }
+        }
+
+        if (nextUrl.pathname.startsWith("/login")) {
+          return NextResponse.redirect(new URL("/", nextUrl.origin));
+        }
       }
+
       if (isPublicPath) return true;
-      if (!effectivelyLoggedIn) return false;
+      if (!isLoggedIn) return false;
 
       if (
         nextUrl.pathname.startsWith("/admin") &&

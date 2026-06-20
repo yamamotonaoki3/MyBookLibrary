@@ -182,7 +182,7 @@ function BookSearchContent() {
 
   // URL パラメータが変わったら検索実行
   useEffect(() => {
-    if (urlQ.trim().length >= 2) {
+    if (urlQ.trim().length >= 1) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchResults(urlQ, urlType, urlPage);
     }
@@ -197,14 +197,14 @@ function BookSearchContent() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = query.trim();
-    if (trimmed.length < 2) return;
+    if (trimmed.length < 1) return;
     pushUrl(trimmed, type, 1);
   }
 
   function handleTypeChange(newType: SearchType) {
     setType(newType);
     const trimmed = query.trim();
-    if (trimmed.length >= 2 && searched) {
+    if (trimmed.length >= 1 && searched) {
       pushUrl(trimmed, newType, 1);
     }
   }
@@ -321,7 +321,7 @@ function BookSearchContent() {
           />
           <button
             type="submit"
-            disabled={loading || query.trim().length < 2}
+            disabled={loading || query.trim().length < 1}
             className="whitespace-nowrap rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             {loading ? "検索中…" : "検索"}

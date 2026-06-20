@@ -34,9 +34,9 @@ export function Sidebar() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { data: session } = useSession();
-  const userName = session?.user?.name ?? "ゲスト";
-  const userEmail = session?.user?.email ?? "";
+  const { data: session, status } = useSession();
+  const userName = status === "loading" ? "" : (session?.user?.name ?? "ゲスト");
+  const userEmail = status === "loading" ? "" : (session?.user?.email ?? "");
   const isAdmin = session?.user?.role === "admin";
   const initial = userName.charAt(0).toUpperCase();
 

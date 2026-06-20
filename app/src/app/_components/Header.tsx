@@ -10,8 +10,8 @@ import { setAppBadge } from "@/lib/badge";
 export function Header() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
-  const { data: session } = useSession();
-  const userName = session?.user?.name ?? "ゲスト";
+  const { data: session, status } = useSession();
+  const userName = status === "loading" ? "" : (session?.user?.name ?? "ゲスト");
   const initial = userName.charAt(0).toUpperCase();
 
   useEffect(() => {
