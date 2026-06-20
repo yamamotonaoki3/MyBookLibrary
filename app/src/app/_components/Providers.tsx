@@ -14,8 +14,19 @@ function RememberMeGuard() {
       localStorage.setItem("rememberMe", "1");
       return;
     }
-    if (rememberMe === "0" && !sessionStorage.getItem("sessionActive")) {
-      signOut({ callbackUrl: "/login" });
+    if (rememberMe === "0") {
+      const hasSession = sessionStorage.getItem("sessionActive");
+      if (!hasSession) {
+        // OAuth リダイレクト後のグレース期間チェック（5分以内なら sessionStorage を復元）
+        const oauthTime = localStorage.getItem("oauthSessionActive");
+        const isOAuthGrace = oauthTime && Date.now() - Number(oauthTime) < 5 * 60 * 1000;
+        if (isOAuthGrace) {
+          sessionStorage.setItem("sessionActive", "1");
+          localStorage.removeItem("oauthSessionActive");
+          return;
+        }
+        signOut({ callbackUrl: "/login" });
+      }
     }
   }, [status]);
 

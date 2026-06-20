@@ -180,9 +180,12 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
           if (rememberMe) {
             localStorage.setItem("rememberMe", "1");
             sessionStorage.removeItem("sessionActive");
+            localStorage.removeItem("oauthSessionActive");
           } else {
             localStorage.setItem("rememberMe", "0");
             sessionStorage.setItem("sessionActive", "1");
+            // OAuth リダイレクト後に sessionStorage が失われた場合のグレース期間フラグ
+            localStorage.setItem("oauthSessionActive", String(Date.now()));
           }
           signIn("google", { callbackUrl: callbackUrl ?? "/" });
         }}
