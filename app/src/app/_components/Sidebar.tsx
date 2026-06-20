@@ -195,21 +195,23 @@ export function Sidebar() {
               {!isCollapsed && "通知"}
             </Link>
 
-            {/* お問い合わせ */}
-            <Link
-              href="/contact"
-              title={isCollapsed ? "お問い合わせ" : undefined}
-              className={`flex items-center rounded-lg transition-colors ${
-                isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
-              } text-base font-medium ${
-                pathname === "/contact"
-                  ? "bg-violet-600 text-white"
-                  : "text-white/80 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <Mail className="h-5 w-5 shrink-0" />
-              {!isCollapsed && "お問い合わせ"}
-            </Link>
+            {/* お問い合わせ（管理者は不要） */}
+            {!isAdmin && (
+              <Link
+                href="/contact"
+                title={isCollapsed ? "お問い合わせ" : undefined}
+                className={`flex items-center rounded-lg transition-colors ${
+                  isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
+                } text-base font-medium ${
+                  pathname === "/contact"
+                    ? "bg-violet-600 text-white"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <Mail className="h-5 w-5 shrink-0" />
+                {!isCollapsed && "お問い合わせ"}
+              </Link>
+            )}
           </div>
         </div>
 
