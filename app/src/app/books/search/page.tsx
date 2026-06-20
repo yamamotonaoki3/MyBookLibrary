@@ -264,30 +264,18 @@ function BookSearchContent() {
         <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
           本を探す
         </h1>
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={() => { setRegisterMessage(null); setManualRegisterOpen(true); }}
-            className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            手動で登録
-          </button>
-          <button
-            type="button"
-            onClick={() => { setRegisterMessage(null); setScannerOpen(true); }}
-            disabled={registeringIsbn}
-            className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            {registeringIsbn ? "登録中…" : "バーコードで登録"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => { setRegisterMessage(null); setScannerOpen(true); }}
+          disabled={registeringIsbn}
+          className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          {registeringIsbn ? "登録中…" : "バーコードで登録"}
+        </button>
       </div>
 
       {registerMessage && (
