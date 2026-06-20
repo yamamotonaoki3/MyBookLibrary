@@ -103,7 +103,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.name = (user as { name?: string | null }).name ?? null;
         token.role = (user as { role?: string }).role ?? "user";
-        token.rememberMe = (user as { rememberMe?: boolean }).rememberMe ?? true;
+      }
+      // token.name が未設定の旧JWTのみDBから1回補完（null は再クエリしない）
+      if (token.name === undefined && token.id && !user) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: Number(token.id) },
+          select: { name: true },
+        });
+        token.name = dbUser?.name ?? null;
       }
       // Google OAuth: DBからroleを取得
       if (account?.provider === "google" && token.email) {
