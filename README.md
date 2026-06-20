@@ -18,13 +18,13 @@
 
 ## デモ
 
-### バーコードスキャンで本を検索
-
-![バーコードスキャンで本を検索](docs/demos/barcode-scan-small.gif)
-
 ### ダッシュボード
 
 ![ダッシュボード](docs/demos/dashboard-small.gif)
+
+### バーコードスキャンで本を検索
+
+![バーコードスキャンで本を検索](docs/demos/barcode-scan-small.gif)
 
 ## 技術スタック
 
