@@ -1,0 +1,131 @@
+import { prisma } from "@/lib/prisma";
+import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
+import { getAuthenticatedUserId } from "@/lib/session";
+import { z } from "zod";
+
+const EditBookSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  author: z.string().trim().min(1).max(100),
+  isbn: z.string().optional().nullable(),
+  coverImageUrl: z.string().url().optional().nullable(),
+  publishedAt: z.string().optional().nullable(),
+});
+
+function parseSalesDate(salesDate: string): Date {
+  const match = salesDate.match(/(\d{4})年(\d{2})月(?:(\d{2})日)?/);
+  if (!match) return new Date();
+  const year = parseInt(match[1]);
+  const month = parseInt(match[2]) - 1;
+  const day = match[3] ? parseInt(match[3]) : 1;
+  return new Date(year, month, day);
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
+
+    const { id } = await params;
+    const bookId = Number(id);
+    if (isNaN(bookId)) {
+      return Response.json({ error: "Invalid book id" }, { status: 400 });
+    }
+
+    const book = await prisma.book.findUnique({ where: { id: bookId } });
+    if (!book) {
+      return Response.json({ error: "Not found" }, { status: 404 });
+    }
+    if (book.source !== "manual") {
+      return Response.json({ error: "この本は編集できません" }, { status: 403 });
+    }
+
+    // 編集できるのは自分が登録した本のみ（ReadingStatusが存在するか確認）
+    const status = await prisma.readingStatus.findUnique({
+      where: { userId_bookId: { userId, bookId } },
+    });
+    if (!status) {
+      return Response.json({ error: "この本を編集する権限がありません" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const parsed = EditBookSchema.safeParse(body);
+    if (!parsed.success) {
+      return Response.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    }
+
+    const { title, author, isbn, coverImageUrl, publishedAt } = parsed.data;
+
+    const normalizedAuthor = normalizeAuthorName(author);
+    let authorRecord = await prisma.author.findFirst({
+      where: { name: normalizedAuthor },
+    });
+    if (!authorRecord) {
+      authorRecord = await prisma.author.create({ data: { name: normalizedAuthor } });
+    }
+
+    const updated = await prisma.book.update({
+      where: { id: bookId },
+      data: {
+        title,
+        authorId: authorRecord.id,
+        isbn: isbn || null,
+        coverImageUrl: coverImageUrl ?? null,
+        publishedAt: publishedAt ? parseSalesDate(publishedAt) : book.publishedAt,
+      },
+      include: { author: true },
+    });
+
+    return Response.json(updated);
+  } catch (error) {
+    console.error("[PATCH /api/books/[id]]", error);
+    return Response.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId, error } = await getAuthenticatedUserId();
+    if (error) return error;
+
+    const { id } = await params;
+    const bookId = Number(id);
+    if (isNaN(bookId)) {
+      return Response.json({ error: "Invalid book id" }, { status: 400 });
+    }
+
+    const book = await prisma.book.findUnique({ where: { id: bookId } });
+    if (!book) {
+      return Response.json({ error: "Not found" }, { status: 404 });
+    }
+    if (book.source !== "manual") {
+      return Response.json({ error: "この本は削除できません" }, { status: 403 });
+    }
+
+    const status = await prisma.readingStatus.findUnique({
+      where: { userId_bookId: { userId, bookId } },
+    });
+    if (!status) {
+      return Response.json({ error: "この本を削除する権限がありません" }, { status: 403 });
+    }
+
+    // 関連レコードを順番に削除してから本を削除
+    const reviews = await prisma.review.findMany({ where: { bookId }, select: { id: true } });
+    const reviewIds = reviews.map((r) => r.id);
+    await prisma.like.deleteMany({ where: { reviewId: { in: reviewIds } } });
+    await prisma.report.deleteMany({ where: { reviewId: { in: reviewIds } } });
+    await prisma.review.deleteMany({ where: { bookId } });
+    await prisma.readingStatus.deleteMany({ where: { bookId } });
+    await prisma.book.delete({ where: { id: bookId } });
+
+    return Response.json({ success: true });
+  } catch (error) {
+    console.error("[DELETE /api/books/[id]]", error);
+    return Response.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}

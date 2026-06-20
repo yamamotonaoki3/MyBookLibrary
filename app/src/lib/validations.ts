@@ -21,6 +21,7 @@ export const ReadingStatusSchema = z.object({
   isbn: z.string().optional().nullable(),
   coverImageUrl: z.string().url().optional().nullable(),
   publishedAt: z.string().optional().nullable(),
+  source: z.enum(["rakuten", "manual"]).optional(),
 });
 
 export const FavoriteAuthorSchema = z.object({

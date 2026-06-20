@@ -8,6 +8,7 @@ import LikeButton from "./_components/LikeButton";
 import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
 import { ReadingStatusButtons } from "./_components/ReadingStatusButtons";
 import { ReportButton } from "./_components/ReportButton";
+import EditBookButton from "./_components/EditBookButton";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +127,18 @@ export default async function BookDetailPage({ params }: Props) {
           <p className="text-sm text-zinc-500 dark:text-zinc-500">
             {publishedLabel}
           </p>
+          {book.source === "manual" && (
+            <EditBookButton
+              book={{
+                id: book.id,
+                title: book.title,
+                authorName: book.author.name,
+                isbn: book.isbn,
+                coverImageUrl: book.coverImageUrl,
+                publishedAt: book.publishedAt.toISOString(),
+              }}
+            />
+          )}
           <ReadingStatusButtons
             book={{
               id: book.id,

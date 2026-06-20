@@ -85,6 +85,7 @@ model Book {
   isbn            String?         @unique
   publishedAt     DateTime        @map("published_at") @db.Date
   coverImageUrl   String?         @map("cover_image_url")
+  source          String          @default("rakuten")
   author          Author          @relation(fields: [authorId], references: [id])
   awardEntries    AwardEntry[]
   readingStatuses ReadingStatus[]
