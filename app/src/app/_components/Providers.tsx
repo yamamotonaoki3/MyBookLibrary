@@ -6,27 +6,28 @@ import { useEffect } from "react";
 function RememberMeGuard() {
   const { status } = useSession();
 
+  // ページロード時に oauthSessionActive を処理・必ずクリア
+  // sessionStorage の有無に関わらずクリアすることでブラウザ再起動後に残り続けるバグを防ぐ
+  useEffect(() => {
+    const oauthTime = localStorage.getItem("oauthSessionActive");
+    if (oauthTime) {
+      const isRecent = Date.now() - Number(oauthTime) < 2 * 60 * 1000;
+      if (isRecent && !sessionStorage.getItem("sessionActive")) {
+        sessionStorage.setItem("sessionActive", "1");
+      }
+      localStorage.removeItem("oauthSessionActive");
+    }
+  }, []);
+
   useEffect(() => {
     if (status !== "authenticated") return;
     const rememberMe = localStorage.getItem("rememberMe");
     if (rememberMe === null) {
-      // Google OAuth 等でフラグ未設定の場合は保持扱いにする
       localStorage.setItem("rememberMe", "1");
       return;
     }
-    if (rememberMe === "0") {
-      const hasSession = sessionStorage.getItem("sessionActive");
-      if (!hasSession) {
-        // OAuth リダイレクト後のグレース期間チェック（5分以内なら sessionStorage を復元）
-        const oauthTime = localStorage.getItem("oauthSessionActive");
-        const isOAuthGrace = oauthTime && Date.now() - Number(oauthTime) < 5 * 60 * 1000;
-        if (isOAuthGrace) {
-          sessionStorage.setItem("sessionActive", "1");
-          localStorage.removeItem("oauthSessionActive");
-          return;
-        }
-        signOut({ callbackUrl: "/login" });
-      }
+    if (rememberMe === "0" && !sessionStorage.getItem("sessionActive")) {
+      signOut({ callbackUrl: "/login" });
     }
   }, [status]);
 
