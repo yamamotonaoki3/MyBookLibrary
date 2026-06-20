@@ -23,17 +23,12 @@ const CATEGORIES = [
 
 export default function ContactPage() {
   const { data: session } = useSession();
-  const [nameOverride, setNameOverride] = useState<string | null>(null);
-  const [emailOverride, setEmailOverride] = useState<string | null>(null);
   const [category, setCategory] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  const name = nameOverride ?? session?.user?.name ?? "";
-  const email = emailOverride ?? session?.user?.email ?? "";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +39,7 @@ export default function ContactPage() {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, category, subject, body }),
+        body: JSON.stringify({ category, subject, body }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -77,8 +72,6 @@ export default function ContactPage() {
             setSubject("");
             setBody("");
             setCategory("");
-            setNameOverride(null);
-            setEmailOverride(null);
           }}
         >
           別の問い合わせをする
@@ -101,39 +94,14 @@ export default function ContactPage() {
           <CardTitle className="text-base font-medium text-zinc-700 dark:text-zinc-300">
             管理者へのお問い合わせフォーム
           </CardTitle>
+          {session?.user && (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              {session.user.name}（{session.user.email}）として送信します
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* 名前 */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                お名前 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setNameOverride(e.target.value)}
-                required
-                placeholder="山田 太郎"
-                className="h-9 rounded-lg border border-input bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-              />
-            </div>
-
-            {/* メール */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                メールアドレス <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmailOverride(e.target.value)}
-                required
-                placeholder="example@email.com"
-                className="h-9 rounded-lg border border-input bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-              />
-            </div>
-
             {/* カテゴリ */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
