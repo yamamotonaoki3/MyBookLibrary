@@ -49,7 +49,7 @@ function SearchResultCard({ book }: { book: SearchResult }) {
   return (
     <div className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
       <Link
-        href={book.isbn ? `/books/isbn/${book.isbn}` : "#"}
+        href={book.id ? `/books/${book.id}` : book.isbn ? `/books/isbn/${book.isbn}` : "#"}
         className="shrink-0"
       >
         <div className="relative h-32 w-20 overflow-hidden rounded">
@@ -71,7 +71,7 @@ function SearchResultCard({ book }: { book: SearchResult }) {
 
       <div className="flex flex-1 flex-col justify-between gap-2">
         <div>
-          <Link href={book.isbn ? `/books/isbn/${book.isbn}` : "#"}>
+          <Link href={book.id ? `/books/${book.id}` : book.isbn ? `/books/isbn/${book.isbn}` : "#"}>
             <h3 className="font-semibold leading-tight text-zinc-900 hover:underline dark:text-zinc-50">
               {book.title}
             </h3>
@@ -83,22 +83,25 @@ function SearchResultCard({ book }: { book: SearchResult }) {
             {book.publisherName}
             {book.salesDate ? ` · ${book.salesDate}` : ""}
           </p>
-          {book.awards.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-1">
-              {book.awards.map((award) => (
-                <span
-                  key={`${award.name}-${award.year}`}
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    award.type === "winner"
-                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                      : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
-                  }`}
-                >
-                  {award.type === "winner" ? "受賞" : "ノミネート"}　{award.name}
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="mt-1 flex flex-wrap gap-1">
+            {book.source === "manual" && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                手動登録
+              </span>
+            )}
+            {book.awards.map((award) => (
+              <span
+                key={`${award.name}-${award.year}`}
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  award.type === "winner"
+                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
+                }`}
+              >
+                {award.type === "winner" ? "受賞" : "ノミネート"}　{award.name}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-1">
