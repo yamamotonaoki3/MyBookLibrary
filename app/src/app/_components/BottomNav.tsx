@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Home, BookOpen, Trophy, Search, Heart, MessageSquare, Settings, UserCog } from "lucide-react";
+import { Home, BookOpen, Trophy, Search, Heart, MessageSquare, Settings, UserCog, Mail } from "lucide-react";
 
 const TAB_LINKS = [
   { href: "/", label: "ホーム", icon: Home },
@@ -50,15 +50,26 @@ export function BottomNav() {
           管理
         </Link>
       ) : (
-        <Link
-          href="/settings"
-          className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
-            pathname === "/settings" ? "text-white" : "text-white/50"
-          }`}
-        >
-          <UserCog className={`h-5 w-5 ${pathname === "/settings" ? "text-white" : "text-white/50"}`} />
-          設定
-        </Link>
+        <>
+          <Link
+            href="/contact"
+            className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
+              pathname === "/contact" ? "text-white" : "text-white/50"
+            }`}
+          >
+            <Mail className={`h-5 w-5 ${pathname === "/contact" ? "text-white" : "text-white/50"}`} />
+            問い合わせ
+          </Link>
+          <Link
+            href="/settings"
+            className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
+              pathname === "/settings" ? "text-white" : "text-white/50"
+            }`}
+          >
+            <UserCog className={`h-5 w-5 ${pathname === "/settings" ? "text-white" : "text-white/50"}`} />
+            設定
+          </Link>
+        </>
       )}
     </nav>
   );

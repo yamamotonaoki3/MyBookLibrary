@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Trash2,
   ChevronDown,
+  Mail,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,26 @@ type ReportedReview = {
   reportCount: number;
   user: { name: string };
   book: { id: number; title: string };
+};
+
+const CATEGORY_LABEL: Record<string, string> = {
+  general: "一般的なお問い合わせ",
+  bug: "不具合の報告",
+  feature: "機能追加の要望",
+  account: "アカウントについて",
+  other: "その他",
+};
+
+type Inquiry = {
+  id: number;
+  name: string;
+  email: string;
+  category: string;
+  subject: string;
+  body: string;
+  status: string;
+  createdAt: string;
+  user: { name: string; email: string } | null;
 };
 
 type FormState = {
@@ -181,6 +202,12 @@ export default function AdminPage() {
   const [deleteTargetUser, setDeleteTargetUser] = useState<UserRow | null>(null);
   const [awardsOpen, setAwardsOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [inquiriesOpen, setInquiriesOpen] = useState(false);
+  const [updatingInquiryId, setUpdatingInquiryId] = useState<number | null>(null);
+  const [deletingInquiryId, setDeletingInquiryId] = useState<number | null>(null);
+  const [deleteTargetInquiry, setDeleteTargetInquiry] = useState<Inquiry | null>(null);
+  const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -192,6 +219,12 @@ export default function AdminPage() {
     fetch("/api/admin/reported-reviews")
       .then((res) => res.json())
       .then((data: ReportedReview[]) => setReportedReviews(data));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/admin/inquiries")
+      .then((res) => res.json())
+      .then((data: Inquiry[]) => setInquiries(data));
   }, []);
 
   useEffect(() => {
@@ -230,6 +263,39 @@ export default function AdminPage() {
       return;
     }
     setReportedReviews((prev) => prev.filter((r) => r.id !== targetId));
+  }
+
+  async function handleToggleInquiryStatus(inquiry: Inquiry) {
+    const newStatus = inquiry.status === "open" ? "closed" : "open";
+    setUpdatingInquiryId(inquiry.id);
+    const res = await fetch(`/api/admin/inquiries/${inquiry.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    setUpdatingInquiryId(null);
+    if (!res.ok) {
+      alert("ステータスの更新に失敗しました。");
+      return;
+    }
+    setInquiries((prev) =>
+      prev.map((i) => (i.id === inquiry.id ? { ...i, status: newStatus } : i))
+    );
+    setSelectedInquiry((prev) => (prev?.id === inquiry.id ? { ...prev, status: newStatus } : prev));
+  }
+
+  async function executeDeleteInquiry() {
+    if (!deleteTargetInquiry) return;
+    const target = deleteTargetInquiry;
+    setDeletingInquiryId(target.id);
+    setDeleteTargetInquiry(null);
+    const res = await fetch(`/api/admin/inquiries/${target.id}`, { method: "DELETE" });
+    setDeletingInquiryId(null);
+    if (!res.ok) {
+      alert("削除に失敗しました。");
+      return;
+    }
+    setInquiries((prev) => prev.filter((i) => i.id !== target.id));
   }
 
   useEffect(() => {
@@ -864,6 +930,107 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
+        {/* お問い合わせ一覧 */}
+        <Card>
+          <CardHeader className="pb-3">
+            <button
+              className="flex w-full items-center justify-between"
+              onClick={() => setInquiriesOpen((v) => !v)}
+            >
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                <Mail className="h-4 w-4" />
+                お問い合わせ
+                {inquiries.filter((i) => i.status === "open").length > 0 && (
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
+                    未対応 {inquiries.filter((i) => i.status === "open").length}件
+                  </span>
+                )}
+              </CardTitle>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${inquiriesOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+          </CardHeader>
+          {inquiriesOpen && (
+            <CardContent>
+              {inquiries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">お問い合わせはありません。</p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                  <table className="w-full text-sm whitespace-nowrap">
+                    <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                      <tr>
+                        <th className="px-4 py-3 text-left">受信日時</th>
+                        <th className="px-4 py-3 text-left">カテゴリ</th>
+                        <th className="px-4 py-3 text-left">件名</th>
+                        <th className="px-4 py-3 text-left">送信者</th>
+                        <th className="px-4 py-3 text-left">ステータス</th>
+                        <th className="px-4 py-3 text-left">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
+                      {inquiries.map((inquiry) => (
+                        <tr key={inquiry.id}>
+                          <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400 text-xs">
+                            {new Date(inquiry.createdAt).toLocaleDateString("ja-JP", {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                            })}
+                          </td>
+                          <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                            {CATEGORY_LABEL[inquiry.category] ?? inquiry.category}
+                          </td>
+                          <td className="max-w-48 px-4 py-3 text-zinc-700 dark:text-zinc-300 truncate">
+                            <span title={inquiry.subject}>{inquiry.subject}</span>
+                            <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500 whitespace-normal line-clamp-2">
+                              {inquiry.body}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-medium text-zinc-700 dark:text-zinc-300">{inquiry.name}</p>
+                            <p className="text-xs text-zinc-400">{inquiry.email}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                inquiry.status === "open"
+                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                                  : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                              }`}
+                            >
+                              {inquiry.status === "open" ? "未対応" : "対応済み"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedInquiry(inquiry)}
+                              >
+                                詳細
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setDeleteTargetInquiry(inquiry)}
+                                disabled={deletingInquiryId === inquiry.id}
+                              >
+                                削除
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+
       </div>
 
       <ConfirmDialog
@@ -892,6 +1059,103 @@ export default function AdminPage() {
         confirmLabel="削除する"
         onConfirm={executeDeleteUser}
       />
+
+      <ConfirmDialog
+        open={deleteTargetInquiry !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTargetInquiry(null); }}
+        title="お問い合わせを削除しますか？"
+        description="削除したお問い合わせは元に戻せません。"
+        confirmLabel="削除する"
+        onConfirm={executeDeleteInquiry}
+      />
+
+      {/* お問い合わせ 詳細モーダル */}
+      {selectedInquiry && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedInquiry(null); }}
+        >
+          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200 mx-4">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">お問い合わせ詳細</h2>
+              <button
+                onClick={() => setSelectedInquiry(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 text-sm">
+              {/* ステータス＆受信日時 */}
+              <div className="flex items-center gap-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    selectedInquiry.status === "open"
+                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                      : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                  }`}
+                >
+                  {selectedInquiry.status === "open" ? "未対応" : "対応済み"}
+                </span>
+                <span className="text-xs text-zinc-400">
+                  {new Date(selectedInquiry.createdAt).toLocaleString("ja-JP", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+
+              {/* カテゴリ */}
+              <div>
+                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">カテゴリ</p>
+                <p className="text-zinc-800 dark:text-zinc-200">
+                  {CATEGORY_LABEL[selectedInquiry.category] ?? selectedInquiry.category}
+                </p>
+              </div>
+
+              {/* 件名 */}
+              <div>
+                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">件名</p>
+                <p className="text-zinc-800 dark:text-zinc-200 font-medium">{selectedInquiry.subject}</p>
+              </div>
+
+              {/* 送信者情報 */}
+              <div>
+                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">送信者</p>
+                <p className="text-zinc-800 dark:text-zinc-200">{selectedInquiry.name}</p>
+                <p className="text-zinc-500 dark:text-zinc-400">{selectedInquiry.email}</p>
+              </div>
+
+              {/* 本文 */}
+              <div>
+                <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">本文</p>
+                <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
+                  <p className="whitespace-pre-wrap text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                    {selectedInquiry.body}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => handleToggleInquiryStatus(selectedInquiry)}
+                disabled={updatingInquiryId === selectedInquiry.id}
+              >
+                {selectedInquiry.status === "open" ? "対応済みにする" : "未対応に戻す"}
+              </Button>
+              <Button onClick={() => setSelectedInquiry(null)}>
+                閉じる
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 受賞登録 編集モーダル */}
       {editModalOpen && editingId !== null && (
