@@ -32,7 +32,14 @@ export default function LikeButton({
         method: nextLiked ? "POST" : "DELETE",
       });
 
-      if (!res.ok) {
+      const data = await res.json();
+
+      if (res.ok) {
+        setCount(data.count);
+      } else if (res.status === 409) {
+        setLiked(true);
+        setCount(data.count);
+      } else {
         setLiked(liked);
         setCount(count);
       }

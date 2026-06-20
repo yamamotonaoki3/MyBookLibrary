@@ -35,8 +35,9 @@ export async function POST(_request: NextRequest, { params }: Props) {
     });
 
     if (existing) {
+      const count = await prisma.like.count({ where: { reviewId } });
       return NextResponse.json(
-        { error: "すでにいいねしています。" },
+        { error: "すでにいいねしています。", liked: true, count },
         { status: 409 }
       );
     }
@@ -46,14 +47,17 @@ export async function POST(_request: NextRequest, { params }: Props) {
     });
 
     if (review.userId !== userId) {
-      await prisma.notification.create({
-        data: {
-          userId: review.userId,
-          type: "like",
-          content: "レビューにいいねが付きました",
-          bookIsbn: review.book.isbn ?? null,
-          bookTitle: review.book.title,
-        },
+      await prisma.notification.createMany({
+        data: [
+          {
+            userId: review.userId,
+            type: "like",
+            content: "レビューにいいねが付きました",
+            bookIsbn: review.book.isbn ?? null,
+            bookTitle: review.book.title,
+          },
+        ],
+        skipDuplicates: true,
       });
     }
 
