@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { isbn, title, author, coverImageUrl, status, publishedAt } = parsed.data;
+    const { isbn, title, author, coverImageUrl, status, publishedAt, source } = parsed.data;
 
     // 著者名を正規化してからDB検索・保存（スペース違いによる分裂防止）
     const normalizedAuthor = normalizeAuthorName(author);
@@ -53,6 +53,7 @@ export async function POST(request: Request) {
           isbn: isbn || null,
           coverImageUrl: coverImageUrl ?? null,
           publishedAt: publishedAt ? parseSalesDate(publishedAt) : new Date(),
+          source: source ?? "rakuten",
         },
       });
     }

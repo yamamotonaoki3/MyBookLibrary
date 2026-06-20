@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult, SearchResponse } from "@/app/api/books/search/route";
 import BarcodeScannerModal from "./_components/BarcodeScannerModal";
+import ManualBookRegisterModal from "./_components/ManualBookRegisterModal";
 
 type SearchType = "title" | "author";
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
@@ -151,6 +152,7 @@ function BookSearchContent() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [manualRegisterOpen, setManualRegisterOpen] = useState(false);
   const [registeringIsbn, setRegisteringIsbn] = useState(false);
   const [registerMessage, setRegisterMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -262,18 +264,30 @@ function BookSearchContent() {
         <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
           本を探す
         </h1>
-        <button
-          type="button"
-          onClick={() => { setRegisterMessage(null); setScannerOpen(true); }}
-          disabled={registeringIsbn}
-          className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-          {registeringIsbn ? "登録中…" : "バーコードで登録"}
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={() => { setRegisterMessage(null); setManualRegisterOpen(true); }}
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            手動で登録
+          </button>
+          <button
+            type="button"
+            onClick={() => { setRegisterMessage(null); setScannerOpen(true); }}
+            disabled={registeringIsbn}
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            {registeringIsbn ? "登録中…" : "バーコードで登録"}
+          </button>
+        </div>
       </div>
 
       {registerMessage && (
@@ -339,12 +353,31 @@ function BookSearchContent() {
           </p>
         )}
 
-        {searched && !loading && !error && (
+        {searched && !loading && !error && results.length > 0 && (
           <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
-            {results.length > 0
-              ? `${results.length} 件表示中`
-              : "該当する本が見つかりませんでした"}
+            {results.length} 件表示中
           </p>
+        )}
+
+        {searched && !loading && !error && results.length === 0 && (
+          <div className="mb-6 rounded-lg border border-zinc-200 bg-zinc-50 px-5 py-6 text-center dark:border-zinc-700 dark:bg-zinc-800/50">
+            <p className="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              該当する本が見つかりませんでした
+            </p>
+            <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+              タイトルや著者名を変えて再検索するか、手動で登録してください。
+            </p>
+            <button
+              type="button"
+              onClick={() => { setRegisterMessage(null); setManualRegisterOpen(true); }}
+              className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              手動で登録する
+            </button>
+          </div>
         )}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -381,6 +414,15 @@ function BookSearchContent() {
         <BarcodeScannerModal
           onClose={() => setScannerOpen(false)}
           onScanned={handleIsbnScanned}
+        />
+      )}
+
+      {manualRegisterOpen && (
+        <ManualBookRegisterModal
+          onClose={() => setManualRegisterOpen(false)}
+          onRegistered={(message) => {
+            setRegisterMessage({ type: "success", text: message });
+          }}
         />
       )}
     </div>
