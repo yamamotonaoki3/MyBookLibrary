@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Home, BookOpen, Trophy, Search, Heart, MessageSquare, Settings, UserCog } from "lucide-react";
+import { Home, BookOpen, Trophy, Search, Heart, MessageSquare, Settings, UserCog, Mail } from "lucide-react";
 
 const TAB_LINKS = [
   { href: "/", label: "ホーム", icon: Home },
@@ -12,6 +12,7 @@ const TAB_LINKS = [
   { href: "/books/search", label: "探す", icon: Search },
   { href: "/favorite-authors", label: "著者", icon: Heart },
   { href: "/my-reviews", label: "感想", icon: MessageSquare },
+  { href: "/contact", label: "問い合わせ", icon: Mail },
 ];
 
 export function BottomNav() {
