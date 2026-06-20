@@ -81,7 +81,7 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="flex flex-col px-4 py-6 lg:py-8">
+    <div className="flex flex-col items-center px-4 py-6 lg:py-8">
       <div className="mb-6 flex w-full max-w-2xl items-center gap-3">
         <Mail className="h-6 w-6 text-zinc-600 dark:text-zinc-400" />
         <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
