@@ -77,11 +77,10 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
       } else {
         if (rememberMe) {
           localStorage.setItem("rememberMe", "1");
-          document.cookie = "session-active=; path=/; max-age=0; SameSite=Lax";
+          sessionStorage.removeItem("sessionActive");
         } else {
           localStorage.setItem("rememberMe", "0");
-          // maxAge なし = セッションクッキー（ブラウザ終了時に自動消滅）
-          document.cookie = "session-active=1; path=/; SameSite=Lax";
+          sessionStorage.setItem("sessionActive", "1");
         }
         router.push(callbackUrl ?? "/");
         router.refresh();
@@ -180,10 +179,10 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
           const rememberMe = (document.getElementById("rememberMe") as HTMLInputElement)?.checked;
           if (rememberMe) {
             localStorage.setItem("rememberMe", "1");
-            document.cookie = "session-active=; path=/; max-age=0; SameSite=Lax";
+            sessionStorage.removeItem("sessionActive");
           } else {
             localStorage.setItem("rememberMe", "0");
-            document.cookie = "session-active=1; path=/; SameSite=Lax";
+            sessionStorage.setItem("sessionActive", "1");
           }
           signIn("google", { callbackUrl: callbackUrl ?? "/" });
         }}
