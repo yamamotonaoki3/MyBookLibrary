@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -54,15 +54,6 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(getErrorMessage(error));
 
-  // ログイン保持フラグのチェック（remember me = false のときブラウザ終了でサインアウト）
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const remembered = localStorage.getItem("rememberMe");
-      if (remembered === null) return; // 初回アクセス（まだログインしていない）
-      // ページロード時に rememberMe=false なら何もしない（セッション自体はJWTで管理）
-    }
-  }, []);
-
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -86,10 +77,11 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
       } else {
         if (rememberMe) {
           localStorage.setItem("rememberMe", "1");
-          sessionStorage.removeItem("sessionActive");
+          document.cookie = "session-active=; path=/; max-age=0; SameSite=Lax";
         } else {
           localStorage.setItem("rememberMe", "0");
-          sessionStorage.setItem("sessionActive", "1");
+          // maxAge なし = セッションクッキー（ブラウザ終了時に自動消滅）
+          document.cookie = "session-active=1; path=/; SameSite=Lax";
         }
         router.push(callbackUrl ?? "/");
         router.refresh();
@@ -188,10 +180,10 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
           const rememberMe = (document.getElementById("rememberMe") as HTMLInputElement)?.checked;
           if (rememberMe) {
             localStorage.setItem("rememberMe", "1");
-            sessionStorage.removeItem("sessionActive");
+            document.cookie = "session-active=; path=/; max-age=0; SameSite=Lax";
           } else {
             localStorage.setItem("rememberMe", "0");
-            sessionStorage.setItem("sessionActive", "1");
+            document.cookie = "session-active=1; path=/; SameSite=Lax";
           }
           signIn("google", { callbackUrl: callbackUrl ?? "/" });
         }}

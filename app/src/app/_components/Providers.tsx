@@ -14,7 +14,10 @@ function RememberMeGuard() {
       localStorage.setItem("rememberMe", "1");
       return;
     }
-    if (rememberMe === "0" && !sessionStorage.getItem("sessionActive")) {
+    const hasSessionActive = document.cookie
+      .split(";")
+      .some((c) => c.trim().startsWith("session-active="));
+    if (rememberMe === "0" && !hasSessionActive) {
       signOut({ callbackUrl: "/login" });
     }
   }, [status]);
