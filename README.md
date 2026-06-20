@@ -20,11 +20,11 @@
 
 ### バーコードスキャンで本を検索
 
-![バーコードスキャンで本を検索](docs/demos/barcode-scan.gif)
+![バーコードスキャンで本を検索](docs/demos/barcode-scan-small.gif)
 
 ### ダッシュボード
 
-![ダッシュボード](docs/demos/dashboard.gif)
+![ダッシュボード](docs/demos/dashboard-small.gif)
 
 ## 技術スタック
 
