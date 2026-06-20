@@ -56,7 +56,7 @@ export default function ContactPage() {
 
   if (submitted) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-16 text-center">
+      <div className="flex flex-col items-center px-4 py-16 text-center">
         <CheckCircle className="mx-auto mb-4 h-14 w-14 text-green-500" />
         <h1 className="mb-2 text-xl font-bold text-zinc-800 dark:text-zinc-100">
           お問い合わせを受け付けました
@@ -81,15 +81,15 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-8">
-      <div className="mb-6 flex items-center gap-3">
+    <div className="flex flex-col items-center px-4 py-6 lg:py-8">
+      <div className="mb-6 flex w-full max-w-2xl items-center gap-3">
         <Mail className="h-6 w-6 text-zinc-600 dark:text-zinc-400" />
         <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
           お問い合わせ
         </h1>
       </div>
 
-      <Card>
+      <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle className="text-base font-medium text-zinc-700 dark:text-zinc-300">
             管理者へのお問い合わせフォーム
