@@ -6,14 +6,16 @@ import { getAuthenticatedUserId } from "@/lib/session";
 const HITS_PER_PAGE = 30;
 
 export type SearchResult = {
+  id?: number;
   title: string;
   author: string;
-  isbn: string;
+  isbn: string | null;
   publisherName: string;
   salesDate: string;
   coverImageUrl: string | null;
   awards: { name: string; year: number; type: string }[];
   status: string;
+  source?: "manual" | "rakuten";
 };
 
 export type SearchResponse = {
@@ -84,16 +86,53 @@ export async function GET(request: NextRequest) {
       dbBooks.map((b) => [b.title, b.readingStatuses[0]?.status ?? "unread"])
     );
 
-    const items: SearchResult[] = rawItems.map((b) => ({
+    const rakutenItems: SearchResult[] = rawItems.map((b) => ({
       title: b.title,
       author: b.author,
-      isbn: b.isbn,
+      isbn: b.isbn || null,
       publisherName: b.publisherName,
       salesDate: b.salesDate,
       coverImageUrl: b.largeImageUrl || null,
       awards: awardsByIsbn.get(b.isbn) ?? awardsByTitle.get(b.title) ?? [],
       status: statusByIsbn.get(b.isbn) ?? statusByTitle.get(b.title) ?? "unread",
     }));
+
+    // 1ページ目のみ手動登録本をDBから取得して先頭に追加
+    let manualItems: SearchResult[] = [];
+    if (page === 1) {
+      const whereClause = type === "author"
+        ? { author: { name: { contains: q } } }
+        : { title: { contains: q } };
+      const manualBooks = await prisma.book.findMany({
+        where: { source: "manual", ...whereClause },
+        include: {
+          author: true,
+          awardEntries: { select: { year: true, type: true, award: { select: { name: true } } } },
+          readingStatuses: { where: { userId }, select: { status: true } },
+        },
+      });
+
+      const rakutenTitles = new Set(rakutenItems.map((b) => b.title));
+      const formatDate = (d: Date) =>
+        `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日`;
+
+      manualItems = manualBooks
+        .filter((b) => !rakutenTitles.has(b.title))
+        .map((b) => ({
+          id: b.id,
+          title: b.title,
+          author: b.author.name,
+          isbn: b.isbn ?? null,
+          publisherName: "",
+          salesDate: formatDate(b.publishedAt),
+          coverImageUrl: b.coverImageUrl,
+          awards: b.awardEntries.map((e) => ({ name: e.award.name, year: e.year, type: e.type })),
+          status: b.readingStatuses[0]?.status ?? "unread",
+          source: "manual" as const,
+        }));
+    }
+
+    const items = [...manualItems, ...rakutenItems];
 
     const response: SearchResponse = {
       items,
