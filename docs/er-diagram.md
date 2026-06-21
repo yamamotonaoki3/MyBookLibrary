@@ -27,6 +27,7 @@ erDiagram
         string isbn "nullable unique"
         string coverImageUrl "nullable"
         date publishedAt
+        string source "データ取得元（default: rakuten）"
     }
 
     Award {
@@ -85,13 +86,14 @@ erDiagram
         string type "new_book or like"
         string content
         string bookIsbn "nullable"
+        string bookTitle "nullable"
         boolean isRead
         datetime expiresAt "nullable"
         datetime createdAt
     }
 
     Account {
-        int id PK
+        string id PK "cuid"
         int userId FK
         string provider "google など"
         string providerAccountId
@@ -105,12 +107,25 @@ erDiagram
     }
 
     Session {
-        int id PK
+        string id PK "cuid"
         int userId FK
         string sessionToken "unique"
         datetime expires
     }
 
+    ContactInquiry {
+        int id PK
+        int userId FK "nullable"
+        string name
+        string email
+        string category
+        string subject
+        text body
+        string status "open / closed（default: open）"
+        datetime createdAt
+    }
+
+    User ||--o{ ContactInquiry : "お問い合わせ"
     User ||--o{ FavoriteAuthor : "お気に入り登録"
     User ||--o{ ReadingStatus : "読書記録"
     User ||--o{ Review : "感想投稿"
@@ -146,3 +161,4 @@ erDiagram
 | Notification | アプリ内通知。`type` で `new_book`（新刊）/ `like`（いいね）を区別する。`bookIsbn` で通知の重複防止に使用 |
 | Account | NextAuth.js の OAuth 連携情報（Google など） |
 | Session | NextAuth.js のセッション管理（JWT 戦略のため通常は未使用） |
+| ContactInquiry | お問い合わせ。未ログインユーザーからの送信も可（`userId` は nullable） |
