@@ -37,13 +37,18 @@ export async function POST(request: Request) {
       authorRecord = await prisma.author.create({ data: { name: normalizedAuthor } });
     }
 
-    // ISBNあり → ISBNで検索、なければ作成
-    // ISBNなし → タイトル+著者IDで検索、なければ作成
+    // 1. ISBNで検索
+    // 2. 見つからなければタイトル+著者で検索（版違いの重複登録を防ぐ）
+    // 3. それでも見つからなければ新規作成
     let book = isbn
       ? await prisma.book.findFirst({ where: { isbn } })
-      : await prisma.book.findFirst({
-          where: { title, authorId: authorRecord.id },
-        });
+      : null;
+
+    if (!book) {
+      book = await prisma.book.findFirst({
+        where: { title, authorId: authorRecord.id },
+      });
+    }
 
     if (!book) {
       book = await prisma.book.create({
