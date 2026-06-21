@@ -30,6 +30,7 @@ export async function GET(
           select: {
             id: true,
             title: true,
+            isbn: true,
             coverImageUrl: true,
             publishedAt: true,
             author: {
@@ -50,6 +51,7 @@ export async function GET(
       book: {
         id: entry.book.id,
         title: entry.book.title,
+        isbn: entry.book.isbn,
         coverImageUrl: entry.book.coverImageUrl,
         publishedAt: entry.book.publishedAt.toISOString(),
         author: {

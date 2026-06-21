@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthorBook } from "@/types/author";
+import { LibraryAvailability } from "@/components/ui/library-availability";
 
 type Props = {
   book: AuthorBook;
@@ -127,6 +128,12 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
             </div>
           )}
         </div>
+
+        {book.isbn && (
+          <div className="mt-1">
+            <LibraryAvailability isbn={book.isbn} />
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2">
           {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (

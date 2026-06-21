@@ -45,7 +45,7 @@ export async function PATCH(request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "ID が不正です。" }, { status: 400 });
     }
 
-    const { title, author, awardId, year, type } = await request.json();
+    const { title, author, isbn, awardId, year, type } = await request.json();
 
     if (type !== undefined && type !== "winner" && type !== "nominee") {
       return NextResponse.json(
@@ -79,13 +79,17 @@ export async function PATCH(request: NextRequest, { params }: Props) {
         where: { id: entry.bookId },
         data: {
           ...(title !== undefined && { title }),
+          ...(isbn !== undefined && { isbn: isbn || null }),
           authorId: authorRecord.id,
         },
       });
-    } else if (title !== undefined) {
+    } else if (title !== undefined || isbn !== undefined) {
       await prisma.book.update({
         where: { id: entry.bookId },
-        data: { title },
+        data: {
+          ...(title !== undefined && { title }),
+          ...(isbn !== undefined && { isbn: isbn || null }),
+        },
       });
     }
 
