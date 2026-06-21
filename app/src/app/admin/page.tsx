@@ -17,10 +17,12 @@ import {
   Trash2,
   ChevronDown,
   Mail,
+  Library,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { LibrarySettings } from "@/app/settings/_components/LibrarySettings";
 
 type SearchResult = {
   title: string;
@@ -706,6 +708,18 @@ export default function AdminPage() {
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* 近隣図書館 */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+              <Library className="h-4 w-4" />近隣図書館の登録
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LibrarySettings />
           </CardContent>
         </Card>
 
