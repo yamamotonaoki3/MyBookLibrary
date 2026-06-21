@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchBookPage } from "@/lib/rakuten";
+import { fetchBookPage, deduplicateByTitle } from "@/lib/rakuten";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 
@@ -57,8 +57,11 @@ export async function GET(request: NextRequest) {
       hits: HITS_PER_PAGE,
     });
 
-    const isbns = rawItems.map((b) => b.isbn).filter(Boolean);
-    const titles = rawItems.map((b) => b.title);
+    // 単行本優先・最古出版日で重複排除
+    const deduplicated = deduplicateByTitle(rawItems);
+
+    const isbns = deduplicated.map((b) => b.isbn).filter(Boolean);
+    const titles = deduplicated.map((b) => b.title);
     const dbBooks = await prisma.book.findMany({
       where: { OR: [{ isbn: { in: isbns } }, { title: { in: titles } }] },
       select: {
@@ -86,7 +89,7 @@ export async function GET(request: NextRequest) {
       dbBooks.map((b) => [b.title, b.readingStatuses[0]?.status ?? "unread"])
     );
 
-    const rakutenItems: SearchResult[] = rawItems.map((b) => ({
+    const rakutenItems: SearchResult[] = deduplicated.map((b) => ({
       title: b.title,
       author: b.author,
       isbn: b.isbn || null,

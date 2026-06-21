@@ -8,6 +8,7 @@ export type RakutenBook = {
   publisherName: string;
   salesDate: string;
   isbn: string;
+  size: string; // 例: "単行本", "文庫", "新書", ""
 };
 
 function getCredentials() {
@@ -96,13 +97,31 @@ function parseSalesDateForSort(salesDate: string): number {
   return new Date(`${year}-${month}-${day}`).getTime();
 }
 
-/** タイトルで重複除去し、出版年が最も古いものを残す */
+/** 形式の優先度（数値が小さいほど優先）: 単行本 > 新書 > 文庫 > その他 */
+function getSizePriority(size: string): number {
+  if (/単行本|ハードカバー|上製本/.test(size)) return 1;
+  if (/新書/.test(size)) return 2;
+  if (/文庫/.test(size)) return 3;
+  return 4;
+}
+
+/** タイトルで重複除去し、形式（単行本優先）→出版日（最古）の順で1冊を残す */
 export function deduplicateByTitle(books: RakutenBook[]): RakutenBook[] {
   const map = new Map<string, RakutenBook>();
   for (const book of books) {
     const key = normalizeTitle(book.title);
     const existing = map.get(key);
-    if (!existing || parseSalesDateForSort(book.salesDate) < parseSalesDateForSort(existing.salesDate)) {
+    if (!existing) {
+      map.set(key, book);
+      continue;
+    }
+    const newPriority = getSizePriority(book.size);
+    const existingPriority = getSizePriority(existing.size);
+    if (
+      newPriority < existingPriority ||
+      (newPriority === existingPriority &&
+        parseSalesDateForSort(book.salesDate) < parseSalesDateForSort(existing.salesDate))
+    ) {
       map.set(key, book);
     }
   }
