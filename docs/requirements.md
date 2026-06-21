@@ -281,6 +281,9 @@
 | GET | `/api/books/search` | 楽天 API で書籍検索 |
 | GET | `/api/books/isbn` | ISBN で書籍情報を取得 |
 | GET | `/api/books/reading` | 読書中・読了の本一覧 |
+| GET | `/api/books/[id]` | 本の詳細取得 |
+| PATCH | `/api/books/[id]` | 本の編集（手動登録のみ） |
+| DELETE | `/api/books/[id]` | 本の削除（手動登録のみ） |
 | POST | `/api/reading-status` | 読書ステータス登録・更新 |
 
 ### レビュー
@@ -294,12 +297,14 @@
 | POST | `/api/reviews/[id]/likes` | いいね追加 |
 | DELETE | `/api/reviews/[id]/likes` | いいね解除 |
 | POST | `/api/reviews/[id]/report` | レビュー通報 |
+| DELETE | `/api/reviews/[id]/report` | 通報取り消し |
 | GET | `/api/reviews/stats` | レビュー統計 |
 
 ### 著者・お気に入り著者
 
 | メソッド | パス | 説明 |
 | --- | --- | --- |
+| GET | `/api/authors` | 著者一覧 |
 | GET | `/api/authors/search` | 著者検索 |
 | GET | `/api/favorite-authors` | お気に入り著者一覧 |
 | POST | `/api/favorite-authors` | 著者をお気に入り登録 |
@@ -352,3 +357,16 @@
 | メソッド | パス | 説明 |
 | --- | --- | --- |
 | GET | `/api/cron/check-new-books` | 新刊チェック（Bearer 認証必須） |
+
+各エンドポイントの詳細なバリデーションルール・エラーコード・リクエスト/レスポンス形式は [API仕様書](./api-spec.md) を参照。
+
+---
+
+## 11. 関連ドキュメント
+
+| ドキュメント | 内容 |
+| --- | --- |
+| [API仕様書](./api-spec.md) | バリデーションルール・エラーコード・列挙型・CSV仕様・リクエスト/レスポンス形式 |
+| [ER図](./er-diagram.md) | データベーステーブル構成とリレーション |
+| [ワイヤーフレーム](./wireframes.md) | 全画面のレイアウト（PC・モバイル） |
+| [画面遷移図](./screen-transition.md) | 画面間の遷移フローとルーティング一覧 |
