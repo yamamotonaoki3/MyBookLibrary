@@ -113,6 +113,17 @@ erDiagram
         datetime expires
     }
 
+    UserLibrary {
+        int id PK
+        int userId FK
+        string systemid "カーリル図書館システムID"
+        string libkey "図書館枝番"
+        string name "図書館名"
+        string pref "都道府県"
+        string city "市区町村 nullable"
+        datetime createdAt
+    }
+
     ContactInquiry {
         int id PK
         int userId FK "nullable"
@@ -125,6 +136,7 @@ erDiagram
         datetime createdAt
     }
 
+    User ||--o{ UserLibrary : "近隣図書館登録"
     User ||--o{ ContactInquiry : "お問い合わせ"
     User ||--o{ FavoriteAuthor : "お気に入り登録"
     User ||--o{ ReadingStatus : "読書記録"
@@ -161,4 +173,5 @@ erDiagram
 | Notification | アプリ内通知。`type` で `new_book`（新刊）/ `like`（いいね）を区別する。`bookIsbn` で通知の重複防止に使用 |
 | Account | NextAuth.js の OAuth 連携情報（Google など） |
 | Session | NextAuth.js のセッション管理（JWT 戦略のため通常は未使用） |
+| UserLibrary | ユーザーが登録した近隣図書館。`systemid` と `libkey` で一意識別。1ユーザー最大 5 件 |
 | ContactInquiry | お問い合わせ。未ログインユーザーからの送信も可（`userId` は nullable） |
