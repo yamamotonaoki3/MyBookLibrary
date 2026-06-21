@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/session";
 
-const NDL_SRU_BASE = "https://iss.ndl.go.jp/api/sru";
+const NDL_SRU_BASE = "https://ndlsearch.ndl.go.jp/api/sru";
 
 export type NdlBook = {
   title: string;
@@ -35,13 +35,35 @@ function parseIsbn(identifiers: string[]): string {
   return "";
 }
 
+function htmlDecode(str: string): string {
+  return str
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+function parseDateForSort(date: string): number {
+  // "2015.3" "2015-03" "2015" などの形式に対応
+  const m = date.match(/(\d{4})[.\-\/]?(\d{0,2})/);
+  if (!m) return Infinity;
+  const year = parseInt(m[1]);
+  const month = parseInt(m[2] || "0");
+  return year * 100 + month;
+}
+
+function normalizeTitle(title: string): string {
+  return title.trim().replace(/\s+/g, "").normalize("NFKC");
+}
+
 function parseRecords(xml: string): NdlBook[] {
   const recordRegex = /<(?:\w+:)?recordData>([\s\S]*?)<\/(?:\w+:)?recordData>/gi;
   const books: NdlBook[] = [];
   let match;
 
   while ((match = recordRegex.exec(xml)) !== null) {
-    const rec = match[1];
+    const rec = htmlDecode(match[1]);
     const title = extractTag(rec, "title");
     const author = extractTag(rec, "creator");
     const publisher = extractTag(rec, "publisher");
@@ -53,7 +75,15 @@ function parseRecords(xml: string): NdlBook[] {
     books.push({ title, author, publisher, date, isbn });
   }
 
-  return books;
+  // 日付の古い順でソートし、同タイトルは最古の1件だけ残す
+  books.sort((a, b) => parseDateForSort(a.date) - parseDateForSort(b.date));
+  const seen = new Set<string>();
+  return books.filter((b) => {
+    const key = normalizeTitle(b.title);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -65,13 +95,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "キーワードを入力してください" }, { status: 400 });
   }
 
-  const parts = q.split(/\s+/);
+  // 全角スペースも半角スペースと同様に分割する
+  const parts = q.split(/[\s　]+/);
   const titlePart = parts[0];
   const authorPart = parts.slice(1).join(" ");
 
   let query = `title="${titlePart}"`;
   if (authorPart) query += ` AND creator="${authorPart}"`;
-  query += ` AND mediatype="1"`;
 
   const params = new URLSearchParams({
     operation: "searchRetrieve",

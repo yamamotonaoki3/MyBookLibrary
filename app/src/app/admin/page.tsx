@@ -531,7 +531,7 @@ export default function AdminPage() {
               <ul className="flex flex-col gap-2">
                 {results.map((book, i) => (
                   <li
-                    key={book.isbn || i}
+                    key={`${book.isbn || ""}_${i}`}
                     className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"
                   >
                     <div className="relative h-16 w-10 flex-shrink-0 overflow-hidden rounded">
