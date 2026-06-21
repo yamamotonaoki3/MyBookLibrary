@@ -28,6 +28,7 @@ export async function BookList({ awardId, year }: Props) {
         select: {
           id: true,
           title: true,
+          isbn: true,
           coverImageUrl: true,
           publishedAt: true,
           author: {
@@ -63,6 +64,7 @@ export async function BookList({ awardId, year }: Props) {
     book: {
       id: entry.book.id,
       title: entry.book.title,
+      isbn: entry.book.isbn,
       coverImageUrl: entry.book.coverImageUrl,
       publishedAt: entry.book.publishedAt.toISOString(),
       author: {

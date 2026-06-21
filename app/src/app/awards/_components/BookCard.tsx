@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BookWithAwardEntry, ReadingStatus } from "@/types/award";
+import { LibraryAvailability } from "@/components/ui/library-availability";
 
 type Props = {
   entry: BookWithAwardEntry;
@@ -30,7 +31,7 @@ export function BookCard({ entry }: Props) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        isbn: null,
+        isbn: book.isbn ?? null,
         title: book.title,
         author: book.author.name,
         coverImageUrl: book.coverImageUrl,
@@ -91,6 +92,12 @@ export function BookCard({ entry }: Props) {
             {book.author.name}
           </p>
         </div>
+
+        {book.isbn && (
+          <div className="mt-1">
+            <LibraryAvailability isbn={book.isbn} />
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-1">
           {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (

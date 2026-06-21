@@ -44,6 +44,7 @@ type AwardEntry = {
   book: {
     id: number;
     title: string;
+    isbn: string | null;
     coverImageUrl: string | null;
     author: { id: number; name: string };
   };
@@ -182,6 +183,7 @@ export default function AdminPage() {
   const [editingYear, setEditingYear] = useState<number>(CURRENT_YEAR);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingAuthor, setEditingAuthor] = useState("");
+  const [editingIsbn, setEditingIsbn] = useState("");
   const [editingAwardId, setEditingAwardId] = useState<number>(0);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
@@ -409,6 +411,7 @@ export default function AdminPage() {
     setEditingYear(entry.year);
     setEditingTitle(entry.book.title);
     setEditingAuthor(entry.book.author.name);
+    setEditingIsbn(entry.book.isbn ?? "");
     setEditingAwardId(entry.award.id);
     setEditModalOpen(true);
   }
@@ -421,6 +424,7 @@ export default function AdminPage() {
       body: JSON.stringify({
         title: editingTitle,
         author: editingAuthor,
+        isbn: editingIsbn || null,
         awardId: editingAwardId,
         year: editingYear,
         type: editingType,
@@ -553,6 +557,18 @@ export default function AdminPage() {
                   value={form.author}
                   onChange={(e) => setForm((f) => ({ ...f, author: e.target.value }))}
                   required
+                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  ISBN（任意）
+                </label>
+                <input
+                  type="text"
+                  value={form.isbn}
+                  onChange={(e) => setForm((f) => ({ ...f, isbn: e.target.value }))}
+                  placeholder="例: 9784167110119"
                   className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
                 />
               </div>
@@ -1190,6 +1206,16 @@ export default function AdminPage() {
                   type="text"
                   value={editingAuthor}
                   onChange={(e) => setEditingAuthor(e.target.value)}
+                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">ISBN（任意）</label>
+                <input
+                  type="text"
+                  value={editingIsbn}
+                  onChange={(e) => setEditingIsbn(e.target.value)}
+                  placeholder="例: 9784167110119"
                   className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
                 />
               </div>

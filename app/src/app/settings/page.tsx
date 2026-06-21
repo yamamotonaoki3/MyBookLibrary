@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { DeleteAccountButton } from "./_components/DeleteAccountButton";
+import { LibrarySettings } from "./_components/LibrarySettings";
 
 export const metadata: Metadata = {
   title: "設定 | MyBookLibrary",
@@ -39,6 +40,17 @@ export default async function SettingsPage() {
               </dd>
             </div>
           </dl>
+        </section>
+
+        {/* 近隣図書館の設定 */}
+        <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+          <h2 className="mb-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+            近隣図書館の設定
+          </h2>
+          <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+            登録した図書館の貸出状況を本一覧から確認できます。
+          </p>
+          <LibrarySettings />
         </section>
 
         {/* アカウント削除 */}

@@ -15,6 +15,7 @@ export type BookWithAwardEntry = {
   book: {
     id: number;
     title: string;
+    isbn: string | null;
     coverImageUrl: string | null;
     publishedAt: string;
     author: {

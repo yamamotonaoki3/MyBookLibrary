@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult, SearchResponse } from "@/app/api/books/search/route";
 import BarcodeScannerModal from "./_components/BarcodeScannerModal";
 import ManualBookRegisterModal from "./_components/ManualBookRegisterModal";
+import { LibraryAvailability } from "@/components/ui/library-availability";
 
 type SearchType = "title" | "author";
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
@@ -103,6 +104,12 @@ function SearchResultCard({ book }: { book: SearchResult }) {
             ))}
           </div>
         </div>
+
+        {book.isbn && (
+          <div className="mt-1 mb-1">
+            <LibraryAvailability isbn={book.isbn} />
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-1">
           {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
