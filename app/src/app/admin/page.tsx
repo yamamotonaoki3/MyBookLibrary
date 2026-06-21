@@ -28,6 +28,7 @@ type SearchResult = {
   isbn: string;
   publisherName: string;
   salesDate: string;
+  size: string;
   coverImageUrl: string | null;
 };
 
@@ -331,7 +332,7 @@ export default function AdminPage() {
     setResults([]);
     await loadAwards();
     const res = await fetch(
-      `/api/books/search?q=${encodeURIComponent(query)}&type=keyword`
+      `/api/books/search?q=${encodeURIComponent(query)}&type=keyword&deduplicate=false`
     );
     const data = await res.json();
     setResults(Array.isArray(data.items) ? data.items : []);
@@ -512,6 +513,16 @@ export default function AdminPage() {
                       <p className="text-zinc-500 dark:text-zinc-400">
                         {book.author} / {book.salesDate}
                       </p>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        {book.size && (
+                          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                            {book.size}
+                          </span>
+                        )}
+                        {book.isbn && (
+                          <span className="text-xs text-zinc-400">ISBN: {book.isbn}</span>
+                        )}
+                      </div>
                     </div>
                     <Button
                       variant="outline"

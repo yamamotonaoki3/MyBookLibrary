@@ -12,6 +12,7 @@ export type SearchResult = {
   isbn: string | null;
   publisherName: string;
   salesDate: string;
+  size: string;
   coverImageUrl: string | null;
   awards: { name: string; year: number; type: string }[];
   status: string;
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get("q")?.trim();
   const type = searchParams.get("type");
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const deduplicate = searchParams.get("deduplicate") !== "false";
 
   if (!q) {
     return NextResponse.json({ error: "検索キーワードを入力してください" }, { status: 400 });
@@ -57,8 +59,8 @@ export async function GET(request: NextRequest) {
       hits: HITS_PER_PAGE,
     });
 
-    // 単行本優先・最古出版日で重複排除
-    const deduplicated = deduplicateByTitle(rawItems);
+    // 管理者画面など deduplicate=false の場合は全版を返す
+    const deduplicated = deduplicate ? deduplicateByTitle(rawItems) : rawItems;
 
     const isbns = deduplicated.map((b) => b.isbn).filter(Boolean);
     const titles = deduplicated.map((b) => b.title);
@@ -95,6 +97,7 @@ export async function GET(request: NextRequest) {
       isbn: b.isbn || null,
       publisherName: b.publisherName,
       salesDate: b.salesDate,
+      size: b.size ?? "",
       coverImageUrl: b.largeImageUrl || null,
       awards: awardsByIsbn.get(b.isbn) ?? awardsByTitle.get(b.title) ?? [],
       status: statusByIsbn.get(b.isbn) ?? statusByTitle.get(b.title) ?? "unread",
@@ -128,6 +131,7 @@ export async function GET(request: NextRequest) {
           isbn: b.isbn ?? null,
           publisherName: "",
           salesDate: formatDate(b.publishedAt),
+          size: "",
           coverImageUrl: b.coverImageUrl,
           awards: b.awardEntries.map((e) => ({ name: e.award.name, year: e.year, type: e.type })),
           status: b.readingStatuses[0]?.status ?? "unread",
