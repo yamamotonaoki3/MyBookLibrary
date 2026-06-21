@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/session";
-import { searchBooksByIsbn } from "@/lib/rakuten";
+import { searchBooksByIsbn, fetchBookPage } from "@/lib/rakuten";
 
 const NDL_SRU_BASE = "https://ndlsearch.ndl.go.jp/api/sru";
 
@@ -119,12 +119,17 @@ export async function GET(request: NextRequest) {
     const xml = await res.text();
     const books = parseRecords(xml);
 
-    // 楽天APIからISBNで書影を並列取得
+    // 楽天APIからISBNで書影を並列取得（見つからなければタイトルでフォールバック）
     const withCovers = await Promise.all(
       books.map(async (book) => {
         try {
-          const rakuten = await searchBooksByIsbn(book.isbn);
-          return { ...book, coverImageUrl: rakuten?.largeImageUrl ?? null };
+          const byIsbn = await searchBooksByIsbn(book.isbn);
+          if (byIsbn?.largeImageUrl) {
+            return { ...book, coverImageUrl: byIsbn.largeImageUrl };
+          }
+          // ISBNで書影が取れなければタイトル+著者で検索してフォールバック
+          const { items } = await fetchBookPage({ title: book.title, page: 1, hits: 1 });
+          return { ...book, coverImageUrl: items[0]?.largeImageUrl ?? null };
         } catch {
           return book;
         }
