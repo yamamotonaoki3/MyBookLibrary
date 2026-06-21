@@ -337,14 +337,14 @@ export default function AdminPage() {
       const res = await fetch(`/api/admin/ndl-search?q=${encodeURIComponent(query)}`);
       const data = await res.json();
       const ndlItems: SearchResult[] = Array.isArray(data)
-        ? data.map((b: { title: string; author: string; publisher: string; date: string; isbn: string }) => ({
+        ? data.map((b: { title: string; author: string; publisher: string; date: string; isbn: string; coverImageUrl: string | null }) => ({
             title: b.title,
             author: b.author,
             isbn: b.isbn,
             publisherName: b.publisher,
             salesDate: b.date,
             size: "",
-            coverImageUrl: null,
+            coverImageUrl: b.coverImageUrl ?? null,
           }))
         : [];
       setResults(ndlItems);

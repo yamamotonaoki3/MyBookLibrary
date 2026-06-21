@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { searchBooksByIsbn } from "@/lib/rakuten";
 
 const NDL_SRU_BASE = "https://ndlsearch.ndl.go.jp/api/sru";
 
@@ -9,6 +10,7 @@ export type NdlBook = {
   publisher: string;
   date: string;
   isbn: string;
+  coverImageUrl: string | null;
 };
 
 function extractTag(xml: string, localName: string): string {
@@ -72,7 +74,7 @@ function parseRecords(xml: string): NdlBook[] {
 
     if (!title || !isbn) continue;
 
-    books.push({ title, author, publisher, date, isbn });
+    books.push({ title, author, publisher, date, isbn, coverImageUrl: null });
   }
 
   // 日付の古い順でソートし、同タイトルは最古の1件だけ残す
@@ -115,7 +117,21 @@ export async function GET(request: NextRequest) {
     const res = await fetch(`${NDL_SRU_BASE}?${params}`);
     if (!res.ok) throw new Error(`NDL API error: ${res.status}`);
     const xml = await res.text();
-    return NextResponse.json(parseRecords(xml));
+    const books = parseRecords(xml);
+
+    // 楽天APIからISBNで書影を並列取得
+    const withCovers = await Promise.all(
+      books.map(async (book) => {
+        try {
+          const rakuten = await searchBooksByIsbn(book.isbn);
+          return { ...book, coverImageUrl: rakuten?.largeImageUrl ?? null };
+        } catch {
+          return book;
+        }
+      })
+    );
+
+    return NextResponse.json(withCovers);
   } catch (err) {
     console.error("[GET /api/admin/ndl-search]", err);
     return NextResponse.json({ error: "国立国会図書館の検索に失敗しました" }, { status: 500 });
