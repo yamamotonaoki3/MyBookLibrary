@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { LibraryAvailability } from "@/components/ui/library-availability";
 
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
 
@@ -104,6 +105,12 @@ export function BookCard({ book, initialStatus, hasReview }: Props) {
                 {book.author.name}
               </p>
             </div>
+
+            {book.isbn && (
+              <div className="mt-1">
+                <LibraryAvailability isbn={book.isbn} />
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-1">
               {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (

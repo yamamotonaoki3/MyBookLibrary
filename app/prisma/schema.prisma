@@ -28,8 +28,25 @@ model User {
   accounts           Account[]
   sessions           Session[]
   contactInquiries   ContactInquiry[]
+  libraries          UserLibrary[]
 
   @@map("users")
+}
+
+model UserLibrary {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  systemid  String
+  libkey    String   @default("")
+  name      String
+  pref      String
+  city      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, systemid, libkey])
+  @@map("user_libraries")
 }
 
 model Account {
