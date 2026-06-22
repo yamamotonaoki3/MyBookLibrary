@@ -50,6 +50,11 @@ variable "seed_admin_password" {
   sensitive = true
 }
 
+variable "calil_api_key" {
+  type      = string
+  sensitive = true
+}
+
 # ──────────────────────────────────────────────
 # Parameter Store（SecureString）
 # ──────────────────────────────────────────────
@@ -61,6 +66,7 @@ locals {
     DATABASE_URL        = var.database_url
     RAKUTEN_APP_ID      = var.rakuten_app_id
     RAKUTEN_ACCESS_KEY  = var.rakuten_access_key
+    CALIL_API_KEY       = var.calil_api_key
     CRON_SECRET         = var.cron_secret
     NEXTAUTH_URL        = var.nextauth_url
     SEED_ADMIN_EMAIL    = var.seed_admin_email

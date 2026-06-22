@@ -13,3 +13,6 @@ key_pair_name = "mybooklibrary-key"
 
 # RDS MySQL パスワード（8文字以上、英大文字・小文字・数字・記号を含むこと）
 db_password   = "ChangeMe123!"
+
+# カーリル図書館 API キー（https://calil.jp/api/dashboard で取得）
+calil_api_key = "your_calil_api_key"

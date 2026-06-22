@@ -34,6 +34,15 @@ flowchart TD
 
     NOTIFY --> |新刊通知| AUTHORDETAIL
     NOTIFY --> |いいね通知| BOOKDETAIL
+
+    SETTINGS --> LIBSETTINGS[近隣図書館の登録\n/settings#libraries]
+    ADMIN --> LIBSETTINGS
+
+    BOOKS --> LIBCHECK{図書館の在庫を確認}
+    SEARCH --> LIBCHECK
+    AUTHORDETAIL --> LIBCHECK
+    AWARD --> LIBCHECK
+    LIBCHECK --> |貸出可・予約する| LIBSITE([図書館予約サイト\n外部])
 ```
 
 ## 画面一覧
