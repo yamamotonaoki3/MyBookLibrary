@@ -59,6 +59,12 @@ variable "rakuten_access_key" {
   sensitive   = true
 }
 
+variable "calil_api_key" {
+  type        = string
+  description = "カーリル図書館 API キー"
+  sensitive   = true
+}
+
 variable "cron_secret" {
   type        = string
   description = "Vercel Cron 用シークレットトークン"

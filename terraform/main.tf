@@ -56,6 +56,7 @@ module "ssm" {
   database_url        = "mysql://admin:${var.db_password}@${module.rds.endpoint}/mybooklibrary"
   rakuten_app_id      = var.rakuten_app_id
   rakuten_access_key  = var.rakuten_access_key
+  calil_api_key       = var.calil_api_key
   cron_secret         = var.cron_secret
   nextauth_url        = "https://${module.cloudfront.domain_name}"
   seed_admin_email    = var.seed_admin_email
