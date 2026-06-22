@@ -17,10 +17,12 @@ import {
   Trash2,
   ChevronDown,
   Mail,
+  Library,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { LibrarySettings } from "@/app/settings/_components/LibrarySettings";
 
 type SearchResult = {
   title: string;
@@ -28,6 +30,7 @@ type SearchResult = {
   isbn: string;
   publisherName: string;
   salesDate: string;
+  size: string;
   coverImageUrl: string | null;
 };
 
@@ -138,6 +141,7 @@ export default function AdminPage() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [searchMode, setSearchMode] = useState<"rakuten" | "ndl">("rakuten");
   const [awards, setAwards] = useState<Award[]>([]);
   const [awardsLoaded, setAwardsLoaded] = useState(false);
   const [form, setForm] = useState<FormState>({
@@ -330,11 +334,30 @@ export default function AdminPage() {
     setSearching(true);
     setResults([]);
     await loadAwards();
-    const res = await fetch(
-      `/api/books/search?q=${encodeURIComponent(query)}&type=keyword`
-    );
-    const data = await res.json();
-    setResults(Array.isArray(data.items) ? data.items : []);
+
+    if (searchMode === "ndl") {
+      const res = await fetch(`/api/admin/ndl-search?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      const ndlItems: SearchResult[] = Array.isArray(data)
+        ? data.map((b: { title: string; author: string; publisher: string; date: string; isbn: string; coverImageUrl: string | null }) => ({
+            title: b.title,
+            author: b.author,
+            isbn: b.isbn,
+            publisherName: b.publisher,
+            salesDate: b.date,
+            size: "",
+            coverImageUrl: b.coverImageUrl ?? null,
+          }))
+        : [];
+      setResults(ndlItems);
+    } else {
+      const res = await fetch(
+        `/api/books/search?q=${encodeURIComponent(query)}&type=keyword&deduplicate=false`
+      );
+      const data = await res.json();
+      setResults(Array.isArray(data.items) ? data.items : []);
+    }
+
     setSearching(false);
   }
 
@@ -471,7 +494,28 @@ export default function AdminPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-3 text-xs text-muted-foreground">楽天ブックスAPIから自動取得。スペース区切りで「タイトル 著者名」のようにAND検索で絞り込めます。</p>
+            {/* 検索モード切り替え */}
+            <div className="mb-3 flex gap-1">
+              <button
+                type="button"
+                onClick={() => { setSearchMode("rakuten"); setResults([]); }}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${searchMode === "rakuten" ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"}`}
+              >
+                楽天ブックス
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSearchMode("ndl"); setResults([]); }}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${searchMode === "ndl" ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"}`}
+              >
+                国立国会図書館
+              </button>
+            </div>
+            <p className="mb-3 text-xs text-muted-foreground">
+              {searchMode === "rakuten"
+                ? "楽天ブックスAPIから自動取得。スペース区切りで「タイトル 著者名」のようにAND検索で絞り込めます。"
+                : "国立国会図書館APIから取得（絶版・旧版のISBNも検索可能）。表紙画像はありません。"}
+            </p>
             <form onSubmit={handleSearch} className="mb-4 flex gap-2">
               <input
                 type="text"
@@ -489,7 +533,7 @@ export default function AdminPage() {
               <ul className="flex flex-col gap-2">
                 {results.map((book, i) => (
                   <li
-                    key={book.isbn || i}
+                    key={`${book.isbn || ""}_${i}`}
                     className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"
                   >
                     <div className="relative h-16 w-10 flex-shrink-0 overflow-hidden rounded">
@@ -512,6 +556,16 @@ export default function AdminPage() {
                       <p className="text-zinc-500 dark:text-zinc-400">
                         {book.author} / {book.salesDate}
                       </p>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        {book.size && (
+                          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                            {book.size}
+                          </span>
+                        )}
+                        {book.isbn && (
+                          <span className="text-xs text-zinc-400">ISBN: {book.isbn}</span>
+                        )}
+                      </div>
                     </div>
                     <Button
                       variant="outline"
@@ -654,6 +708,18 @@ export default function AdminPage() {
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* 近隣図書館 */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+              <Library className="h-4 w-4" />近隣図書館の登録
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LibrarySettings />
           </CardContent>
         </Card>
 

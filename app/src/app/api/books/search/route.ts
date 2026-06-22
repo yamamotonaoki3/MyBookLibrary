@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchBookPage } from "@/lib/rakuten";
+import { fetchBookPage, deduplicateByTitle } from "@/lib/rakuten";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 
@@ -12,6 +12,7 @@ export type SearchResult = {
   isbn: string | null;
   publisherName: string;
   salesDate: string;
+  size: string;
   coverImageUrl: string | null;
   awards: { name: string; year: number; type: string }[];
   status: string;
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get("q")?.trim();
   const type = searchParams.get("type");
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const deduplicate = searchParams.get("deduplicate") !== "false";
 
   if (!q) {
     return NextResponse.json({ error: "検索キーワードを入力してください" }, { status: 400 });
@@ -57,8 +59,11 @@ export async function GET(request: NextRequest) {
       hits: HITS_PER_PAGE,
     });
 
-    const isbns = rawItems.map((b) => b.isbn).filter(Boolean);
-    const titles = rawItems.map((b) => b.title);
+    // 管理者画面など deduplicate=false の場合は全版を返す
+    const deduplicated = deduplicate ? deduplicateByTitle(rawItems) : rawItems;
+
+    const isbns = deduplicated.map((b) => b.isbn).filter(Boolean);
+    const titles = deduplicated.map((b) => b.title);
     const dbBooks = await prisma.book.findMany({
       where: { OR: [{ isbn: { in: isbns } }, { title: { in: titles } }] },
       select: {
@@ -86,12 +91,13 @@ export async function GET(request: NextRequest) {
       dbBooks.map((b) => [b.title, b.readingStatuses[0]?.status ?? "unread"])
     );
 
-    const rakutenItems: SearchResult[] = rawItems.map((b) => ({
+    const rakutenItems: SearchResult[] = deduplicated.map((b) => ({
       title: b.title,
       author: b.author,
       isbn: b.isbn || null,
       publisherName: b.publisherName,
       salesDate: b.salesDate,
+      size: b.size ?? "",
       coverImageUrl: b.largeImageUrl || null,
       awards: awardsByIsbn.get(b.isbn) ?? awardsByTitle.get(b.title) ?? [],
       status: statusByIsbn.get(b.isbn) ?? statusByTitle.get(b.title) ?? "unread",
@@ -125,6 +131,7 @@ export async function GET(request: NextRequest) {
           isbn: b.isbn ?? null,
           publisherName: "",
           salesDate: formatDate(b.publishedAt),
+          size: "",
           coverImageUrl: b.coverImageUrl,
           awards: b.awardEntries.map((e) => ({ name: e.award.name, year: e.year, type: e.type })),
           status: b.readingStatuses[0]?.status ?? "unread",
