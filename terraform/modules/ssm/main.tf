@@ -77,9 +77,10 @@ locals {
 resource "aws_ssm_parameter" "app" {
   for_each = local.params
 
-  name  = "/${var.project}/${each.key}"
-  type  = "SecureString"
-  value = each.value
+  name      = "/${var.project}/${each.key}"
+  type      = "SecureString"
+  value     = each.value
+  overwrite = true
 
   tags = { Name = "${var.project}-${each.key}" }
 }
