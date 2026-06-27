@@ -35,10 +35,9 @@ async function FavoriteAuthorList() {
     orderBy: { author: { name: "asc" } },
   });
 
-  const bookCounts: number[] = [];
-  for (const f of favoriteAuthors) {
-    bookCounts.push(await getAuthorBookCount(f.author.name));
-  }
+  const bookCounts = await Promise.all(
+    favoriteAuthors.map((f) => getAuthorBookCount(f.author.name))
+  );
 
   const authors: FavoriteAuthorItem[] = favoriteAuthors.map((f, i) => ({
     id: f.id,
