@@ -46,6 +46,25 @@ export async function searchBookByIsbn(isbn: string): Promise<NdlBook | null> {
   return { title, author, publisher, pubdate };
 }
 
+export async function getAuthorBookCountNdl(authorName: string): Promise<number> {
+  const params = new URLSearchParams({
+    operation: "searchRetrieve",
+    query: `creator="${authorName}"`,
+    recordSchema: "dcndl",
+    maximumRecords: "1",
+    startRecord: "1",
+  });
+  try {
+    const res = await fetch(`https://ndlsearch.ndl.go.jp/api/sru?${params}`);
+    if (!res.ok) return 0;
+    const xml = await res.text();
+    const match = xml.match(/<numberOfRecords>(\d+)<\/numberOfRecords>/);
+    return match ? parseInt(match[1], 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function searchAuthorsByName(name: string): Promise<string[]> {
   const url = new URL(NDL_API_BASE);
   url.searchParams.set("creator", name);

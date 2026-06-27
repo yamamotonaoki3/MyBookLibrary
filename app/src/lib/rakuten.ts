@@ -1,3 +1,5 @@
+import { getAuthorBookCountNdl } from "@/lib/ndl";
+
 const RAKUTEN_API_BASE =
   "https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404";
 
@@ -138,11 +140,18 @@ export async function getAuthorBookCount(authorName: string): Promise<number> {
   url.searchParams.set("hits", "1");
   url.searchParams.set("author", authorName);
 
-  const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
-  if (!res.ok) return 0;
+  try {
+    const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+    if (res.ok) {
+      const data = await res.json();
+      const count = data.count ?? 0;
+      if (count > 0) return count;
+    }
+  } catch {
+    // fall through to NDL
+  }
 
-  const data = await res.json();
-  return data.count ?? 0;
+  return getAuthorBookCountNdl(authorName);
 }
 
 export async function searchBooksByIsbn(isbn: string): Promise<RakutenBook | null> {
