@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchBookPage, deduplicateByTitle } from "@/lib/rakuten";
+import { searchBooksNdl } from "@/lib/ndl";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 
@@ -102,6 +103,46 @@ export async function GET(request: NextRequest) {
       awards: awardsByIsbn.get(b.isbn) ?? awardsByTitle.get(b.title) ?? [],
       status: statusByIsbn.get(b.isbn) ?? statusByTitle.get(b.title) ?? "unread",
     }));
+
+    // 楽天が0件 → NDLにフォールバック
+    if (rakutenItems.length === 0) {
+      const ndlResult = await searchBooksNdl({ type: type as "title" | "author" | "keyword", q, page });
+      if (ndlResult.items.length > 0) {
+        const ndlIsbns = ndlResult.items.map((b) => b.isbn).filter((v): v is string => v !== null);
+        const ndlTitles = ndlResult.items.map((b) => b.title);
+        const ndlDbBooks = await prisma.book.findMany({
+          where: { OR: [{ isbn: { in: ndlIsbns } }, { title: { in: ndlTitles } }] },
+          select: {
+            isbn: true,
+            title: true,
+            awardEntries: { select: { year: true, type: true, award: { select: { name: true } } } },
+            readingStatuses: { where: { userId }, select: { status: true } },
+          },
+        });
+        const ndlAwardsByIsbn = new Map(ndlDbBooks.filter((b) => b.isbn).map((b) => [b.isbn, toAwards(b.awardEntries)]));
+        const ndlAwardsByTitle = new Map(ndlDbBooks.map((b) => [b.title, toAwards(b.awardEntries)]));
+        const ndlStatusByIsbn = new Map(ndlDbBooks.filter((b) => b.isbn).map((b) => [b.isbn, b.readingStatuses[0]?.status ?? "unread"]));
+        const ndlStatusByTitle = new Map(ndlDbBooks.map((b) => [b.title, b.readingStatuses[0]?.status ?? "unread"]));
+
+        const ndlItems: SearchResult[] = ndlResult.items.map((b) => ({
+          title: b.title,
+          author: b.author,
+          isbn: b.isbn,
+          publisherName: b.publisherName,
+          salesDate: b.salesDate,
+          size: "",
+          coverImageUrl: null,
+          awards: (b.isbn ? ndlAwardsByIsbn.get(b.isbn) : undefined) ?? ndlAwardsByTitle.get(b.title) ?? [],
+          status: (b.isbn ? ndlStatusByIsbn.get(b.isbn) : undefined) ?? ndlStatusByTitle.get(b.title) ?? "unread",
+        }));
+
+        return NextResponse.json({
+          items: ndlItems,
+          totalPages: ndlResult.totalPages,
+          currentPage: page,
+        } satisfies SearchResponse);
+      }
+    }
 
     // 1ページ目のみ手動登録本をDBから取得して先頭に追加
     let manualItems: SearchResult[] = [];

@@ -1,4 +1,128 @@
 const NDL_API_BASE = "https://ndlsearch.ndl.go.jp/api/opensearch";
+const NDL_SRU_BASE = "https://ndlsearch.ndl.go.jp/api/sru";
+const HITS_PER_PAGE = 30;
+
+export type NdlSearchBook = {
+  title: string;
+  author: string;
+  isbn: string | null;
+  publisherName: string;
+  salesDate: string;
+};
+
+function extractTag(xml: string, localName: string): string {
+  const pattern = new RegExp(`<[^:/>\\s]*:?${localName}[^>]*>([^<]+)<\\/[^:/>\\s]*:?${localName}>`, "i");
+  return xml.match(pattern)?.[1]?.trim() ?? "";
+}
+
+function extractAllTags(xml: string, localName: string): string[] {
+  const pattern = new RegExp(`<[^:/>\\s]*:?${localName}[^>]*>([^<]+)<\\/[^:/>\\s]*:?${localName}>`, "gi");
+  const results: string[] = [];
+  let match;
+  while ((match = pattern.exec(xml)) !== null) {
+    const val = match[1].trim();
+    if (val) results.push(val);
+  }
+  return results;
+}
+
+function parseIsbn(identifiers: string[]): string | null {
+  for (const id of identifiers) {
+    const match = id.match(/(?:ISBN[-\s]?)?((?:97[89])[\d-]{10,})/i);
+    if (match) return match[1].replace(/-/g, "");
+  }
+  return null;
+}
+
+function htmlDecode(str: string): string {
+  return str
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
+function normalizeTitleKey(title: string): string {
+  return title.trim().replace(/\s+/g, "").normalize("NFKC");
+}
+
+function formatNdlDate(raw: string): string {
+  const m = raw.match(/(\d{4})[.\-\/]?(\d{0,2})/);
+  if (!m) return raw;
+  return m[2] ? `${m[1]}年${m[2].padStart(2, "0")}月` : `${m[1]}年`;
+}
+
+function parseNdlRecords(xml: string): NdlSearchBook[] {
+  const recordRegex = /<(?:\w+:)?recordData>([\s\S]*?)<\/(?:\w+:)?recordData>/gi;
+  const books: NdlSearchBook[] = [];
+  let match;
+
+  while ((match = recordRegex.exec(xml)) !== null) {
+    const rec = htmlDecode(match[1]);
+    const title = extractTag(rec, "title");
+    if (!title) continue;
+    const author = extractTag(rec, "creator");
+    const publisher = extractTag(rec, "publisher");
+    const date = extractTag(rec, "date");
+    const isbn = parseIsbn(extractAllTags(rec, "identifier"));
+    books.push({
+      title,
+      author,
+      isbn,
+      publisherName: publisher,
+      salesDate: formatNdlDate(date),
+    });
+  }
+
+  // タイトル正規化で重複排除（最初の1件を保持）
+  const seen = new Set<string>();
+  return books.filter((b) => {
+    const key = normalizeTitleKey(b.title);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export async function searchBooksNdl(params: {
+  type: "title" | "author" | "keyword";
+  q: string;
+  page: number;
+}): Promise<{ items: NdlSearchBook[]; totalPages: number }> {
+  let query: string;
+  if (params.type === "author") {
+    query = `creator="${params.q}"`;
+  } else if (params.type === "keyword") {
+    const parts = params.q.split(/[\s　]+/);
+    query = `title="${parts[0]}"`;
+    if (parts.length > 1) query += ` AND creator="${parts.slice(1).join(" ")}"`;
+  } else {
+    query = `title="${params.q}"`;
+  }
+
+  const startRecord = (params.page - 1) * HITS_PER_PAGE + 1;
+  const urlParams = new URLSearchParams({
+    operation: "searchRetrieve",
+    query,
+    recordSchema: "dcndl",
+    maximumRecords: String(HITS_PER_PAGE),
+    startRecord: String(startRecord),
+  });
+
+  try {
+    const res = await fetch(`${NDL_SRU_BASE}?${urlParams}`);
+    if (!res.ok) return { items: [], totalPages: 0 };
+    const xml = await res.text();
+    const totalMatch = xml.match(/<numberOfRecords>(\d+)<\/numberOfRecords>/);
+    const total = totalMatch ? parseInt(totalMatch[1], 10) : 0;
+    const totalPages = Math.ceil(total / HITS_PER_PAGE);
+    const items = parseNdlRecords(xml);
+    return { items, totalPages };
+  } catch {
+    return { items: [], totalPages: 0 };
+  }
+}
 
 type NdlBook = {
   title: string;
