@@ -46,22 +46,29 @@ export async function GET(req: NextRequest) {
       return date !== null && isWithinOneWeek(date);
     });
 
-    for (const book of newBooks) {
-      const alreadyExists = await prisma.notification.findFirst({
-        where: { userId: fav.userId, bookIsbn: book.isbn },
-      });
-      if (alreadyExists) continue;
+    if (newBooks.length === 0) continue;
 
-      await prisma.notification.create({
-        data: {
-          userId: fav.userId,
-          type: "new_book",
-          content: `${fav.author.name} の新刊「${book.title}」が発売されました`,
-          bookIsbn: book.isbn,
-        },
-      });
-      createdCount++;
-    }
+    // 対象ISBNの既存通知を一括取得
+    const newIsbns = newBooks.map((b) => b.isbn as string);
+    const existing = await prisma.notification.findMany({
+      where: { userId: fav.userId, bookIsbn: { in: newIsbns } },
+      select: { bookIsbn: true },
+    });
+    const existingIsbns = new Set(existing.map((n) => n.bookIsbn));
+
+    // 未通知の新刊のみ一括登録
+    const toCreate = newBooks.filter((b) => !existingIsbns.has(b.isbn));
+    if (toCreate.length === 0) continue;
+
+    await prisma.notification.createMany({
+      data: toCreate.map((book) => ({
+        userId: fav.userId,
+        type: "new_book",
+        content: `${fav.author.name} の新刊「${book.title}」が発売されました`,
+        bookIsbn: book.isbn,
+      })),
+    });
+    createdCount += toCreate.length;
   }
 
   return NextResponse.json({ ok: true, created: createdCount });
