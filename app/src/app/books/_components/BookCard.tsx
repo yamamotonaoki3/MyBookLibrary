@@ -108,7 +108,7 @@ export function BookCard({ book, initialStatus, hasReview }: Props) {
 
             {book.isbn && (
               <div className="mt-1">
-                <LibraryAvailability isbn={book.isbn} />
+                <LibraryAvailability isbn={book.isbn} title={book.title} />
               </div>
             )}
 

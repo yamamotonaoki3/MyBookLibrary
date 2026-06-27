@@ -107,7 +107,7 @@ function SearchResultCard({ book }: { book: SearchResult }) {
 
         {book.isbn && (
           <div className="mt-1 mb-1">
-            <LibraryAvailability isbn={book.isbn} />
+            <LibraryAvailability isbn={book.isbn} title={book.title} />
           </div>
         )}
 

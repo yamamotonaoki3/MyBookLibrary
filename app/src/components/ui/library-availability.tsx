@@ -13,6 +13,7 @@ type AvailabilityResult = {
 
 type Props = {
   isbn: string;
+  title?: string;
 };
 
 // 貸出状況に応じたバッジスタイル
@@ -42,7 +43,7 @@ function showReserveLink(status: string): boolean {
   return ["貸出可", "蔵書あり", "館内のみ", "貸出中", "予約中", "準備中"].includes(status);
 }
 
-export function LibraryAvailability({ isbn }: Props) {
+export function LibraryAvailability({ isbn, title }: Props) {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<AvailabilityResult[] | null>(null);
   const [noLibraries, setNoLibraries] = useState(false);
@@ -53,7 +54,9 @@ export function LibraryAvailability({ isbn }: Props) {
     setError(null);
     setNoLibraries(false);
     try {
-      const res = await fetch(`/api/calil/check?isbn=${encodeURIComponent(isbn)}`);
+      const url = `/api/calil/check?isbn=${encodeURIComponent(isbn)}`
+        + (title ? `&title=${encodeURIComponent(title)}` : "");
+      const res = await fetch(url);
       if (!res.ok) {
         setError("確認に失敗しました");
         return;
