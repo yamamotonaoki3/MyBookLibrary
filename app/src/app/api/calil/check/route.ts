@@ -54,8 +54,16 @@ export async function GET(request: NextRequest) {
       );
     });
 
+    // 同じ systemid に「蔵書なし」以外の結果があれば「蔵書なし」を除外
+    const systemidsWithStock = new Set(
+      filtered.filter((r) => r.loanStatus !== "蔵書なし").map((r) => r.systemid)
+    );
+    const deduped = filtered.filter(
+      (r) => !(r.loanStatus === "蔵書なし" && systemidsWithStock.has(r.systemid))
+    );
+
     // 図書館名を付与
-    const enriched = filtered.map((r) => {
+    const enriched = deduped.map((r) => {
       const lib = r.loanStatus === "蔵書なし"
         ? libraries.find((l) => l.systemid === r.systemid)
         : libraries.find((l) => l.systemid === r.systemid && (l.libkey === "" || l.libkey === r.libkey));
