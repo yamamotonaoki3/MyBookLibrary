@@ -53,7 +53,7 @@ export async function searchLibraries(
 }
 
 export async function checkAvailability(
-  isbn: string,
+  isbns: string[],
   systemids: string[]
 ): Promise<AvailabilityResult[]> {
   const apiKey = process.env.CALIL_API_KEY;
@@ -61,7 +61,7 @@ export async function checkAvailability(
 
   const params = new URLSearchParams({
     appkey: apiKey,
-    isbn,
+    isbn: isbns.join(","),
     systemid: systemids.join(","),
     format: "json",
     callback: "no",
@@ -78,12 +78,12 @@ export async function checkAvailability(
 
     // continue が 0 になったら完了
     if (!data.continue) {
-      return extractResults(data, isbn, systemids);
+      return mergeResults(data, isbns, systemids);
     }
 
     // タイムアウトしたらその時点の結果を返す
     if (Date.now() >= deadline) {
-      return extractResults(data, isbn, systemids);
+      return mergeResults(data, isbns, systemids);
     }
 
     // ポーリング（2秒以上あける）
@@ -99,7 +99,7 @@ export async function checkAvailability(
   }
 }
 
-function extractResults(
+function extractResultsForIsbn(
   data: { books?: CheckResponseBooks },
   isbn: string,
   systemids: string[]
@@ -118,7 +118,6 @@ function extractResults(
     const reserveurl = sysData.reserveurl ?? "";
 
     if (Object.keys(libkeyMap).length === 0) {
-      // 蔵書なし
       results.push({ systemid, libkey: "", loanStatus: "蔵書なし", reserveurl });
     } else {
       for (const [libkey, loanStatus] of Object.entries(libkeyMap)) {
@@ -128,4 +127,25 @@ function extractResults(
   }
 
   return results;
+}
+
+// 複数ISBNの結果をマージし、systemid+libkeyごとに「蔵書なし」以外を優先する
+function mergeResults(
+  data: { books?: CheckResponseBooks },
+  isbns: string[],
+  systemids: string[]
+): AvailabilityResult[] {
+  const best = new Map<string, AvailabilityResult>();
+
+  for (const isbn of isbns) {
+    for (const result of extractResultsForIsbn(data, isbn, systemids)) {
+      const key = `${result.systemid}__${result.libkey}`;
+      const existing = best.get(key);
+      if (!existing || (existing.loanStatus === "蔵書なし" && result.loanStatus !== "蔵書なし")) {
+        best.set(key, result);
+      }
+    }
+  }
+
+  return [...best.values()];
 }
