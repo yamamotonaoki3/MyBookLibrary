@@ -3,21 +3,24 @@
 import { useState } from "react";
 
 type Props = {
-  review: { id: number; body: string; isSpoiler: boolean };
+  review: { id: number; body: string; isSpoiler: boolean; isPublic: boolean };
 };
 
 export default function EditReviewForm({ review }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [currentBody, setCurrentBody] = useState(review.body);
   const [currentIsSpoiler, setCurrentIsSpoiler] = useState(review.isSpoiler);
+  const [currentIsPublic, setCurrentIsPublic] = useState(review.isPublic);
   const [editBody, setEditBody] = useState(review.body);
   const [editIsSpoiler, setEditIsSpoiler] = useState(review.isSpoiler);
+  const [editIsPublic, setEditIsPublic] = useState(review.isPublic);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function handleEdit() {
     setEditBody(currentBody);
     setEditIsSpoiler(currentIsSpoiler);
+    setEditIsPublic(currentIsPublic);
     setError(null);
     setIsEditing(true);
   }
@@ -47,7 +50,7 @@ export default function EditReviewForm({ review }: Props) {
       const res = await fetch(`/api/reviews/${review.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: editBody, isSpoiler: editIsSpoiler }),
+        body: JSON.stringify({ body: editBody, isSpoiler: editIsSpoiler, isPublic: editIsPublic }),
       });
 
       if (!res.ok) {
@@ -58,6 +61,7 @@ export default function EditReviewForm({ review }: Props) {
 
       setCurrentBody(editBody.trim());
       setCurrentIsSpoiler(editIsSpoiler);
+      setCurrentIsPublic(editIsPublic);
       setIsEditing(false);
     } catch {
       setError("保存に失敗しました。");
@@ -69,11 +73,18 @@ export default function EditReviewForm({ review }: Props) {
   if (!isEditing) {
     return (
       <div>
-        {currentIsSpoiler && (
-          <span className="mb-2 inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900 dark:text-red-300">
-            ネタバレあり
-          </span>
-        )}
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {currentIsSpoiler && (
+            <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900 dark:text-red-300">
+              ネタバレあり
+            </span>
+          )}
+          {!currentIsPublic && (
+            <span className="inline-block rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
+              非公開
+            </span>
+          )}
+        </div>
         <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
           {currentBody}
         </p>
@@ -113,6 +124,22 @@ export default function EditReviewForm({ review }: Props) {
           ネタバレを含む
         </span>
       </label>
+      <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-800/50">
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={editIsPublic}
+            onChange={(e) => setEditIsPublic(e.target.checked)}
+            className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-600"
+          />
+          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            全体に公開する
+          </span>
+        </label>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          ※ 公開した感想は他のユーザーも閲覧できます。チェックを外すと自分のみ閲覧できます。
+        </p>
+      </div>
       {error && (
         <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
       )}

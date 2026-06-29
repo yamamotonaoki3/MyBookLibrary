@@ -42,6 +42,9 @@ export default async function BookDetailPage({ params }: Props) {
         orderBy: { year: "desc" },
       },
       reviews: {
+        where: {
+          OR: [{ isPublic: true }, { userId: userId }],
+        },
         include: {
           user: { select: { name: true, id: true } },
           _count: { select: { likes: true } },

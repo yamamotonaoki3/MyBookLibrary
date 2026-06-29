@@ -13,6 +13,7 @@ export default function ReviewForm({ bookId, bookTitle }: Props) {
   const router = useRouter();
   const [body, setBody] = useState("");
   const [isSpoiler, setIsSpoiler] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +38,7 @@ export default function ReviewForm({ bookId, bookTitle }: Props) {
       const res = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId, body, isSpoiler }),
+        body: JSON.stringify({ bookId, body, isSpoiler, isPublic }),
       });
 
       if (!res.ok) {
@@ -98,6 +99,23 @@ export default function ReviewForm({ bookId, bookTitle }: Props) {
             ネタバレを含む
           </span>
         </label>
+
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/50">
+          <label className="flex cursor-pointer items-center gap-3">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              className="h-4 w-4 rounded border-zinc-300 text-zinc-800 focus:ring-zinc-500 dark:border-zinc-600"
+            />
+            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              全体に公開する
+            </span>
+          </label>
+          <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+            ※ 公開した感想は他のユーザーも閲覧できます。チェックを外すと自分のみ閲覧できます。
+          </p>
+        </div>
 
         {error && (
           <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">

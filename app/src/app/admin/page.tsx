@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   Settings,
@@ -182,6 +182,7 @@ export default function AdminPage() {
 
   const [entries, setEntries] = useState<AwardEntry[]>([]);
   const [selectedAwardTab, setSelectedAwardTab] = useState<string>("all");
+  const [selectedYear, setSelectedYear] = useState<number | "all">("all");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingType, setEditingType] = useState<"winner" | "nominee">("winner");
   const [editingYear, setEditingYear] = useState<number>(CURRENT_YEAR);
@@ -214,6 +215,17 @@ export default function AdminPage() {
   const [deletingInquiryId, setDeletingInquiryId] = useState<number | null>(null);
   const [deleteTargetInquiry, setDeleteTargetInquiry] = useState<Inquiry | null>(null);
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
+
+  const availableYears = useMemo(() => {
+    const base = selectedAwardTab === "all" ? entries : entries.filter((e) => e.award.name === selectedAwardTab);
+    return [...new Set(base.map((e) => e.year))].sort((a, b) => b - a);
+  }, [entries, selectedAwardTab]);
+
+  const filteredEntries = useMemo(() => {
+    return entries
+      .filter((e) => selectedAwardTab === "all" || e.award.name === selectedAwardTab)
+      .filter((e) => selectedYear === "all" || e.year === selectedYear);
+  }, [entries, selectedAwardTab, selectedYear]);
 
   useEffect(() => {
     fetch("/api/admin/stats")
@@ -790,7 +802,7 @@ export default function AdminPage() {
               <>
                 <div className="mb-4 flex flex-wrap gap-2">
                   <button
-                    onClick={() => setSelectedAwardTab("all")}
+                    onClick={() => { setSelectedAwardTab("all"); setSelectedYear("all"); }}
                     className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                       selectedAwardTab === "all"
                         ? "bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900"
@@ -805,7 +817,7 @@ export default function AdminPage() {
                     return (
                       <button
                         key={a.id}
-                        onClick={() => setSelectedAwardTab(a.name)}
+                        onClick={() => { setSelectedAwardTab(a.name); setSelectedYear("all"); }}
                         className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                           selectedAwardTab === a.name
                             ? "bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900"
@@ -816,6 +828,21 @@ export default function AdminPage() {
                       </button>
                     );
                   })}
+                </div>
+                <div className="mb-4 flex items-center gap-3">
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value === "all" ? "all" : Number(e.target.value))}
+                    className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                  >
+                    <option value="all">すべての年度</option>
+                    {availableYears.map((y) => (
+                      <option key={y} value={y}>{y}年</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {filteredEntries.length}件
+                  </span>
                 </div>
               <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
                 <table className="w-full text-sm whitespace-nowrap">
@@ -830,10 +857,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
-                    {(selectedAwardTab === "all"
-                      ? entries
-                      : entries.filter((e) => e.award.name === selectedAwardTab)
-                    ).map((entry) => (
+                    {filteredEntries.map((entry) => (
                       <tr key={entry.id}>
                         <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                           {entry.award.name}

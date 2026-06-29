@@ -74,6 +74,7 @@ export default async function MyReviewsPage() {
                   id: review.id,
                   body: review.body,
                   isSpoiler: review.isSpoiler,
+                  isPublic: review.isPublic,
                 }}
               />
             </li>
