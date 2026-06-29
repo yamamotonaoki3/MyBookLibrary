@@ -64,6 +64,7 @@ erDiagram
         int bookId FK
         text body "10〜2000文字"
         boolean isSpoiler
+        boolean isPublic "公開フラグ（default: true）"
         datetime createdAt
     }
 
@@ -167,7 +168,7 @@ erDiagram
 | AwardEntry | 書籍と文学賞の受賞・ノミネート関係。`type` で `winner`（受賞）/ `nominee`（ノミネート）を区別する |
 | FavoriteAuthor | ユーザーのお気に入り著者登録。`notify` で新刊通知 ON/OFF を管理する |
 | ReadingStatus | ユーザーごとの読書ステータス（unread / want_to_read / reading / read）。`unread` はレコードなし（デフォルト） |
-| Review | ユーザーが投稿した感想（10〜2000 文字）。`isSpoiler` でネタバレフラグを管理する |
+| Review | ユーザーの感想（10〜2000文字）。`isSpoiler` でネタバレ、`isPublic` で公開/非公開を管理 |
 | Like | 感想へのいいね。1ユーザーにつき1いいね（`userId_reviewId` で unique） |
 | Report | 感想への通報。1ユーザーにつき1通報（`userId_reviewId` で unique） |
 | Notification | アプリ内通知。`type` で `new_book`（新刊）/ `like`（いいね）を区別する。`bookIsbn` で通知の重複防止に使用 |
