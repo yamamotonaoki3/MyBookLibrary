@@ -7,6 +7,7 @@ export const ReviewSchema = z.object({
     .min(10, "感想は10文字以上で入力してください。")
     .max(2000, "感想は2000文字以内で入力してください。"),
   isSpoiler: z.boolean().optional().default(false),
+  isPublic: z.boolean().optional().default(true),
   bookId: z.number().int().positive().optional(),
 });
 

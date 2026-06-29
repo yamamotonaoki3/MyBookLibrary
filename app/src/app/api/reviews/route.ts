@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { bookId, body, isSpoiler } = parsed.data;
+    const { bookId, body, isSpoiler, isPublic } = parsed.data;
 
     if (typeof bookId !== "number") {
       return NextResponse.json({ error: "bookId が不正です。" }, { status: 400 });
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
         bookId,
         body,
         isSpoiler: isSpoiler ?? false,
+        isPublic: isPublic ?? true,
       },
     });
 

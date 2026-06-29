@@ -20,6 +20,7 @@ export function WriteReviewModal() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [body, setBody] = useState("");
   const [isSpoiler, setIsSpoiler] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,7 @@ export function WriteReviewModal() {
     setSelectedBook(null);
     setBody("");
     setIsSpoiler(false);
+    setIsPublic(true);
     setError(null);
     setOpen(true);
   }
@@ -64,7 +66,7 @@ export function WriteReviewModal() {
     const res = await fetch("/api/reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookId: selectedBook.id, body: body.trim(), isSpoiler }),
+      body: JSON.stringify({ bookId: selectedBook.id, body: body.trim(), isSpoiler, isPublic }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -209,6 +211,21 @@ export function WriteReviewModal() {
                   />
                   ネタバレを含む
                 </label>
+
+                <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 dark:border-zinc-700 dark:bg-zinc-800/50">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={isPublic}
+                      onChange={(e) => setIsPublic(e.target.checked)}
+                      className="rounded"
+                    />
+                    全体に公開する
+                  </label>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    ※ 公開した感想は他のユーザーも閲覧できます。チェックを外すと自分のみ閲覧できます。
+                  </p>
+                </div>
 
                 {error && (
                   <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>

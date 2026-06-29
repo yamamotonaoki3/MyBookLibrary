@@ -50,7 +50,7 @@ export async function PATCH(request: NextRequest, { params }: Props) {
   try {
     const { userId, error } = await getAuthenticatedUserId();
     if (error) return error;
-    const { body, isSpoiler } = await request.json();
+    const { body, isSpoiler, isPublic } = await request.json();
     const { id } = await params;
     const reviewId = Number(id);
 
@@ -73,8 +73,8 @@ export async function PATCH(request: NextRequest, { params }: Props) {
         { status: 403 }
       );
     }
-    const patchSchema = ReviewSchema.pick({ body: true, isSpoiler: true });
-    const parsed = patchSchema.safeParse({ body, isSpoiler });
+    const patchSchema = ReviewSchema.pick({ body: true, isSpoiler: true, isPublic: true });
+    const parsed = patchSchema.safeParse({ body, isSpoiler, isPublic });
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
@@ -82,9 +82,10 @@ export async function PATCH(request: NextRequest, { params }: Props) {
       );
     }
 
-    const data: { body?: string; isSpoiler?: boolean } = {};
+    const data: { body?: string; isSpoiler?: boolean; isPublic?: boolean } = {};
     if (parsed.data.body !== undefined) data.body = parsed.data.body;
     if (parsed.data.isSpoiler !== undefined) data.isSpoiler = parsed.data.isSpoiler;
+    if (parsed.data.isPublic !== undefined) data.isPublic = parsed.data.isPublic;
 
     const updated = await prisma.review.update({
       where: { id: reviewId },

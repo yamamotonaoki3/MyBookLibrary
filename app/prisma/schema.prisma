@@ -164,6 +164,7 @@ model Review {
   bookId    Int      @map("book_id")
   body      String   @db.Text
   isSpoiler Boolean  @default(false) @map("is_spoiler")
+  isPublic  Boolean  @default(true) @map("is_public")
   createdAt DateTime @default(now()) @map("created_at")
   user      User     @relation(fields: [userId], references: [id])
   book      Book     @relation(fields: [bookId], references: [id])
