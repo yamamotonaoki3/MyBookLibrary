@@ -60,6 +60,7 @@
 | --- | --- | --- |
 | `body` | string | 必須、前後空白トリム、10〜2000文字 |
 | `isSpoiler` | boolean | 任意、デフォルト `false` |
+| `isPublic` | boolean | 任意、デフォルト `true`（`false` で非公開） |
 | `bookId` | number | 任意、正の整数 |
 
 ### お気に入り著者（FavoriteAuthorSchema）
@@ -380,7 +381,8 @@ title,author,isbn,coverImageUrl,publishedAt,awardId,year,type
 {
   "bookId": 7,
   "body": "とても面白かったです。主人公の猫の視点が独特で...",
-  "isSpoiler": false
+  "isSpoiler": false,
+  "isPublic": true
 }
 ```
 
@@ -393,6 +395,7 @@ title,author,isbn,coverImageUrl,publishedAt,awardId,year,type
   "bookId": 7,
   "body": "とても面白かったです...",
   "isSpoiler": false,
+  "isPublic": true,
   "createdAt": "2024-05-01T12:00:00.000Z"
 }
 ```
