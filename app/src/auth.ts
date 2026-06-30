@@ -112,14 +112,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
         token.name = dbUser?.name ?? null;
       }
-      // Google OAuth: DBからroleを取得
+      // Google OAuth: DBからid・role・nameを取得
       if (account?.provider === "google" && token.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email },
+          select: { id: true, name: true, role: true },
         });
         if (dbUser) {
           token.id = String(dbUser.id);
           token.role = dbUser.role;
+          token.name = dbUser.name;
         }
       }
       return token;

@@ -176,17 +176,10 @@ export function LoginForm({ error, callbackUrl }: LoginFormProps) {
         variant="outline"
         className="h-9 w-full gap-2 text-sm lg:h-11 lg:text-base"
         onClick={() => {
-          const rememberMe = (document.getElementById("rememberMe") as HTMLInputElement)?.checked;
-          if (rememberMe) {
-            localStorage.setItem("rememberMe", "1");
-            sessionStorage.removeItem("sessionActive");
-            localStorage.removeItem("oauthSessionActive");
-          } else {
-            localStorage.setItem("rememberMe", "0");
-            sessionStorage.setItem("sessionActive", "1");
-            // OAuth リダイレクト後に sessionStorage が失われた場合のグレース期間フラグ
-            localStorage.setItem("oauthSessionActive", String(Date.now()));
-          }
+          // Google OAuth は常にセッション維持（rememberMe チェック不要）
+          localStorage.setItem("rememberMe", "1");
+          sessionStorage.removeItem("sessionActive");
+          localStorage.removeItem("oauthSessionActive");
           signIn("google", { callbackUrl: callbackUrl ?? "/" });
         }}
       >
