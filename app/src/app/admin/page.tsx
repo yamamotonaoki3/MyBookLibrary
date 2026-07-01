@@ -507,18 +507,18 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             {/* 検索モード切り替え */}
-            <div className="mb-3 flex gap-1">
+            <div className="mb-3 flex flex-wrap gap-1">
               <button
                 type="button"
                 onClick={() => { setSearchMode("rakuten"); setResults([]); }}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${searchMode === "rakuten" ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${searchMode === "rakuten" ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"}`}
               >
                 楽天ブックス
               </button>
               <button
                 type="button"
                 onClick={() => { setSearchMode("ndl"); setResults([]); }}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${searchMode === "ndl" ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${searchMode === "ndl" ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"}`}
               >
                 国立国会図書館
               </button>
@@ -534,7 +534,7 @@ export default function AdminPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="例: 容疑者Xの献身 東野圭吾（タイトル 著者名）"
-                className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
               <Button type="submit" disabled={searching} size="sm" className="shrink-0 whitespace-nowrap">
                 {searching ? "検索中..." : "検索"}
@@ -1266,11 +1266,11 @@ export default function AdminPage() {
       {/* 受賞登録 編集モーダル */}
       {editModalOpen && editingId !== null && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
           onClick={(e) => { if (e.target === e.currentTarget) setEditModalOpen(false); }}
         >
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
-            <div className="mb-4 flex items-center justify-between">
+          <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-lg bg-white shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 pb-4">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">受賞登録を編集</h2>
               <button
                 onClick={() => setEditModalOpen(false)}
@@ -1280,7 +1280,7 @@ export default function AdminPage() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 overflow-y-auto px-6">
               <div>
                 <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">タイトル</label>
                 <input
@@ -1352,7 +1352,7 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 flex shrink-0 justify-end gap-2 border-t border-zinc-200 p-6 pt-4 dark:border-zinc-800">
               <Button variant="outline" onClick={() => setEditModalOpen(false)}>
                 キャンセル
               </Button>
