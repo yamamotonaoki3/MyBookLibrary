@@ -1,280 +1,187 @@
-# EC2 + RDS アプリデプロイガイド
+# EC2 アプリデプロイガイド
 
 ## このドキュメントについて
 
 Terraform で構築した AWS インフラ（EC2 + RDS）に Next.js アプリをデプロイする手順をまとめたガイドです。
-インフラ構築（Terraform）とアプリデプロイは別の作業であり、それぞれ異なるツールと手順が必要です。
 
 ---
 
-## Terraform のインフラ構築との違い
+## ⚠️ 重要：このアプリは Docker を使っていない
 
-| 項目 | Terraform（インフラ構築） | アプリデプロイ |
-|---|---|---|
-| 目的 | サーバー・DB・ネットワークを作る | サーバー上でアプリを動かす |
-| 例え | 家を建てる | 家具を運び込んで住める状態にする |
-| 使うツール | `terraform apply` | Docker、SSH、SCP |
-| 自動化の度合い | コード1つで全自動 | 手順が複数あり、手動部分もある |
+過去のドキュメントに Docker / docker-compose を使ったデプロイ手順が記載されていましたが、**実際の本番環境は Docker を使っていません。**
 
-Terraform が完了しても、アプリはまだ動いていません。この後の作業が必要です。
+### 実際の仕組み
 
----
-
-## 全体の流れ
+EC2 起動時に `terraform/modules/ec2/user_data.sh` が自動実行され、以下をすべて行います：
 
 ```
-① インフラ構築（Terraform） ← 完了済み
-  └─ EC2・RDS・VPC・セキュリティグループを作成
-
-② アプリのパッケージ化（Docker）
-  └─ Next.js アプリを Docker イメージとしてまとめる
-
-③ EC2 の準備
-  └─ docker-compose インストール
-  └─ 環境変数ファイル（.env.production）を配置
-
-④ アプリを EC2 に転送・起動
-  └─ Docker イメージを EC2 に送って起動
-
-⑤ データベースの初期化
-  └─ RDS に対して prisma migrate deploy を実行
-
-⑥ ブラウザで確認
-  └─ http://52.69.24.11:3000 にアクセス
+EC2 起動
+  └─ user_data.sh が自動実行
+      ├─ GitHub からリポジトリをクローン → /opt/app/
+      ├─ npm install + npm run build（Next.js ビルド）
+      ├─ AWS SSM Parameter Store から環境変数を取得 → start.sh に組み込み
+      ├─ prisma migrate deploy（RDS マイグレーション自動実行）
+      └─ systemd サービスとして登録・起動
+           └─ start.sh が SSM から環境変数を読み込んで node server.js を実行
 ```
+
+アプリは **systemd サービス（`mybooklibrary.service`）** として管理されており、EC2 再起動時も自動で起動します。
 
 ---
 
-## ① インフラ構築（完了済み）
+## 現在の構成
 
-`terraform apply` で以下のリソースを作成済み。
-
-| リソース | 詳細 |
+| 項目 | 内容 |
 |---|---|
-| EC2 | t2.micro / Amazon Linux 2023 / Elastic IP: 52.69.24.11 |
-| RDS | db.t3.micro / MySQL 8.4 / プライベートサブネット |
-| VPC | 10.0.0.0/16 / パブリック+プライベートサブネット |
-| セキュリティグループ | EC2: ポート3000公開 / RDS: EC2からのみ3306許可 |
-
-EC2 には Docker がインストール済み（user_data.sh で自動実行）。
-ただし **docker-compose は含まれていなかった**（後述）。
-
----
-
-## ② Dockerfile（Next.js のパッケージ化）
-
-**ファイル:** `app/Dockerfile`
-
-Next.js アプリを Docker イメージとしてまとめるためのファイル。
-マルチステージビルドにより、ビルド用の環境と実行用の環境を分離し、イメージを軽量に保つ。
-
-```
-[Build Stage]  node:22-alpine
-  └─ npm ci（依存パッケージインストール）
-  └─ npm run build（Next.js ビルド → .next/standalone に出力）
-
-[Runtime Stage]  node:22-alpine
-  └─ standalone の出力物だけをコピー
-  └─ node server.js で起動
-```
-
-**ポイント:** `next.config.ts` に `output: "standalone"` が設定されているため、
-Node.js と必要なファイルだけが含まれた軽量イメージが生成される。
-EC2 に Node.js や npm を別途インストールする必要はない（Docker の中に全て含まれているため）。
+| EC2 Elastic IP | `176.32.66.52` |
+| アプリ配置場所 | `/opt/app/` |
+| 起動スクリプト | `/opt/app/start.sh` |
+| 環境変数の取得元 | AWS SSM Parameter Store |
+| サービス管理 | systemd（`mybooklibrary.service`） |
+| データベース | RDS MySQL（プライベートサブネット） |
+| 公開URL | CloudFront（`https://d29rpr1gfxxlgj.cloudfront.net`） |
 
 ---
 
-## ③ EC2 の準備
+## 通常のデプロイ手順（コード変更を本番に反映する場合）
 
-### 3-1. docker-compose のインストール
+コードを変更して main ブランチにマージした後、EC2 を作り直すことで最新コードを反映します。
 
-**なぜ必要か:** EC2 の初期化スクリプト（`user_data.sh`）に docker-compose のインストールが含まれていなかった。
-Docker 本体はインストール済みだが、複数コンテナを管理する `docker-compose` は別途インストールが必要。
-
-EC2 に SSH 接続して以下を実行：
+### Step 1: EC2 を作り直す
 
 ```bash
-# SSH 接続
-ssh -i ~/.ssh/mybooklibrary-key.pem ec2-user@52.69.24.11
-
-# docker-compose をインストール
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# 確認
-docker-compose --version
+cd terraform
+terraform apply -replace="module.ec2.aws_instance.app"
 ```
 
-### 3-2. 環境変数ファイルの配置
+- EC2 が削除・再作成される（約 2〜3 分）
+- Elastic IP は同じまま維持される（`176.32.66.52`）
+- RDS のデータは消えない（RDS は別リソースのため）
+- user_data.sh が自動実行され、最新の GitHub main ブランチのコードがデプロイされる
+- Prisma マイグレーションも自動で実行される
 
-**なぜ手動か:** DB パスワードや認証キーなどの機密情報はスクリプトに含めず、手動で EC2 上に配置する。
+### Step 2: 起動確認
+
+EC2 の起動完了後（約 5 分）、サービスの状態を確認：
 
 ```bash
-# /opt/app ディレクトリ作成
-mkdir -p /opt/app
-
-# .env.production を作成（nano エディタで編集）
-nano /opt/app/.env.production
+ssh -i ~/.ssh/mybooklibrary-key.pem -o StrictHostKeyChecking=no ec2-user@176.32.66.52 \
+  "sudo systemctl status mybooklibrary"
 ```
 
-以下の内容を入力して保存（`Ctrl+O` → `Enter` → `Ctrl+X`）：
+`Active: active (running)` と表示されれば成功。
+
+### Step 3: ブラウザで確認
 
 ```
-DATABASE_URL=mysql://admin:<db_password>@<rds_endpoint>:3306/mybooklibrary
-AUTH_SECRET=<auth_secret>
-RAKUTEN_APP_ID=<rakuten_app_id>
-RAKUTEN_ACCESS_KEY=<rakuten_access_key>
-CRON_SECRET=<cron_secret>
-NEXTAUTH_URL=http://52.69.24.11:3000
-```
-
-**注意:**
-- `DATABASE_URL` はローカル開発用（localhost）とは異なり、RDS のエンドポイントを指定する
-- `NEXTAUTH_URL` はシークレットではなく単なる URL 設定のため平文で問題ない
-- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` は HTTPS 導入後に追加する（HTTP では Google OAuth は動作しない）
-
-配置確認：
-
-```bash
-# 行数で確認（パスワードを画面に表示しない場合）
-cat /opt/app/.env.production | wc -l
-# → 6 と表示されれば OK
+https://d29rpr1gfxxlgj.cloudfront.net
 ```
 
 ---
 
-## ④ アプリを EC2 に転送・起動
-
-### 4-1. Docker イメージのビルドと転送
-
-**ファイル:** `scripts/deploy.sh`
-
-ローカルの Git Bash から実行する。PowerShell では `bash` コマンドが使えないため注意。
+## EC2 に SSH で入って操作する場合
 
 ```bash
-# Git Bash で実行
-cd /c/web_application_files/MyBookLibrary
-bash scripts/deploy.sh
+ssh -i ~/.ssh/mybooklibrary-key.pem -o StrictHostKeyChecking=no ec2-user@176.32.66.52
 ```
 
-スクリプトの内容と流れ：
+### よく使うコマンド
 
-```
-[1/4] ローカルで Docker イメージをビルド
-  └─ app/ ディレクトリで docker build を実行
-  └─ イメージ名: mybooklibrary-app:latest（約 138MB）
+```bash
+# サービスの状態確認
+sudo systemctl status mybooklibrary
 
-[2/4] イメージを tar ファイルに圧縮して保存
-  └─ /tmp/mybooklibrary-app.tar.gz として保存
+# サービス再起動（環境変数変更後など）
+sudo systemctl restart mybooklibrary
 
-[3/4] EC2 にファイルを転送（SCP）
-  └─ tar ファイルを EC2 の /tmp/ に転送
-  └─ docker-compose.prod.yml を EC2 の /opt/app/ に転送
+# ログをリアルタイムで見る
+sudo journalctl -u mybooklibrary -f
 
-[4/4] EC2 でイメージをロードしてコンテナを起動
-  └─ docker load でイメージをインポート
-  └─ docker-compose up -d でバックグラウンド起動
-```
-
-### 4-2. docker-compose.prod.yml
-
-**ファイル:** `docker-compose.prod.yml`（プロジェクトルート）
-
-EC2 上でコンテナを起動するための設定ファイル。
-
-```yaml
-services:
-  app:
-    image: mybooklibrary-app:latest
-    container_name: mybooklibrary-app
-    ports:
-      - "3000:3000"        # EC2 の 3000 番ポートをコンテナの 3000 番に接続
-    env_file:
-      - .env.production    # 環境変数ファイルを読み込み
-    restart: unless-stopped  # EC2 再起動時に自動で起動
+# 直近 50 行のログを見る
+sudo journalctl -u mybooklibrary -n 50 --no-pager
 ```
 
 ---
 
-## ⑤ データベースの初期化（RDS マイグレーション）
+## 環境変数の管理（SSM Parameter Store）
 
-**ファイル:** `scripts/init-db.sh`
+環境変数は AWS SSM Parameter Store で管理しており、`start.sh` が起動時に取得します。
 
-Prisma のマイグレーションを RDS に対して実行する。
-コンテナの中から RDS に接続して `prisma migrate deploy` を実行する。
+### 登録されているパラメータ
 
-```bash
-# Git Bash で実行
-bash scripts/init-db.sh
-```
+| パラメータ名 | 用途 |
+|---|---|
+| `/mybooklibrary/AUTH_SECRET` | NextAuth シークレット |
+| `/mybooklibrary/AUTH_GOOGLE_ID` | Google OAuth クライアント ID |
+| `/mybooklibrary/AUTH_GOOGLE_SECRET` | Google OAuth シークレット |
+| `/mybooklibrary/DATABASE_URL` | RDS 接続 URL |
+| `/mybooklibrary/RAKUTEN_APP_ID` | 楽天ブックス API ID |
+| `/mybooklibrary/RAKUTEN_ACCESS_KEY` | 楽天ブックス API キー |
+| `/mybooklibrary/CALIL_API_KEY` | カーリル図書館 API キー |
+| `/mybooklibrary/CRON_SECRET` | Cron 用シークレット |
+| `/mybooklibrary/NEXTAUTH_URL` | NextAuth の公開 URL |
+| `/mybooklibrary/SEED_ADMIN_EMAIL` | 管理者メールアドレス |
+| `/mybooklibrary/SEED_ADMIN_PASSWORD` | 管理者パスワード |
 
-内部では以下を実行：
+### 新しい環境変数を追加する場合
 
-```bash
-docker exec mybooklibrary-app npx prisma migrate deploy
-```
-
-**なぜコンテナの中から実行するか:**
-- RDS はプライベートサブネットにあり、EC2 経由でしかアクセスできない
-- ローカル PC から直接 RDS には接続できない
-- コンテナ内の `DATABASE_URL` 環境変数が RDS エンドポイントを指しているため、コンテナ経由で実行する
+1. `terraform/variables.tf` に変数を追加
+2. `terraform/modules/ssm/main.tf` の `locals.params` に追加
+3. `terraform/main.tf` の ssm モジュール呼び出しに追加
+4. `terraform/modules/ec2/user_data.sh` の `start.sh` 生成部分に `export 変数名=$(get_param 変数名)` を追加
+5. `terraform/terraform.tfvars` に実際の値を追加
+6. `terraform apply` で SSM に反映
 
 ---
 
-## ⑥ 動作確認
+## EC2 を作り直した後に SSH 接続できない場合
 
-ブラウザで以下にアクセス：
+EC2 を作り直すとホスト鍵が変わるため、以下のエラーが出ることがある：
 
 ```
-http://52.69.24.11:3000
+WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!
 ```
 
-**確認項目:**
-- トップページが表示される
-- メール+パスワードでログインできる（Google OAuth はこの段階では未対応）
-- 書籍一覧が表示される
-
-**ログ確認（エラーが出た場合）:**
+以下のコマンドで古い鍵を削除してから再接続する：
 
 ```bash
-# SSH 接続後
-docker logs mybooklibrary-app
-
-# リアルタイムでログを監視
-docker logs -f mybooklibrary-app
+ssh-keygen -R 176.32.66.52
 ```
 
 ---
 
 ## トラブルシューティング
 
-### `docker-compose: command not found`
-
-docker-compose が未インストール。[③ 3-1](#3-1-docker-composeのインストール) を参照。
-
-### `bash: command not found`（ローカルで）
-
-PowerShell では `bash` が使えない。Git Bash を開いて実行する。
-VS Code のターミナル右上の `∨` から「Git Bash」を選択。
-
-### `scp: stat local "...": No such file or directory`
-
-スクリプト内のパス解決エラー。該当ファイルを SCP で個別転送する：
+### アプリが起動しない
 
 ```bash
-scp -i ~/.ssh/mybooklibrary-key.pem docker-compose.prod.yml ec2-user@52.69.24.11:/opt/app/
+sudo journalctl -u mybooklibrary -n 100 --no-pager
 ```
 
----
+エラー内容を確認する。
 
-## 今後の改善予定
+### 環境変数が読み込まれていない（`XXX is not set` エラー）
 
-| 項目 | 概要 |
-|---|---|
-| `user_data.sh` に docker-compose を追加 | EC2 再構築時に自動でインストールされるようにする |
-| GitHub Actions で自動デプロイ | `git push` するだけで EC2 に自動デプロイされるようにする |
-| CloudFront + HTTPS 導入 | SSL 化後に Google OAuth を有効化する |
-| SSM Parameter Store で環境変数管理 | `.env.production` の手動配置を自動化する |
+`start.sh` に該当の環境変数の読み込みが追加されているか確認：
+
+```bash
+cat /opt/app/start.sh
+```
+
+追加されていない場合は `user_data.sh` を修正して EC2 を作り直す（`terraform apply -replace`）。
+
+応急処置として直接 `start.sh` を編集してサービス再起動することも可能：
+
+```bash
+sudo sed -i '/export SEED_ADMIN_PASSWORD/a export NEW_KEY=$(get_param NEW_KEY)' /opt/app/start.sh
+sudo systemctl restart mybooklibrary
+```
+
+ただしこの変更は EC2 作り直し時に消えるため、必ず `user_data.sh` にも反映すること。
+
+### CloudFront でキャッシュが残っている
+
+ブラウザで **Ctrl + Shift + R** で強制リロードする。
 
 ---
 
@@ -282,9 +189,8 @@ scp -i ~/.ssh/mybooklibrary-key.pem docker-compose.prod.yml ec2-user@52.69.24.11
 
 | ファイル | 役割 |
 |---|---|
-| `terraform/modules/ec2/user_data.sh` | EC2 起動時の初期化スクリプト |
-| `app/Dockerfile` | Next.js のマルチステージビルド定義 |
-| `docker-compose.prod.yml` | EC2 上のコンテナ起動設定 |
-| `scripts/deploy.sh` | ビルド + 転送 + 起動の自動化スクリプト |
-| `scripts/init-db.sh` | RDS マイグレーション実行スクリプト |
+| `terraform/modules/ec2/user_data.sh` | EC2 起動時の初期化スクリプト（アプリデプロイ・マイグレーション・start.sh 生成） |
+| `terraform/modules/ssm/main.tf` | SSM Parameter Store の定義 |
+| `scripts/deploy.sh` | （現在は未使用）Docker ベースのデプロイスクリプト |
+| `scripts/init-db.sh` | （現在は未使用）手動マイグレーション実行スクリプト |
 | `docs/aws-deploy-plan.md` | Terraform インフラ設計書 |
