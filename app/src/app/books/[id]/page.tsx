@@ -115,11 +115,11 @@ export default async function BookDetailPage({ params }: Props) {
           )}
         </div>
 
-        <div className="flex min-w-0 flex-col justify-center gap-2">
+        <div className="flex min-w-0 flex-col gap-2">
           <h1 className="break-words text-2xl font-bold text-zinc-900 dark:text-zinc-50">
             {book.title}
           </h1>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start gap-1.5">
             <p className="text-zinc-600 dark:text-zinc-400">{book.author.name}</p>
             <FavoriteAuthorButton
               authorName={book.author.name}
@@ -142,19 +142,22 @@ export default async function BookDetailPage({ params }: Props) {
               }}
             />
           )}
-          <ReadingStatusButtons
-            book={{
-              id: book.id,
-              title: book.title,
-              authorName: book.author.name,
-              isbn: book.isbn,
-              coverImageUrl: book.coverImageUrl,
-              publishedAt: book.publishedAt.toISOString(),
-            }}
-            initialStatus={currentStatus}
-            hasReview={hasReview}
-          />
         </div>
+      </div>
+
+      <div className="mt-4">
+        <ReadingStatusButtons
+          book={{
+            id: book.id,
+            title: book.title,
+            authorName: book.author.name,
+            isbn: book.isbn,
+            coverImageUrl: book.coverImageUrl,
+            publishedAt: book.publishedAt.toISOString(),
+          }}
+          initialStatus={currentStatus}
+          hasReview={hasReview}
+        />
       </div>
 
       {/* 受賞歴 */}

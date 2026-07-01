@@ -57,7 +57,7 @@ export default function FavoriteAuthorButton({
       }`}
     >
       <span>{favorited ? "★" : "☆"}</span>
-      <span>{favorited ? "お気に入り済み" : "お気に入り登録"}</span>
+      <span>{favorited ? "お気に入り済み" : "お気に入り著者登録"}</span>
     </button>
   );
 }
