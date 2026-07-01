@@ -12,6 +12,7 @@ const mockLikeDelete = jest.fn();
 const mockLikeCount = jest.fn();
 const mockNotificationFindFirst = jest.fn();
 const mockNotificationCreate = jest.fn();
+const mockNotificationCreateMany = jest.fn();
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
@@ -31,6 +32,7 @@ jest.mock("@/lib/prisma", () => ({
     notification: {
       findFirst: (...args: unknown[]) => mockNotificationFindFirst(...args),
       create: (...args: unknown[]) => mockNotificationCreate(...args),
+      createMany: (...args: unknown[]) => mockNotificationCreateMany(...args),
     },
   },
 }));
@@ -162,6 +164,7 @@ describe("POST /api/reviews/[id]/likes", () => {
     mockLikeCreate.mockResolvedValue({});
     mockNotificationFindFirst.mockResolvedValue(null);
     mockNotificationCreate.mockResolvedValue({});
+    mockNotificationCreateMany.mockResolvedValue({ count: 1 });
     mockLikeCount.mockResolvedValue(1);
 
     const req = new NextRequest("http://localhost/api/reviews/1/likes", { method: "POST" });
