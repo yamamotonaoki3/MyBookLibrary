@@ -7,8 +7,48 @@ import { prisma } from "@/lib/prisma";
 import { authConfig } from "./auth.config";
 import type { Adapter, AdapterUser } from "next-auth/adapters";
 
-const LOCK_THRESHOLD = 10;
-const LOCK_DURATION_MS = 15 * 60 * 1000;
+export const LOCK_THRESHOLD = 10;
+export const LOCK_DURATION_MS = 15 * 60 * 1000;
+
+export async function authorizeCredentials(
+  email: string | undefined,
+  password: string | undefined
+) {
+  if (!email || !password) return null;
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !user.password) return null;
+
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new Error("ACCOUNT_LOCKED");
+  }
+
+  const valid = await bcrypt.compare(password, user.password);
+  if (!valid) {
+    const newCount = user.loginFailCount + 1;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        loginFailCount: newCount,
+        lockedUntil:
+          newCount >= LOCK_THRESHOLD ? new Date(Date.now() + LOCK_DURATION_MS) : null,
+      },
+    });
+    return null;
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { loginFailCount: 0, lockedUntil: null },
+  });
+
+  return {
+    id: String(user.id),
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  };
+}
 
 // PrismaAdapterはString IDを想定しているため、Int型のUserIdに対応するラッパー
 function createAdapter(): Adapter {
@@ -57,41 +97,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
-        if (!email || !password) return null;
-
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.password) return null;
-
-        if (user.lockedUntil && user.lockedUntil > new Date()) {
-          throw new Error("ACCOUNT_LOCKED");
-        }
-
-        const valid = await bcrypt.compare(password, user.password);
-        if (!valid) {
-          const newCount = user.loginFailCount + 1;
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              loginFailCount: newCount,
-              lockedUntil:
-                newCount >= LOCK_THRESHOLD
-                  ? new Date(Date.now() + LOCK_DURATION_MS)
-                  : null,
-            },
-          });
-          return null;
-        }
-
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { loginFailCount: 0, lockedUntil: null },
-        });
+        const result = await authorizeCredentials(email, password);
+        if (!result) return null;
 
         return {
-          id: String(user.id),
-          email: user.email,
-          name: user.name,
-          role: user.role,
+          ...result,
           rememberMe: credentials?.rememberMe !== "0",
         };
       },

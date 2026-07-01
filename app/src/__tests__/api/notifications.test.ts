@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 // ─── Prisma モック ────────────────────────────────────────────────────────────
 const mockNotificationFindMany = jest.fn();
+const mockNotificationFindUnique = jest.fn();
 const mockNotificationUpdate = jest.fn();
 const mockNotificationUpdateMany = jest.fn();
 
@@ -9,6 +10,7 @@ jest.mock("@/lib/prisma", () => ({
   prisma: {
     notification: {
       findMany: (...args: unknown[]) => mockNotificationFindMany(...args),
+      findUnique: (...args: unknown[]) => mockNotificationFindUnique(...args),
       update: (...args: unknown[]) => mockNotificationUpdate(...args),
       updateMany: (...args: unknown[]) => mockNotificationUpdateMany(...args),
     },
@@ -66,6 +68,8 @@ describe("PATCH /api/notifications/[id]/read", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("6-2: 通知を既読にする → 更新された通知を返す", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "1" } });
+    mockNotificationFindUnique.mockResolvedValue({ id: 1, userId: 1, isRead: false });
     mockNotificationUpdate.mockResolvedValue({ id: 1, isRead: true });
 
     const req = new NextRequest("http://localhost/api/notifications/1/read", { method: "PATCH" });
@@ -76,9 +80,37 @@ describe("PATCH /api/notifications/[id]/read", () => {
   });
 
   it("不正なID → 400を返す", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "1" } });
+
     const req = new NextRequest("http://localhost/api/notifications/abc/read", { method: "PATCH" });
     const res = await PATCH(req, { params: Promise.resolve({ id: "abc" }) });
     expect(res.status).toBe(400);
+  });
+
+  it("未認証 → 401を返す", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const req = new NextRequest("http://localhost/api/notifications/1/read", { method: "PATCH" });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "1" }) });
+    expect(res.status).toBe(401);
+  });
+
+  it("他人の通知 → 403を返す", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "1" } });
+    mockNotificationFindUnique.mockResolvedValue({ id: 1, userId: 2, isRead: false });
+
+    const req = new NextRequest("http://localhost/api/notifications/1/read", { method: "PATCH" });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "1" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("存在しない通知 → 404を返す", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "1" } });
+    mockNotificationFindUnique.mockResolvedValue(null);
+
+    const req = new NextRequest("http://localhost/api/notifications/1/read", { method: "PATCH" });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "1" }) });
+    expect(res.status).toBe(404);
   });
 });
 
