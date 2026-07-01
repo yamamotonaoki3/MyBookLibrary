@@ -57,7 +57,18 @@ export default function FavoriteAuthorButton({
       }`}
     >
       <span>{favorited ? "★" : "☆"}</span>
-      <span>{favorited ? "お気に入り済み" : "お気に入り著者登録"}</span>
+      <span className="text-center leading-tight">
+        {favorited ? (
+          "お気に入り済み"
+        ) : (
+          <>
+            お気に入り
+            <br className="lg:hidden" />
+            <span className="hidden lg:inline"> </span>
+            著者登録
+          </>
+        )}
+      </span>
     </button>
   );
 }
