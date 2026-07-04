@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
   const titlePart = parts[0];
   const authorPart = parts.slice(1).join(" ");
 
-  let query = `title="${titlePart}"`;
+  let query = `title="${titlePart}" and mediatype="books"`;
   if (authorPart) query += ` AND creator="${authorPart}"`;
 
   const params = new URLSearchParams({
