@@ -103,8 +103,11 @@ MyBookLibrary/
 - [画面遷移図](docs/screen-transition.md)
 - [ワイヤーフレーム](docs/wireframes.md)
 - [AWS デプロイガイド](docs/aws-deploy-guide.md)
+- [テスト計画表](docs/test-plan.md)
 
 ## テスト
+
+Jest + ts-jest によるブラックボックス（API結合テスト）・ホワイトボックス（`src/lib` の単体テスト）の両方式でテストしている。対象範囲と進捗は [テスト計画表](docs/test-plan.md) を参照。
 
 ```bash
 cd app
