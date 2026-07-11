@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
       : await prisma.book.findFirst({ where: { title, authorId: authorRecord.id } });
 
     if (!book) {
+      // 管理者代理登録のため createdByUserId は意図的に設定しない
       book = await prisma.book.create({
         data: {
           title,

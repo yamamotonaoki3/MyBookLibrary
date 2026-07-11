@@ -126,6 +126,7 @@ export async function POST(request: NextRequest) {
           bookByTitleAuthor.get(`${row.title}::${authorId}`);
 
         if (!book) {
+          // 管理者代理登録のため createdByUserId は意図的に設定しない
           book = await prisma.book.create({
             data: {
               title: row.title,

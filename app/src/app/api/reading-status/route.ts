@@ -59,6 +59,7 @@ export async function POST(request: Request) {
           coverImageUrl: coverImageUrl ?? null,
           publishedAt: publishedAt ? parseSalesDate(publishedAt) : new Date(),
           source: source ?? "rakuten",
+          createdByUserId: userId,
         },
       });
     }

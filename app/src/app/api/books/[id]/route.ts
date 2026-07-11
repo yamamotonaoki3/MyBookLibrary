@@ -42,11 +42,8 @@ export async function PATCH(
       return Response.json({ error: "この本は編集できません" }, { status: 403 });
     }
 
-    // 編集できるのは自分が登録した本のみ（ReadingStatusが存在するか確認）
-    const status = await prisma.readingStatus.findUnique({
-      where: { userId_bookId: { userId, bookId } },
-    });
-    if (!status) {
+    // 編集できるのは本の登録者のみ
+    if (book.createdByUserId !== userId) {
       return Response.json({ error: "この本を編集する権限がありません" }, { status: 403 });
     }
 
@@ -107,10 +104,7 @@ export async function DELETE(
       return Response.json({ error: "この本は削除できません" }, { status: 403 });
     }
 
-    const status = await prisma.readingStatus.findUnique({
-      where: { userId_bookId: { userId, bookId } },
-    });
-    if (!status) {
+    if (book.createdByUserId !== userId) {
       return Response.json({ error: "この本を削除する権限がありません" }, { status: 403 });
     }
 
