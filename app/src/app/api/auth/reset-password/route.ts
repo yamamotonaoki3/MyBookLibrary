@@ -82,6 +82,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "SECRET_WORD_INVALID" }, { status: 401 });
     }
 
+    if (user.secretWordFailCount > 0 || user.secretWordLockedUntil) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { secretWordFailCount: 0, secretWordLockedUntil: null },
+      });
+    }
+
     if (body.step === "verifySecretWord") {
       return NextResponse.json({ ok: true });
     }
