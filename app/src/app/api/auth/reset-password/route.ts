@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   if (body.step === "verifySecretWord" || body.step === "reset") {
     const email = body.email?.trim();
-    const secretWord = body.secretWord;
+    const secretWord = body.secretWord?.trim();
     if (!email || !secretWord) {
       return NextResponse.json({ error: "秘密の言葉を入力してください" }, { status: 400 });
     }
