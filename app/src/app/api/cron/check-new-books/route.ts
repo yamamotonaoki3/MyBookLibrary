@@ -18,9 +18,20 @@ function isWithinOneWeek(date: Date): boolean {
   return date >= oneWeekAgo;
 }
 
+const MIN_CRON_SECRET_LENGTH = 16;
+
 export async function GET(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || cronSecret.length < MIN_CRON_SECRET_LENGTH) {
+    console.error("CRON_SECRET is not configured or too short");
+    return NextResponse.json(
+      { error: "Cron secret is not configured" },
+      { status: 500 },
+    );
+  }
+
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
