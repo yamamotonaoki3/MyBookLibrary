@@ -181,6 +181,7 @@ describe("LoginSchema", () => {
 describe("ResetPasswordSchema", () => {
   const valid = {
     email: "user@example.com",
+    secretWord: "ひみつのことば",
     password: "newpassword1",
     confirmPassword: "newpassword1",
   };

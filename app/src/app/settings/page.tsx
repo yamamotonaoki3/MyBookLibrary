@@ -1,8 +1,10 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { prisma } from "@/lib/prisma";
 import { DeleteAccountButton } from "./_components/DeleteAccountButton";
 import { LibrarySettings } from "./_components/LibrarySettings";
+import { SecretWordForm } from "./_components/SecretWordForm";
 
 export const metadata: Metadata = {
   title: "設定 | MyBookLibrary",
@@ -13,6 +15,13 @@ export default async function SettingsPage() {
   if (!session?.user) redirect("/login");
 
   const isAdmin = session.user.role === "admin";
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: Number(session.user.id) },
+    select: { password: true, secretWordHash: true },
+  });
+  const hasPasswordLogin = !!currentUser?.password;
+  const hasSecretWord = !!currentUser?.secretWordHash;
 
   return (
     <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
@@ -52,6 +61,19 @@ export default async function SettingsPage() {
           </p>
           <LibrarySettings />
         </section>
+
+        {/* 秘密の言葉 */}
+        {hasPasswordLogin && (
+          <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+            <h2 className="mb-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+              秘密の言葉
+            </h2>
+            <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+              パスワードを忘れた際の本人確認に使用します。設定しない場合、パスワードリセットは行えません。
+            </p>
+            <SecretWordForm isSet={hasSecretWord} />
+          </section>
+        )}
 
         {/* アカウント削除 */}
         {!isAdmin && (

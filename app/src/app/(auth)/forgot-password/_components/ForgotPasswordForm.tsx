@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
-type Step = "email" | "reset";
+type Step = "email" | "secretWord" | "reset";
 
 export function ForgotPasswordForm() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  const [secretWord, setSecretWord] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -34,13 +35,46 @@ export function ForgotPasswordForm() {
       });
 
       if (res.ok) {
-        setStep("reset");
+        setStep("secretWord");
       } else {
         const data = (await res.json()) as { error: string };
         if (data.error === "NOT_FOUND") {
           setError("入力されたメールアドレスは登録されていません。");
         } else if (data.error === "GOOGLE_ACCOUNT") {
           setError("このアカウントはGoogleでログインしています。Googleログインをご利用ください。");
+        } else if (data.error === "SECRET_WORD_NOT_SET") {
+          setError("秘密の言葉が未設定のため、リセットできません。ログイン後、設定画面から秘密の言葉を登録してください。");
+        } else {
+          setError("エラーが発生しました。しばらくしてから再度お試しください。");
+        }
+      }
+    } catch {
+      setError("エラーが発生しました。しばらくしてから再度お試しください。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifySecretWord(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "verifySecretWord", email, secretWord }),
+      });
+
+      if (res.ok) {
+        setStep("reset");
+      } else {
+        const data = (await res.json()) as { error: string };
+        if (data.error === "SECRET_WORD_INVALID") {
+          setError("秘密の言葉が正しくありません。");
+        } else if (data.error === "SECRET_WORD_LOCKED") {
+          setError("試行回数の上限に達しました。しばらくしてから再度お試しください。");
         } else {
           setError("エラーが発生しました。しばらくしてから再度お試しください。");
         }
@@ -66,6 +100,7 @@ export function ForgotPasswordForm() {
         body: JSON.stringify({
           step: "reset",
           email,
+          secretWord,
           password: form.get("password"),
           confirmPassword: form.get("confirmPassword"),
         }),
@@ -77,6 +112,9 @@ export function ForgotPasswordForm() {
         const data = (await res.json()) as { error: unknown };
         if (data.error && typeof data.error === "object") {
           setFieldErrors(data.error as Record<string, string[]>);
+        } else if (data.error === "SECRET_WORD_INVALID" || data.error === "SECRET_WORD_LOCKED") {
+          setError("秘密の言葉の確認が無効になりました。最初からやり直してください。");
+          setStep("email");
         } else {
           setError("パスワードの変更に失敗しました。");
         }
@@ -128,6 +166,51 @@ export function ForgotPasswordForm() {
           >
             ← ログイン画面に戻る
           </Link>
+        </p>
+      </form>
+    );
+  }
+
+  if (step === "secretWord") {
+    return (
+      <form onSubmit={handleVerifySecretWord} className="flex flex-col gap-3 lg:gap-5">
+        {error && (
+          <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-600 lg:px-4 lg:py-3 lg:text-sm">
+            {error}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-1 lg:gap-2">
+          <label className="text-xs font-medium lg:text-sm" htmlFor="secretWord">
+            秘密の言葉
+          </label>
+          <input
+            id="secretWord"
+            name="secretWord"
+            type="text"
+            required
+            value={secretWord}
+            onChange={(e) => setSecretWord(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+
+        <Button
+          type="submit"
+          disabled={loading}
+          className="h-9 w-full bg-emerald-700 text-sm text-white hover:bg-emerald-800 lg:h-11 lg:text-base"
+        >
+          {loading ? "確認中..." : "次へ"}
+        </Button>
+
+        <p className="text-center text-xs text-muted-foreground lg:text-sm">
+          <button
+            type="button"
+            onClick={() => { setStep("email"); setError(null); setSecretWord(""); }}
+            className="text-violet-600 underline underline-offset-4 hover:text-violet-700"
+          >
+            ← メールアドレスを変更する
+          </button>
         </p>
       </form>
     );
@@ -211,7 +294,7 @@ export function ForgotPasswordForm() {
       <p className="text-center text-xs text-muted-foreground lg:text-sm">
         <button
           type="button"
-          onClick={() => { setStep("email"); setError(null); setFieldErrors({}); }}
+          onClick={() => { setStep("email"); setError(null); setFieldErrors({}); setSecretWord(""); }}
           className="text-violet-600 underline underline-offset-4 hover:text-violet-700"
         >
           ← メールアドレスを変更する

@@ -18,6 +18,9 @@ model User {
   role            String           @default("user")
   loginFailCount  Int              @default(0) @map("login_fail_count")
   lockedUntil     DateTime?        @map("locked_until")
+  secretWordHash       String?   @map("secret_word_hash")
+  secretWordFailCount  Int       @default(0) @map("secret_word_fail_count")
+  secretWordLockedUntil DateTime? @map("secret_word_locked_until")
   createdAt       DateTime         @default(now()) @map("created_at")
   favoriteAuthors FavoriteAuthor[]
   readingStatuses ReadingStatus[]
