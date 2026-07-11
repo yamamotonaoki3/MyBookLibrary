@@ -36,5 +36,11 @@ export async function POST(request: Request) {
     },
   });
 
+  // 設定完了により「秘密の言葉の設定を促す」通知は不要になるため既読化する
+  await prisma.notification.updateMany({
+    where: { userId, type: "secret_word_required", isRead: false },
+    data: { isRead: true },
+  });
+
   return Response.json({ ok: true });
 }
