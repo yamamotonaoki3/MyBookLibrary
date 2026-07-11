@@ -65,7 +65,10 @@ export async function POST(req: NextRequest) {
 
     const valid = await bcrypt.compare(secretWord, user.secretWordHash);
     if (!valid) {
-      const newCount = user.secretWordFailCount + 1;
+      // ロック期限切れ後は失敗回数をリセットしてから数え直す
+      const lockExpired = user.secretWordLockedUntil && user.secretWordLockedUntil <= new Date();
+      const baseCount = lockExpired ? 0 : user.secretWordFailCount;
+      const newCount = baseCount + 1;
       await prisma.user.update({
         where: { id: user.id },
         data: {
