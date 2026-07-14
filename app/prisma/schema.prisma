@@ -9,31 +9,32 @@ datasource db {
 }
 
 model User {
-  id              Int              @id @default(autoincrement())
-  name            String
-  email           String           @unique
-  image           String?
-  emailVerified   DateTime?        @map("email_verified")
-  password        String?
-  role            String           @default("user")
-  loginFailCount  Int              @default(0) @map("login_fail_count")
-  lockedUntil     DateTime?        @map("locked_until")
-  secretWordHash       String?   @map("secret_word_hash")
-  secretWordFailCount  Int       @default(0) @map("secret_word_fail_count")
-  secretWordLockedUntil DateTime? @map("secret_word_locked_until")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  favoriteAuthors FavoriteAuthor[]
-  readingStatuses ReadingStatus[]
-  reviews         Review[]
-  likes           Like[]
-  notifications   Notification[]
-  reports         Report[]
-  accounts           Account[]
-  sessions           Session[]
-  contactInquiries   ContactInquiry[]
-  libraries          UserLibrary[]
-  following          Follow[]         @relation("following")
-  followers          Follow[]         @relation("followers")
+  id                    Int              @id @default(autoincrement())
+  name                  String
+  email                 String           @unique
+  image                 String?
+  emailVerified         DateTime?        @map("email_verified")
+  password              String?
+  role                  String           @default("user")
+  loginFailCount        Int              @default(0) @map("login_fail_count")
+  lockedUntil           DateTime?        @map("locked_until")
+  secretWordHash        String?          @map("secret_word_hash")
+  secretWordFailCount   Int              @default(0) @map("secret_word_fail_count")
+  secretWordLockedUntil DateTime?        @map("secret_word_locked_until")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  favoriteAuthors       FavoriteAuthor[]
+  readingStatuses       ReadingStatus[]
+  reviews               Review[]
+  likes                 Like[]
+  notifications         Notification[]   @relation("NotificationRecipient")
+  actorNotifications    Notification[]   @relation("NotificationActor")
+  reports               Report[]
+  accounts              Account[]
+  sessions              Session[]
+  contactInquiries      ContactInquiry[]
+  libraries             UserLibrary[]
+  following             Follow[]         @relation("following")
+  followers             Follow[]         @relation("followers")
 
   @@map("users")
 }
@@ -213,7 +214,8 @@ model Notification {
   isRead    Boolean   @default(false) @map("is_read")
   expiresAt DateTime? @map("expires_at")
   createdAt DateTime  @default(now()) @map("created_at")
-  user      User      @relation(fields: [userId], references: [id])
+  user      User      @relation("NotificationRecipient", fields: [userId], references: [id])
+  actor     User?     @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@unique([userId, type, bookIsbn])
   @@map("notifications")

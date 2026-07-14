@@ -10,6 +10,11 @@ export default async function NotificationsPage() {
     prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
+      include: {
+        actor: {
+          select: { id: true, name: true },
+        },
+      },
     }),
     prisma.follow.findMany({
       where: { followerId: userId },
@@ -17,24 +22,12 @@ export default async function NotificationsPage() {
     }),
   ]);
 
-  const actorIds = [
-    ...new Set(
-      notifications
-        .map((n) => n.actorId)
-        .filter((id): id is number => id !== null)
-    ),
-  ];
-  const actors = await prisma.user.findMany({
-    where: { id: { in: actorIds } },
-    select: { id: true, name: true },
-  });
-  const actorNameMap = new Map(actors.map((a) => [a.id, a.name]));
-
-  const serialized = notifications.map((n) => ({
-    ...n,
-    actorName: n.actorId !== null ? (actorNameMap.get(n.actorId) ?? null) : null,
-    createdAt: n.createdAt.toISOString(),
-    expiresAt: n.expiresAt?.toISOString() ?? null,
+  const serialized = notifications.map(({ actor, ...notification }) => ({
+    ...notification,
+    actorId: actor?.id ?? null,
+    actorName: actor?.name ?? null,
+    createdAt: notification.createdAt.toISOString(),
+    expiresAt: notification.expiresAt?.toISOString() ?? null,
   }));
 
   return (
