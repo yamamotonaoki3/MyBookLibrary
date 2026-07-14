@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 
@@ -51,9 +52,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await prisma.follow.create({
-      data: { followerId: userId, followingId: targetUserId },
-    });
+    try {
+      await prisma.follow.create({
+        data: { followerId: userId, followingId: targetUserId },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        return NextResponse.json(
+          { error: "すでにフォローしています。", following: true },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     await prisma.notification.create({
       data: {
