@@ -32,6 +32,8 @@ model User {
   sessions           Session[]
   contactInquiries   ContactInquiry[]
   libraries          UserLibrary[]
+  following          Follow[]         @relation("following")
+  followers          Follow[]         @relation("followers")
 
   @@map("users")
 }
@@ -205,6 +207,7 @@ model Notification {
   userId    Int       @map("user_id")
   type      String
   content   String
+  actorId   Int?      @map("actor_id")
   bookIsbn  String?   @map("book_isbn")
   bookTitle String?   @map("book_title")
   isRead    Boolean   @default(false) @map("is_read")
@@ -214,6 +217,18 @@ model Notification {
 
   @@unique([userId, type, bookIsbn])
   @@map("notifications")
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int      @map("follower_id")
+  followingId Int      @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  follower    User     @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follows")
 }
 
 model ContactInquiry {

@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { DeleteAccountButton } from "./_components/DeleteAccountButton";
@@ -16,10 +17,16 @@ export default async function SettingsPage() {
 
   const isAdmin = session.user.role === "admin";
 
-  const currentUser = await prisma.user.findUnique({
-    where: { id: Number(session.user.id) },
-    select: { password: true, secretWordHash: true },
-  });
+  const myUserId = Number(session.user.id);
+
+  const [currentUser, followingCount, followerCount] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: myUserId },
+      select: { password: true, secretWordHash: true },
+    }),
+    prisma.follow.count({ where: { followerId: myUserId } }),
+    prisma.follow.count({ where: { followingId: myUserId } }),
+  ]);
   const hasPasswordLogin = !!currentUser?.password;
   const hasSecretWord = !!currentUser?.secretWordHash;
 
@@ -49,6 +56,22 @@ export default async function SettingsPage() {
               </dd>
             </div>
           </dl>
+        </section>
+
+        {/* フォロー */}
+        <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+          <h2 className="mb-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+            フォロー
+          </h2>
+          <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+            フォロー中 {followingCount}人 ／ フォロワー {followerCount}人
+          </p>
+          <Link
+            href="/settings/follows"
+            className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+          >
+            一覧を見る →
+          </Link>
         </section>
 
         {/* 近隣図書館の設定 */}
