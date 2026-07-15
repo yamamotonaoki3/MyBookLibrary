@@ -41,6 +41,7 @@ export const LoginSchema = z.object({
 export const ResetPasswordSchema = z
   .object({
     email: z.email("有効なメールアドレスを入力してください"),
+    secretWord: z.string().min(1, "秘密の言葉を入力してください"),
     password: z
       .string()
       .min(8, "パスワードは8文字以上で入力してください")
@@ -51,6 +52,15 @@ export const ResetPasswordSchema = z
     message: "パスワードが一致しません",
     path: ["confirmPassword"],
   });
+
+export const SecretWordSchema = z.object({
+  currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
+  secretWord: z
+    .string()
+    .trim()
+    .min(2, "秘密の言葉は2文字以上で入力してください")
+    .max(50, "秘密の言葉は50文字以内で入力してください"),
+});
 
 export const RegisterSchema = z
   .object({

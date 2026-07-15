@@ -9,6 +9,8 @@ import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
 import { ReadingStatusButtons } from "./_components/ReadingStatusButtons";
 import { ReportButton } from "./_components/ReportButton";
 import EditBookButton from "./_components/EditBookButton";
+import FollowButton from "@/app/_components/FollowButton";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +65,12 @@ export default async function BookDetailPage({ params }: Props) {
   });
 
   if (!book) notFound();
+
+  const followingRecords = await prisma.follow.findMany({
+    where: { followerId: userId },
+    select: { followingId: true },
+  });
+  const followingIds = new Set(followingRecords.map((f) => f.followingId));
 
   const [favoriteRecord, readingStatusRecord, reviewRecord] = await Promise.all([
     prisma.favoriteAuthor.findUnique({
@@ -209,9 +217,19 @@ export default async function BookDetailPage({ params }: Props) {
                 className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
               >
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <Link
+                    href={`/users/${review.user.id}`}
+                    className="text-sm font-medium text-zinc-700 hover:underline dark:text-zinc-300"
+                  >
                     {review.user.name}
-                  </span>
+                  </Link>
+                  {review.user.id !== userId && (
+                    <FollowButton
+                      targetUserId={review.user.id}
+                      targetUserName={review.user.name}
+                      initialFollowing={followingIds.has(review.user.id)}
+                    />
+                  )}
                   {review.isSpoiler && (
                     <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900 dark:text-red-300">
                       ネタバレあり

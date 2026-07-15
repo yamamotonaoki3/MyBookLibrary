@@ -4,6 +4,8 @@ import { NextRequest } from "next/server";
 const mockFindUnique = jest.fn();
 const mockCreate = jest.fn();
 const mockUpdate = jest.fn();
+const mockNotificationFindFirst = jest.fn();
+const mockNotificationCreate = jest.fn();
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
@@ -11,6 +13,10 @@ jest.mock("@/lib/prisma", () => ({
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
       create: (...args: unknown[]) => mockCreate(...args),
       update: (...args: unknown[]) => mockUpdate(...args),
+    },
+    notification: {
+      findFirst: (...args: unknown[]) => mockNotificationFindFirst(...args),
+      create: (...args: unknown[]) => mockNotificationCreate(...args),
     },
   },
 }));
@@ -95,8 +101,13 @@ describe("POST /api/auth/reset-password", () => {
     jest.clearAllMocks();
   });
 
-  it("3-4: step=check — 存在するメール → 200を返す", async () => {
-    mockFindUnique.mockResolvedValue({ id: 1, email: "user@example.com", password: "hashed" });
+  it("3-4: step=check — 秘密の言葉設定済みユーザー → 200を返す", async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 1,
+      email: "user@example.com",
+      password: "hashed",
+      secretWordHash: "hashed_secret_word",
+    });
 
     const req = new NextRequest("http://localhost/api/auth/reset-password", {
       method: "POST",
@@ -108,6 +119,28 @@ describe("POST /api/auth/reset-password", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.ok).toBe(true);
+  });
+
+  it("3-4b: step=check — 秘密の言葉未設定ユーザー → 422を返し通知を作成する", async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 1,
+      email: "user@example.com",
+      password: "hashed",
+      secretWordHash: null,
+    });
+    mockNotificationFindFirst.mockResolvedValue(null);
+
+    const req = new NextRequest("http://localhost/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ step: "check", email: "user@example.com" }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(422);
+    const json = await res.json();
+    expect(json.error).toBe("SECRET_WORD_NOT_SET");
+    expect(mockNotificationCreate).toHaveBeenCalled();
   });
 
   it("3-5: step=check — 存在しないメール → 404を返す", async () => {
@@ -124,7 +157,14 @@ describe("POST /api/auth/reset-password", () => {
   });
 
   it("3-6: step=reset — 正常系（パスワード更新）→ 200を返す", async () => {
-    mockFindUnique.mockResolvedValue({ id: 1, email: "user@example.com", password: "old_hash" });
+    mockFindUnique.mockResolvedValue({
+      id: 1,
+      email: "user@example.com",
+      password: "old_hash",
+      secretWordHash: "hashed_secret_word",
+      secretWordFailCount: 0,
+      secretWordLockedUntil: null,
+    });
     mockUpdate.mockResolvedValue({ id: 1 });
 
     const req = new NextRequest("http://localhost/api/auth/reset-password", {
@@ -132,6 +172,7 @@ describe("POST /api/auth/reset-password", () => {
       body: JSON.stringify({
         step: "reset",
         email: "user@example.com",
+        secretWord: "ひみつのことば",
         password: "newpassword1",
         confirmPassword: "newpassword1",
       }),
@@ -142,18 +183,28 @@ describe("POST /api/auth/reset-password", () => {
     expect(res.status).toBe(200);
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { email: "user@example.com" },
+        where: { id: 1 },
         data: expect.objectContaining({ loginFailCount: 0, lockedUntil: null }),
       })
     );
   });
 
   it("3-7: step=reset — パスワード不一致 → 400を返す", async () => {
+    mockFindUnique.mockResolvedValue({
+      id: 1,
+      email: "user@example.com",
+      password: "old_hash",
+      secretWordHash: "hashed_secret_word",
+      secretWordFailCount: 0,
+      secretWordLockedUntil: null,
+    });
+
     const req = new NextRequest("http://localhost/api/auth/reset-password", {
       method: "POST",
       body: JSON.stringify({
         step: "reset",
         email: "user@example.com",
+        secretWord: "ひみつのことば",
         password: "newpassword1",
         confirmPassword: "different",
       }),
