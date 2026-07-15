@@ -138,7 +138,7 @@ export default async function BookDetailPage({ params }: Props) {
           <p className="text-sm text-zinc-500 dark:text-zinc-500">
             {publishedLabel}
           </p>
-          {book.source === "manual" && (
+          {book.source === "manual" && book.createdByUserId === userId && (
             <EditBookButton
               book={{
                 id: book.id,

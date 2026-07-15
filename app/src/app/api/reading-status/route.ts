@@ -10,7 +10,8 @@ function parseSalesDate(salesDate: string): Date {
   const year = parseInt(match[1]);
   const month = parseInt(match[2]) - 1;
   const day = match[3] ? parseInt(match[3]) : 1;
-  return new Date(year, month, day);
+  // DATE列にUTC日付として保存されるため、ローカルタイムゾーンだと1日ずれる
+  return new Date(Date.UTC(year, month, day));
 }
 
 export async function POST(request: Request) {
