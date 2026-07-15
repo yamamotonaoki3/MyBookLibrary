@@ -73,11 +73,15 @@ export default function ManualBookRegisterModal({ onClose, onRegistered }: Props
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 px-4 pt-4 pb-24">
+    // BottomNav が z-50 のため、モーダルは z-[60] でその上に重ねる
+    <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/60 px-4 pt-4 pb-24">
       <div className="relative mx-auto w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900">
-        <h2 className="mb-5 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           本を手動で登録
         </h2>
+        <p className="mb-5 text-xs text-zinc-500 dark:text-zinc-400">
+          登録された情報は管理者によって確認・管理されます。
+        </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>

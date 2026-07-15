@@ -35,6 +35,7 @@ model User {
   libraries             UserLibrary[]
   following             Follow[]         @relation("following")
   followers             Follow[]         @relation("followers")
+  createdBooks          Book[]           @relation("BookCreatedBy")
 
   @@map("users")
 }
@@ -110,7 +111,9 @@ model Book {
   publishedAt     DateTime        @map("published_at") @db.Date
   coverImageUrl   String?         @map("cover_image_url")
   source          String          @default("rakuten")
+  createdByUserId Int?            @map("created_by_user_id")
   author          Author          @relation(fields: [authorId], references: [id])
+  createdByUser   User?           @relation("BookCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   awardEntries    AwardEntry[]
   readingStatuses ReadingStatus[]
   reviews         Review[]

@@ -53,6 +53,16 @@ type AwardEntry = {
   };
 };
 
+type ManualBook = {
+  id: number;
+  title: string;
+  isbn: string | null;
+  coverImageUrl: string | null;
+  author: { id: number; name: string };
+  createdByUser: { id: number; name: string; email: string } | null;
+  _count: { readingStatuses: number; reviews: number };
+};
+
 type UserRow = {
   id: number;
   name: string;
@@ -216,6 +226,21 @@ export default function AdminPage() {
   const [deleteTargetInquiry, setDeleteTargetInquiry] = useState<Inquiry | null>(null);
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
 
+  const [manualBooks, setManualBooks] = useState<ManualBook[]>([]);
+  const [manualBooksOpen, setManualBooksOpen] = useState(false);
+  const [manualBooksRefreshKey, setManualBooksRefreshKey] = useState(0);
+  const [deleteTargetManualBook, setDeleteTargetManualBook] = useState<ManualBook | null>(null);
+  const [deletingManualBookId, setDeletingManualBookId] = useState<number | null>(null);
+  const [editingManualBookId, setEditingManualBookId] = useState<number | null>(null);
+  const [editingManualBookTitle, setEditingManualBookTitle] = useState("");
+  const [editingManualBookAuthor, setEditingManualBookAuthor] = useState("");
+  const [editingManualBookIsbn, setEditingManualBookIsbn] = useState("");
+  const [manualBookSaving, setManualBookSaving] = useState(false);
+  const [mergeSourceId, setMergeSourceId] = useState<string>("");
+  const [mergeTargetId, setMergeTargetId] = useState<string>("");
+  const [merging, setMerging] = useState(false);
+  const [mergeResult, setMergeResult] = useState<string | null>(null);
+
   const availableYears = useMemo(() => {
     const base = selectedAwardTab === "all" ? entries : entries.filter((e) => e.award.name === selectedAwardTab);
     return [...new Set(base.map((e) => e.year))].sort((a, b) => b - a);
@@ -324,6 +349,73 @@ export default function AdminPage() {
 
   function refreshEntries() {
     setRefreshKey((k) => k + 1);
+  }
+
+  useEffect(() => {
+    fetch("/api/admin/manual-books")
+      .then((res) => res.json())
+      .then((data: ManualBook[]) => setManualBooks(data));
+  }, [manualBooksRefreshKey]);
+
+  function refreshManualBooks() {
+    setManualBooksRefreshKey((k) => k + 1);
+  }
+
+  function startManualBookEdit(book: ManualBook) {
+    setEditingManualBookId(book.id);
+    setEditingManualBookTitle(book.title);
+    setEditingManualBookAuthor(book.author.name);
+    setEditingManualBookIsbn(book.isbn ?? "");
+  }
+
+  async function saveManualBookEdit(id: number) {
+    setManualBookSaving(true);
+    await fetch(`/api/admin/manual-books/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: editingManualBookTitle,
+        author: editingManualBookAuthor,
+        isbn: editingManualBookIsbn || null,
+      }),
+    });
+    setManualBookSaving(false);
+    setEditingManualBookId(null);
+    refreshManualBooks();
+  }
+
+  async function executeDeleteManualBook() {
+    if (!deleteTargetManualBook) return;
+    const target = deleteTargetManualBook;
+    setDeletingManualBookId(target.id);
+    setDeleteTargetManualBook(null);
+    await fetch(`/api/admin/manual-books/${target.id}`, { method: "DELETE" });
+    setDeletingManualBookId(null);
+    refreshManualBooks();
+  }
+
+  async function handleMergeManualBooks() {
+    if (!mergeSourceId || !mergeTargetId || mergeSourceId === mergeTargetId) return;
+    setMerging(true);
+    setMergeResult(null);
+    const res = await fetch("/api/admin/manual-books/merge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sourceBookId: Number(mergeSourceId),
+        targetBookId: Number(mergeTargetId),
+      }),
+    });
+    if (res.ok) {
+      setMergeResult("統合しました。");
+      setMergeSourceId("");
+      setMergeTargetId("");
+      refreshManualBooks();
+    } else {
+      const data = await res.json();
+      setMergeResult(`エラー: ${data.error ?? "統合に失敗しました。"}`);
+    }
+    setMerging(false);
   }
 
   useEffect(() => {
@@ -909,6 +1001,154 @@ export default function AdminPage() {
           </CardContent>}
         </Card>
 
+        {/* 手動登録本の管理 */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle>
+              <button
+                onClick={() => setManualBooksOpen(!manualBooksOpen)}
+                className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />手動登録本の管理
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${manualBooksOpen ? "rotate-180" : ""}`} />
+              </button>
+            </CardTitle>
+          </CardHeader>
+          {manualBooksOpen && <CardContent>
+            <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+              ユーザーが手動登録した本を確認・編集・削除・統合できます。登録された本の情報は管理者が管理します。
+            </p>
+
+            {manualBooks.length > 1 && (
+              <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">重複統合:</span>
+                <select
+                  value={mergeSourceId}
+                  onChange={(e) => setMergeSourceId(e.target.value)}
+                  className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                >
+                  <option value="">統合元を選択</option>
+                  {manualBooks.map((b) => (
+                    <option key={b.id} value={b.id}>{b.title}（{b.author.name}）</option>
+                  ))}
+                </select>
+                <span className="text-xs text-zinc-400">→</span>
+                <select
+                  value={mergeTargetId}
+                  onChange={(e) => setMergeTargetId(e.target.value)}
+                  className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                >
+                  <option value="">統合先を選択</option>
+                  {manualBooks.map((b) => (
+                    <option key={b.id} value={b.id}>{b.title}（{b.author.name}）</option>
+                  ))}
+                </select>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!mergeSourceId || !mergeTargetId || mergeSourceId === mergeTargetId || merging}
+                  onClick={handleMergeManualBooks}
+                >
+                  {merging ? "統合中..." : "統合する"}
+                </Button>
+                {mergeResult && <span className="text-xs text-zinc-500">{mergeResult}</span>}
+              </div>
+            )}
+
+            {manualBooks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">手動登録された本はありません。</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <table className="w-full text-sm whitespace-nowrap">
+                  <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                    <tr>
+                      <th className="px-4 py-3 text-left">タイトル</th>
+                      <th className="px-4 py-3 text-left">著者</th>
+                      <th className="px-4 py-3 text-left">ISBN</th>
+                      <th className="px-4 py-3 text-left">登録者</th>
+                      <th className="px-4 py-3 text-left">利用状況</th>
+                      <th className="px-4 py-3 text-left">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
+                    {manualBooks.map((book) => (
+                      <tr key={book.id}>
+                        {editingManualBookId === book.id ? (
+                          <>
+                            <td className="px-4 py-3">
+                              <input
+                                value={editingManualBookTitle}
+                                onChange={(e) => setEditingManualBookTitle(e.target.value)}
+                                className="w-full rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                value={editingManualBookAuthor}
+                                onChange={(e) => setEditingManualBookAuthor(e.target.value)}
+                                className="w-full rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                value={editingManualBookIsbn}
+                                onChange={(e) => setEditingManualBookIsbn(e.target.value)}
+                                className="w-full rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-zinc-500" colSpan={2}>
+                              {book.createdByUser ? `${book.createdByUser.name}（${book.createdByUser.email}）` : "不明（管理者代理登録等）"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={() => saveManualBookEdit(book.id)} disabled={manualBookSaving}>
+                                  {manualBookSaving ? "保存中..." : "保存"}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditingManualBookId(null)}>
+                                  キャンセル
+                                </Button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 text-zinc-900 dark:text-zinc-50">{book.title}</td>
+                            <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{book.author.name}</td>
+                            <td className="px-4 py-3 text-zinc-500">{book.isbn ?? "-"}</td>
+                            <td className="px-4 py-3 text-zinc-500">
+                              {book.createdByUser ? `${book.createdByUser.name}（${book.createdByUser.email}）` : "不明"}
+                            </td>
+                            <td className="px-4 py-3 text-zinc-500">
+                              読書{book._count.readingStatuses}／レビュー{book._count.reviews}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => startManualBookEdit(book)}>
+                                  編集
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setDeleteTargetManualBook(book)}
+                                  disabled={deletingManualBookId === book.id}
+                                >
+                                  {deletingManualBookId === book.id ? "削除中..." : "削除"}
+                                </Button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>}
+        </Card>
+
         {/* ユーザー管理 */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
@@ -1164,6 +1404,15 @@ export default function AdminPage() {
         description={`「${deleteTargetUser?.name}」のアカウントとすべての関連データ（レビュー・いいね・読書状態など）を完全に削除します。この操作は元に戻せません。`}
         confirmLabel="削除する"
         onConfirm={executeDeleteUser}
+      />
+
+      <ConfirmDialog
+        open={deleteTargetManualBook !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTargetManualBook(null); }}
+        title="この本を削除しますか？"
+        description={`「${deleteTargetManualBook?.title}」を削除します。この本に紐づくレビュー・読書ステータス・受賞登録も削除され、元に戻せません。`}
+        confirmLabel="削除する"
+        onConfirm={executeDeleteManualBook}
       />
 
       <ConfirmDialog
