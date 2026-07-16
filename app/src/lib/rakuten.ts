@@ -104,6 +104,12 @@ function parseSalesDateForSort(salesDate: string): number {
   return new Date(`${year}-${month}-${day}`).getTime();
 }
 
+/** 読書管理の対象外となる形式（ムック・CD等）かどうか。
+ * size が空の本はラノベ等の正規書籍が含まれるため除外しない。 */
+export function isNonBookSize(size: string): boolean {
+  return /ムック|カセット|CD|DVD|Blu-ray|ブルーレイ|カレンダー/i.test(size);
+}
+
 /** 形式の優先度（数値が小さいほど優先）: 単行本 > 新書 > 文庫 > その他 */
 function getSizePriority(size: string): number {
   if (/単行本|ハードカバー|上製本/.test(size)) return 1;
