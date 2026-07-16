@@ -92,6 +92,11 @@ function normalizeTitle(title: string): string {
   return title.trim().replace(/\s+/g, "").normalize("NFKC");
 }
 
+/** 著者名の表記ゆれ（スペース有無・全半角）を吸収する */
+function normalizeAuthor(author: string): string {
+  return author.trim().replace(/\s+/g, "").normalize("NFKC");
+}
+
 function parseSalesDateForSort(salesDate: string): number {
   const match = salesDate.match(/(\d{4})年(\d{2})月(?:(\d{2})日)?/);
   if (!match) return Infinity;
@@ -107,11 +112,12 @@ function getSizePriority(size: string): number {
   return 4;
 }
 
-/** タイトルで重複除去し、形式（単行本優先）→出版日（最古）の順で1冊を残す */
+/** タイトル＋著者で重複除去し、形式（単行本優先）→出版日（最古）の順で1冊を残す。
+ * 著者もキーに含めるのは、同名タイトルの別作品（例：4作者の『青天』）を統合しないため。 */
 export function deduplicateByTitle(books: RakutenBook[]): RakutenBook[] {
   const map = new Map<string, RakutenBook>();
   for (const book of books) {
-    const key = normalizeTitle(book.title);
+    const key = `${normalizeTitle(book.title)}|${normalizeAuthor(book.author)}`;
     const existing = map.get(key);
     if (!existing) {
       map.set(key, book);
