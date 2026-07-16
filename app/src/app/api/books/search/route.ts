@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchBookPage, deduplicateByTitle } from "@/lib/rakuten";
+import {
+  fetchBookPage,
+  deduplicateByTitle,
+  normalizeTitle,
+  normalizeAuthor,
+} from "@/lib/rakuten";
 import { searchBooksNdl } from "@/lib/ndl";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
@@ -63,6 +68,40 @@ export async function GET(request: NextRequest) {
     // 管理者画面など deduplicate=false の場合は全版を返す
     const deduplicated = deduplicate ? deduplicateByTitle(rawItems) : rawItems;
 
+    // 同名タイトルの別作品を区別するため、タイトル照合は「タイトル｜著者」キーで行う。
+    // ただし著者表記が外部APIとDBで揺れることがあるため、
+    // タイトルがDB内・検索結果内の両方で一意な場合に限りタイトルのみのフォールバック照合を許可する。
+    const makeKey = (title: string, author: string) =>
+      `${normalizeTitle(title)}|${normalizeAuthor(author)}`;
+
+    const countTitles = (titleList: string[]) => {
+      const counts = new Map<string, number>();
+      for (const t of titleList) {
+        const key = normalizeTitle(t);
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+      return counts;
+    };
+
+    const buildLookup = <T,>(
+      books: { title: string; author: { name: string } }[],
+      toValue: (index: number) => T,
+      resultTitleCounts: Map<string, number>
+    ) => {
+      const byKey = new Map<string, T>();
+      const dbTitleCounts = countTitles(books.map((b) => b.title));
+      const byTitle = new Map<string, T>();
+      books.forEach((b, i) => {
+        byKey.set(makeKey(b.title, b.author.name), toValue(i));
+        const t = normalizeTitle(b.title);
+        if (dbTitleCounts.get(t) === 1 && (resultTitleCounts.get(t) ?? 0) <= 1) {
+          byTitle.set(t, toValue(i));
+        }
+      });
+      return (title: string, author: string): T | undefined =>
+        byKey.get(makeKey(title, author)) ?? byTitle.get(normalizeTitle(title));
+    };
+
     const isbns = deduplicated.map((b) => b.isbn).filter(Boolean);
     const titles = deduplicated.map((b) => b.title);
     const dbBooks = await prisma.book.findMany({
@@ -70,6 +109,7 @@ export async function GET(request: NextRequest) {
       select: {
         isbn: true,
         title: true,
+        author: { select: { name: true } },
         awardEntries: {
           select: { year: true, type: true, award: { select: { name: true } } },
         },
@@ -83,13 +123,20 @@ export async function GET(request: NextRequest) {
     const toAwards = (entries: { year: number; type: string; award: { name: string } }[]) =>
       entries.map((e) => ({ name: e.award.name, year: e.year, type: e.type }));
 
+    const resultTitleCounts = countTitles(deduplicated.map((b) => b.title));
     const awardsByIsbn = new Map(dbBooks.filter((b) => b.isbn).map((b) => [b.isbn, toAwards(b.awardEntries)]));
-    const awardsByTitle = new Map(dbBooks.map((b) => [b.title, toAwards(b.awardEntries)]));
+    const lookupAwards = buildLookup(
+      dbBooks,
+      (i) => toAwards(dbBooks[i].awardEntries),
+      resultTitleCounts
+    );
     const statusByIsbn = new Map(
       dbBooks.filter((b) => b.isbn).map((b) => [b.isbn, b.readingStatuses[0]?.status ?? "unread"])
     );
-    const statusByTitle = new Map(
-      dbBooks.map((b) => [b.title, b.readingStatuses[0]?.status ?? "unread"])
+    const lookupStatus = buildLookup(
+      dbBooks,
+      (i) => dbBooks[i].readingStatuses[0]?.status ?? "unread",
+      resultTitleCounts
     );
 
     const rakutenItems: SearchResult[] = deduplicated.map((b) => ({
@@ -100,8 +147,8 @@ export async function GET(request: NextRequest) {
       salesDate: b.salesDate,
       size: b.size ?? "",
       coverImageUrl: b.largeImageUrl || null,
-      awards: awardsByIsbn.get(b.isbn) ?? awardsByTitle.get(b.title) ?? [],
-      status: statusByIsbn.get(b.isbn) ?? statusByTitle.get(b.title) ?? "unread",
+      awards: awardsByIsbn.get(b.isbn) ?? lookupAwards(b.title, b.author) ?? [],
+      status: statusByIsbn.get(b.isbn) ?? lookupStatus(b.title, b.author) ?? "unread",
     }));
 
     // 楽天が0件 → NDLにフォールバック
@@ -115,14 +162,24 @@ export async function GET(request: NextRequest) {
           select: {
             isbn: true,
             title: true,
+            author: { select: { name: true } },
             awardEntries: { select: { year: true, type: true, award: { select: { name: true } } } },
             readingStatuses: { where: { userId }, select: { status: true } },
           },
         });
+        const ndlResultTitleCounts = countTitles(ndlResult.items.map((b) => b.title));
         const ndlAwardsByIsbn = new Map(ndlDbBooks.filter((b) => b.isbn).map((b) => [b.isbn, toAwards(b.awardEntries)]));
-        const ndlAwardsByTitle = new Map(ndlDbBooks.map((b) => [b.title, toAwards(b.awardEntries)]));
+        const ndlLookupAwards = buildLookup(
+          ndlDbBooks,
+          (i) => toAwards(ndlDbBooks[i].awardEntries),
+          ndlResultTitleCounts
+        );
         const ndlStatusByIsbn = new Map(ndlDbBooks.filter((b) => b.isbn).map((b) => [b.isbn, b.readingStatuses[0]?.status ?? "unread"]));
-        const ndlStatusByTitle = new Map(ndlDbBooks.map((b) => [b.title, b.readingStatuses[0]?.status ?? "unread"]));
+        const ndlLookupStatus = buildLookup(
+          ndlDbBooks,
+          (i) => ndlDbBooks[i].readingStatuses[0]?.status ?? "unread",
+          ndlResultTitleCounts
+        );
 
         const ndlItems: SearchResult[] = ndlResult.items.map((b) => ({
           title: b.title,
@@ -132,8 +189,8 @@ export async function GET(request: NextRequest) {
           salesDate: b.salesDate,
           size: "",
           coverImageUrl: null,
-          awards: (b.isbn ? ndlAwardsByIsbn.get(b.isbn) : undefined) ?? ndlAwardsByTitle.get(b.title) ?? [],
-          status: (b.isbn ? ndlStatusByIsbn.get(b.isbn) : undefined) ?? ndlStatusByTitle.get(b.title) ?? "unread",
+          awards: (b.isbn ? ndlAwardsByIsbn.get(b.isbn) : undefined) ?? ndlLookupAwards(b.title, b.author) ?? [],
+          status: (b.isbn ? ndlStatusByIsbn.get(b.isbn) : undefined) ?? ndlLookupStatus(b.title, b.author) ?? "unread",
         }));
 
         return NextResponse.json({
@@ -159,12 +216,25 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      const rakutenTitles = new Set(rakutenItems.map((b) => b.title));
+      const rakutenKeys = new Set(rakutenItems.map((b) => makeKey(b.title, b.author)));
+      const rakutenIsbns = new Set(
+        rakutenItems.map((b) => b.isbn).filter((v): v is string => v !== null)
+      );
+      // 著者表記の揺れで重複表示にならないよう、タイトルが検索結果・手動登録の
+      // 両方で一意な場合はタイトルのみの一致でも重複とみなす（lookup 側と同じ基準）
+      const rakutenTitleCounts = countTitles(rakutenItems.map((b) => b.title));
+      const manualTitleCounts = countTitles(manualBooks.map((b) => b.title));
+      const isDuplicateOfRakuten = (b: { title: string; isbn: string | null; author: { name: string } }) => {
+        if (b.isbn !== null && rakutenIsbns.has(b.isbn)) return true;
+        if (rakutenKeys.has(makeKey(b.title, b.author.name))) return true;
+        const t = normalizeTitle(b.title);
+        return rakutenTitleCounts.get(t) === 1 && manualTitleCounts.get(t) === 1;
+      };
       const formatDate = (d: Date) =>
         `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日`;
 
       manualItems = manualBooks
-        .filter((b) => !rakutenTitles.has(b.title))
+        .filter((b) => !isDuplicateOfRakuten(b))
         .map((b) => ({
           id: b.id,
           title: b.title,

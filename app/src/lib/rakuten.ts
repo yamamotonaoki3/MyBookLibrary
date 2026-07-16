@@ -88,12 +88,12 @@ export async function searchBooks(params: {
   return deduplicateByTitle(allItems);
 }
 
-function normalizeTitle(title: string): string {
+export function normalizeTitle(title: string): string {
   return title.trim().replace(/\s+/g, "").normalize("NFKC");
 }
 
 /** 著者名の表記ゆれ（スペース有無・全半角）を吸収する */
-function normalizeAuthor(author: string): string {
+export function normalizeAuthor(author: string): string {
   return author.trim().replace(/\s+/g, "").normalize("NFKC");
 }
 
