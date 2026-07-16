@@ -9,6 +9,8 @@ const mockGetAuthenticatedUserId = jest.fn();
 jest.mock("@/lib/rakuten", () => ({
   fetchBookPage: (...args: unknown[]) => mockFetchBookPage(...args),
   deduplicateByTitle: (items: unknown[]) => mockDeduplicateByTitle(items),
+  normalizeTitle: (title: string) => title.trim().replace(/\s+/g, "").normalize("NFKC"),
+  normalizeAuthor: (author: string) => author.trim().replace(/\s+/g, "").normalize("NFKC"),
 }));
 
 jest.mock("@/lib/ndl", () => ({
