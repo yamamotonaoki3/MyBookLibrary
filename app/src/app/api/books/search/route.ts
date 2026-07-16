@@ -4,6 +4,7 @@ import {
   deduplicateByTitle,
   normalizeTitle,
   normalizeAuthor,
+  isNonBookSize,
 } from "@/lib/rakuten";
 import { searchBooksNdl } from "@/lib/ndl";
 import { prisma } from "@/lib/prisma";
@@ -65,8 +66,11 @@ export async function GET(request: NextRequest) {
       hits: HITS_PER_PAGE,
     });
 
+    // 読書管理の対象外（ムック・CD等）を除外する
+    const bookItems = rawItems.filter((b) => !isNonBookSize(b.size ?? ""));
+
     // 管理者画面など deduplicate=false の場合は全版を返す
-    const deduplicated = deduplicate ? deduplicateByTitle(rawItems) : rawItems;
+    const deduplicated = deduplicate ? deduplicateByTitle(bookItems) : bookItems;
 
     // 同名タイトルの別作品を区別するため、タイトル照合は「タイトル｜著者」キーで行う。
     // ただし著者表記が外部APIとDBで揺れることがあるため、
@@ -151,8 +155,10 @@ export async function GET(request: NextRequest) {
       status: statusByIsbn.get(b.isbn) ?? lookupStatus(b.title, b.author) ?? "unread",
     }));
 
-    // 楽天が0件 → NDLにフォールバック
-    if (rakutenItems.length === 0) {
+    // 楽天が0件 → NDLにフォールバック。
+    // 非書籍の除外で空になっただけの場合、後続ページに書籍がありうる間はフォールバックせず、
+    // 最終ページまで書籍がなければフォールバックする。
+    if (rawItems.length === 0 || (rakutenItems.length === 0 && page >= pageCount)) {
       const ndlResult = await searchBooksNdl({ type: type as "title" | "author" | "keyword", q, page });
       if (ndlResult.items.length > 0) {
         const ndlIsbns = ndlResult.items.map((b) => b.isbn).filter((v): v is string => v !== null);
@@ -252,6 +258,8 @@ export async function GET(request: NextRequest) {
 
     const items = [...manualItems, ...rakutenItems];
 
+    // 非書籍の除外でページが空になっても pageCount は維持する。
+    // 後続ページに書籍が含まれる可能性があり、ページネーションを閉じると辿れなくなるため。
     const response: SearchResponse = {
       items,
       totalPages: pageCount,

@@ -11,6 +11,7 @@ jest.mock("@/lib/rakuten", () => ({
   deduplicateByTitle: (items: unknown[]) => mockDeduplicateByTitle(items),
   normalizeTitle: (title: string) => title.trim().replace(/\s+/g, "").normalize("NFKC"),
   normalizeAuthor: (author: string) => author.trim().replace(/\s+/g, "").normalize("NFKC"),
+  isNonBookSize: (size: string) => /ムック|カセット|CD|DVD|Blu-ray|ブルーレイ|カレンダー/i.test(size),
 }));
 
 jest.mock("@/lib/ndl", () => ({
