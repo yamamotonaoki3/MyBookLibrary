@@ -12,6 +12,7 @@ import {
   Search,
   BookOpen,
   Upload,
+  Download,
   Trophy,
   AlertTriangle,
   Trash2,
@@ -189,6 +190,8 @@ export default function AdminPage() {
     null
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const [entries, setEntries] = useState<AwardEntry[]>([]);
   const [selectedAwardTab, setSelectedAwardTab] = useState<string>("all");
@@ -517,6 +520,33 @@ export default function AdminPage() {
     setImportResult(data);
     setImporting(false);
     refreshEntries();
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const res = await fetch("/api/admin/award-entries/export");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setExportError(data?.error ?? "エクスポートに失敗しました。");
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="([^"]+)"/);
+      const filename = match?.[1] ?? "award-entries.csv";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("エクスポートに失敗しました。");
+    } finally {
+      setExporting(false);
+    }
   }
 
   function handleDelete(id: number) {
@@ -853,7 +883,20 @@ export default function AdminPage() {
               >
                 {importing ? "インポート中..." : "インポート実行"}
               </Button>
+              <Button
+                onClick={handleExport}
+                disabled={exporting}
+                variant="outline"
+                size="sm"
+              >
+                <Download className="mr-1 h-4 w-4" />
+                {exporting ? "エクスポート中..." : "CSVエクスポート"}
+              </Button>
             </div>
+
+            {exportError && (
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">{exportError}</p>
+            )}
 
             {importResult && (
               <div className="mt-4 rounded-md bg-zinc-50 p-4 text-sm dark:bg-zinc-800">
