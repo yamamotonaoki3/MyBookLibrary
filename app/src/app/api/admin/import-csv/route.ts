@@ -22,7 +22,46 @@ type ParsedRow = {
   type: "winner" | "nominee";
 };
 
+/** ダブルクォート囲み（内部 "" エスケープ）に対応したCSV行の分割。
+ * クォートを含まない行は単純なカンマ分割と同じ結果になる。 */
+function splitCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      fields.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  fields.push(current);
+  return fields;
+}
+
 // CSVフォーマット: title,author,isbn,coverImageUrl,publishedAt,awardId,year,type
+//
+// エクスポート（award-entries/export/route.ts）は =+-@ 等で始まる値の先頭に
+// CSVインジェクション対策のシングルクォートを付与するが、この付与を無条件に
+// 取り除く処理は行わない。実際に "'" で始まる正当なタイトル・著者名（独自に
+// 作成されたCSVも含む）と区別する手段がなく、誤って一般のCSVインポートの
+// 値を書き換えてしまうため。=+-@ 等で始まるタイトルを再インポートした場合、
+// 先頭にクォートが付いたまま新規本として登録される点は既知の制約とする。
 function parseRow(row: string[]): ParsedRow {
   const [title, author, isbn, coverImageUrl, publishedAt, awardIdStr, yearStr, type] = row;
 
@@ -57,7 +96,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "CSVファイルを指定してください。" }, { status: 400 });
     }
 
-    const text = await file.text();
+    // エクスポートCSV等のUTF-8 BOMを除去する
+    const text = (await file.text()).replace(/^﻿/, "");
     const lines = text
       .split("\n")
       .map((l) => l.trim())
@@ -71,7 +111,7 @@ export async function POST(request: NextRequest) {
     const errors: string[] = [];
     for (let i = 0; i < dataLines.length; i++) {
       try {
-        parsedRows.push({ row: parseRow(dataLines[i].split(",")), lineIndex: i });
+        parsedRows.push({ row: parseRow(splitCsvLine(dataLines[i])), lineIndex: i });
       } catch (e) {
         errors.push(`行 ${i + 2}: ${e instanceof Error ? e.message : String(e)}`);
       }
