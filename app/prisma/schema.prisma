@@ -151,6 +151,7 @@ model FavoriteAuthor {
   author   Author  @relation(fields: [authorId], references: [id])
 
   @@unique([userId, authorId])
+  @@index([authorId])
   @@map("favorite_authors")
 }
 
