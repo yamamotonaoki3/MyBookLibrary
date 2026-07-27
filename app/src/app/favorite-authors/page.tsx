@@ -2,8 +2,10 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { getAuthorBookCount } from "@/lib/rakuten";
+import { getRecommendedAuthors } from "@/lib/recommendations";
 import { AuthorCard } from "./_components/AuthorCard";
 import { AddAuthorDialog } from "./_components/AddAuthorDialog";
+import { RecommendedAuthors } from "./_components/RecommendedAuthors";
 import type { FavoriteAuthorItem } from "@/types/author";
 
 export const dynamic = "force-dynamic";
@@ -63,14 +65,19 @@ async function FavoriteAuthorList() {
     );
   }
 
+  const recommendations = await getRecommendedAuthors(userId);
+
   return (
-    <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-      {authors.map((author) => (
-        <li key={author.id}>
-          <AuthorCard author={author} />
-        </li>
-      ))}
-    </ul>
+    <>
+      <RecommendedAuthors recommendations={recommendations} />
+      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        {authors.map((author) => (
+          <li key={author.id}>
+            <AuthorCard author={author} />
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
