@@ -10,32 +10,32 @@ type Props = {
 
 export function RecommendedAuthors({ recommendations }: Props) {
   const router = useRouter();
-  const [addedNames, setAddedNames] = useState<Set<string>>(new Set());
-  const [pendingName, setPendingName] = useState<string | null>(null);
+  const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
+  const [pendingId, setPendingId] = useState<number | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
 
   if (recommendations.length === 0) return null;
 
-  async function handleAdd(name: string) {
+  async function handleAdd(authorId: number) {
     setAddError(null);
-    setPendingName(name);
+    setPendingId(authorId);
     try {
       const res = await fetch("/api/favorite-authors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authorName: name }),
+        body: JSON.stringify({ authorId }),
       });
       if (!res.ok) {
         const data = await res.json();
         setAddError(data.error ?? "追加に失敗しました。");
         return;
       }
-      setAddedNames((prev) => new Set(prev).add(name));
+      setAddedIds((prev) => new Set(prev).add(authorId));
       router.refresh();
     } catch {
       setAddError("追加に失敗しました。");
     } finally {
-      setPendingName(null);
+      setPendingId(null);
     }
   }
 
@@ -49,7 +49,7 @@ export function RecommendedAuthors({ recommendations }: Props) {
       )}
       <ul className="flex flex-col gap-2">
         {recommendations.map((rec) => {
-          const added = addedNames.has(rec.name);
+          const added = addedIds.has(rec.authorId);
           return (
             <li
               key={rec.authorId}
@@ -62,11 +62,11 @@ export function RecommendedAuthors({ recommendations }: Props) {
                 <span className="text-xs text-zinc-400">追加済み</span>
               ) : (
                 <button
-                  onClick={() => handleAdd(rec.name)}
-                  disabled={pendingName === rec.name}
+                  onClick={() => handleAdd(rec.authorId)}
+                  disabled={pendingId === rec.authorId}
                   className="shrink-0 whitespace-nowrap rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                 >
-                  {pendingName === rec.name ? "追加中..." : "追加する"}
+                  {pendingId === rec.authorId ? "追加中..." : "追加する"}
                 </button>
               )}
             </li>
