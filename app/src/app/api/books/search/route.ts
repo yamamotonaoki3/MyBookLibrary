@@ -9,8 +9,12 @@ import {
 import { searchBooksNdl } from "@/lib/ndl";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { isRateLimited } from "@/lib/rateLimit";
 
 const HITS_PER_PAGE = 30;
+
+// 無限スクロールによる連続リクエストから外部API（楽天/NDL）を守るための間隔
+const SEARCH_RATE_LIMIT_INTERVAL_MS = 500;
 
 export type SearchResult = {
   id?: number;
@@ -52,6 +56,14 @@ export async function GET(request: NextRequest) {
   try {
     const { userId, error } = await getAuthenticatedUserId();
     if (error) return error;
+
+    if (isRateLimited(`books-search:${userId}`, SEARCH_RATE_LIMIT_INTERVAL_MS)) {
+      return NextResponse.json(
+        { error: "リクエストが多すぎます。しばらくお待ちください。" },
+        { status: 429 }
+      );
+    }
+
     let params: { title?: string; author?: string };
     if (type === "keyword") {
       const parts = q.split(/\s+/);

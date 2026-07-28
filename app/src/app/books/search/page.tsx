@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult, SearchResponse } from "@/app/api/books/search/route";
 import BarcodeScannerModal from "./_components/BarcodeScannerModal";
@@ -12,6 +12,17 @@ import { LibraryAvailability } from "@/components/ui/library-availability";
 
 type SearchType = "title" | "author";
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
+
+// クライアント側でもサーバーのレート制限（500ms間隔）と衝突しないよう
+// 追加読み込みの最低間隔を設ける（サーバー側より少し余裕を持たせる）
+const CLIENT_MIN_FETCH_INTERVAL_MS = 600;
+
+// 無限スクロールで結果を連結する際の重複除去キー。サーバー側の重複除去は
+// ページ単位で行われるため、ページを跨いで同じ本（ISBN、ISBNがない場合は
+// タイトル＋著者）が別ページに出現すると連結時に重複しうる
+function dedupeKey(book: SearchResult): string {
+  return book.isbn ? `isbn:${book.isbn}` : `title-author:${book.title}::${book.author}`;
+}
 
 const STATUS_LABELS: Record<ReadingStatus, string> = {
   unread: "未読",
@@ -152,57 +163,161 @@ function BookSearchContent() {
 
   const urlQ = searchParams.get("q") ?? "";
   const urlType = (searchParams.get("type") ?? "title") as SearchType;
-  const urlPage = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
 
   const [query, setQuery] = useState(urlQ);
   const [type, setType] = useState<SearchType>(urlType);
   const [results, setResults] = useState<SearchResult[]>([]);
+  // 直近まで読み込んだページ番号（0=未読込）。無限スクロールで次に取得するのは loadedPage + 1
+  const [loadedPage, setLoadedPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [moreError, setMoreError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [manualRegisterOpen, setManualRegisterOpen] = useState(false);
   const [registeringIsbn, setRegisteringIsbn] = useState(false);
   const [registerMessage, setRegisterMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // 検索条件変更時にインクリメントする世代カウンタ。
+  // 進行中の古いリクエストのレスポンスが新しい検索結果に混ざるのを防ぐ。
+  const requestTokenRef = useRef(0);
+  // サーバー側レート制限（500ms間隔）と衝突しないよう、初回検索・追加読み込みを
+  // 問わずリクエスト送信前に直近リクエストからの間隔を保証する。
+  // 「次に送信可能な予約時刻」として管理することで、検索条件が短時間に
+  // 複数回変わり fetchPage が同時に呼ばれても、それぞれ別の送信時刻に
+  // 直列化される（単純な経過時間チェックだと同時に待機に入り、待機明けに
+  // 同時送信されてサーバー側の制限に引っかかってしまうため）
+  const nextAllowedAtRef = useRef(0);
+  // 無限スクロールで結果を連結する際の重複除去用（dedupeKey参照）
+  const seenKeysRef = useRef<Set<string>>(new Set());
 
-  const fetchResults = useCallback(async (q: string, t: SearchType, page: number) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/books/search?q=${encodeURIComponent(q)}&type=${t}&page=${page}`
-      );
-      const data: SearchResponse = await res.json();
-      if (!res.ok) {
-        setError((data as { error?: string }).error ?? "検索に失敗しました");
-        setResults([]);
-        setTotalPages(0);
-      } else {
-        setResults(data.items);
-        setTotalPages(data.totalPages);
-      }
-    } catch {
-      setError("通信エラーが発生しました");
-      setResults([]);
-      setTotalPages(0);
-    } finally {
-      setLoading(false);
-      setSearched(true);
+  const hasMore = totalPages > 0 && loadedPage < totalPages;
+
+  // seenKeysRef への書き込み（副作用）を伴うため、setState の updater 関数の
+  // 外側で1回だけ呼ぶこと。React StrictMode は updater 関数を検証のため2回
+  // 呼び出すため、ここに副作用を持たせると1回目で全キーが登録され、2回目の
+  // 呼び出し（Reactが採用する方）で全件「既出」と判定され結果が失われる。
+  const pickUniqueItems = useCallback((incoming: SearchResult[]): SearchResult[] => {
+    const uniqueItems: SearchResult[] = [];
+    for (const book of incoming) {
+      const key = dedupeKey(book);
+      if (seenKeysRef.current.has(key)) continue;
+      seenKeysRef.current.add(key);
+      uniqueItems.push(book);
     }
+    return uniqueItems;
   }, []);
 
-  // URL パラメータが変わったら検索実行
+  const fetchPage = useCallback(async (q: string, t: SearchType, page: number) => {
+    const now = Date.now();
+    const reservedAt = Math.max(now, nextAllowedAtRef.current);
+    nextAllowedAtRef.current = reservedAt + CLIENT_MIN_FETCH_INTERVAL_MS;
+    const delay = reservedAt - now;
+    if (delay > 0) {
+      await new Promise((r) => setTimeout(r, delay));
+    }
+    const res = await fetch(
+      `/api/books/search?q=${encodeURIComponent(q)}&type=${t}&page=${page}`
+    );
+    const data: SearchResponse = await res.json();
+    if (!res.ok) {
+      throw new Error((data as { error?: string }).error ?? "検索に失敗しました");
+    }
+    return data;
+  }, []);
+
+  // 検索条件が変わったときの初回検索（1ページ目から取得し直す）
+  const fetchInitial = useCallback(async (q: string, t: SearchType) => {
+    // 新しい検索を開始するので世代を進め、進行中の古い fetchMore の結果を無効化する。
+    // 古い fetchMore が完了していなくても loadingMore を明示的に解除しないと、
+    // 新しい検索後の自動読み込みがガード条件（loadingMore）でブロックされ続けてしまう
+    const token = ++requestTokenRef.current;
+    setLoading(true);
+    setLoadingMore(false);
+    setError(null);
+    setMoreError(null);
+    seenKeysRef.current = new Set();
+    try {
+      const data = await fetchPage(q, t, 1);
+      if (token !== requestTokenRef.current) return;
+      const uniqueItems = pickUniqueItems(data.items);
+      setResults(uniqueItems);
+      setTotalPages(data.totalPages);
+      setLoadedPage(1);
+    } catch (e) {
+      if (token !== requestTokenRef.current) return;
+      setError(e instanceof Error ? e.message : "通信エラーが発生しました");
+      setResults([]);
+      setTotalPages(0);
+      setLoadedPage(0);
+    } finally {
+      if (token === requestTokenRef.current) {
+        setLoading(false);
+        setSearched(true);
+      }
+    }
+  }, [fetchPage, pickUniqueItems]);
+
+  // スクロールで末尾に到達したときの追加読み込み。
+  // force が true の場合のみ、直前のエラー（moreError）があっても実行する
+  // （sentinelが画面内に留まったまま自動リトライが無限に走るのを防ぎ、
+  // 再試行はユーザー操作からのみ行えるようにするため）
+  const fetchMore = useCallback(async (opts?: { force?: boolean }) => {
+    if (loading || loadingMore || !hasMore) return;
+    if (moreError && !opts?.force) return;
+    const token = requestTokenRef.current;
+    setLoadingMore(true);
+    setMoreError(null);
+    const nextPage = loadedPage + 1;
+    try {
+      const data = await fetchPage(urlQ, urlType, nextPage);
+      if (token !== requestTokenRef.current) return;
+      const uniqueItems = pickUniqueItems(data.items);
+      setResults((prev) => [...prev, ...uniqueItems]);
+      setTotalPages(data.totalPages);
+      setLoadedPage(nextPage);
+    } catch (e) {
+      if (token !== requestTokenRef.current) return;
+      setMoreError(e instanceof Error ? e.message : "通信エラーが発生しました");
+    } finally {
+      // 検索条件が変わっていた場合、この古いリクエストの完了で
+      // 新しいリクエストの loadingMore を誤って解除しないようにする
+      if (token === requestTokenRef.current) {
+        setLoadingMore(false);
+      }
+    }
+  }, [loading, loadingMore, hasMore, moreError, loadedPage, urlQ, urlType, fetchPage, pickUniqueItems]);
+
+  // URL パラメータ（検索条件）が変わったら1ページ目から検索し直す
   useEffect(() => {
     if (urlQ.trim().length >= 1) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchResults(urlQ, urlType, urlPage);
+      fetchInitial(urlQ, urlType);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlQ, urlType, urlPage]);
+  }, [urlQ, urlType]);
 
-  function pushUrl(q: string, t: SearchType, page: number) {
-    const params = new URLSearchParams({ q, type: t, page: String(page) });
+  // 末尾のsentinel要素が画面に入ったら次ページを自動取得する
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          fetchMore();
+        }
+      },
+      { rootMargin: "0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, fetchMore]);
+
+  function pushUrl(q: string, t: SearchType) {
+    const params = new URLSearchParams({ q, type: t });
     router.push(`/books/search?${params.toString()}`);
   }
 
@@ -210,20 +325,15 @@ function BookSearchContent() {
     e.preventDefault();
     const trimmed = query.trim();
     if (trimmed.length < 1) return;
-    pushUrl(trimmed, type, 1);
+    pushUrl(trimmed, type);
   }
 
   function handleTypeChange(newType: SearchType) {
     setType(newType);
     const trimmed = query.trim();
     if (trimmed.length >= 1 && searched) {
-      pushUrl(trimmed, newType, 1);
+      pushUrl(trimmed, newType);
     }
-  }
-
-  function handlePageChange(page: number) {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    pushUrl(urlQ, urlType, page);
   }
 
   async function handleIsbnScanned(isbn: string) {
@@ -384,25 +494,26 @@ function BookSearchContent() {
           ))}
         </div>
 
-        {/* ページング UI */}
-        {totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-center gap-4">
+        {/* 無限スクロール用の監視要素。画面に入ると次ページを自動取得する */}
+        {hasMore && (
+          <div ref={sentinelRef} className="mt-8 flex justify-center py-4">
+            {loadingMore && (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">読み込み中...</p>
+            )}
+          </div>
+        )}
+
+        {moreError && (
+          <div className="mt-2 flex flex-col items-center gap-2">
+            <p className="text-center text-sm text-red-600 dark:text-red-400">
+              {moreError}
+            </p>
             <button
-              onClick={() => handlePageChange(urlPage - 1)}
-              disabled={urlPage <= 1 || loading}
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              type="button"
+              onClick={() => fetchMore({ force: true })}
+              className="rounded-lg border border-zinc-300 px-4 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
-              ← 前へ
-            </button>
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">
-              {urlPage} / {totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(urlPage + 1)}
-              disabled={urlPage >= totalPages || loading}
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              次へ →
+              再試行
             </button>
           </div>
         )}

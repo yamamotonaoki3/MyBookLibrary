@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { resetRateLimits } from "@/lib/rateLimit";
 
 const mockFetchBookPage = jest.fn();
 const mockDeduplicateByTitle = jest.fn((items: unknown[]) => items);
@@ -39,6 +40,7 @@ describe("GET /api/books/search", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    resetRateLimits();
     mockDeduplicateByTitle.mockImplementation((items: unknown[]) => items);
     mockGetAuthenticatedUserId.mockResolvedValue({ userId: 1, error: null });
     mockFindMany.mockResolvedValue([]);
