@@ -4,6 +4,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import FollowButton from "@/app/_components/FollowButton";
+import { getRecommendedUsers } from "@/lib/userRecommendations";
+import { RecommendedFollows } from "./_components/RecommendedFollows";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +76,8 @@ export default async function FollowsPage() {
     }),
   ]);
 
+  const recommendations = await getRecommendedUsers(myUserId);
+
   const followingIds = new Set(followingRows.map((r) => r.following.id));
   const followerIds = new Set(followerRows.map((r) => r.follower.id));
 
@@ -116,6 +120,8 @@ export default async function FollowsPage() {
             emptyText="フォロワーはまだいません。"
           />
         </section>
+
+        <RecommendedFollows recommendations={recommendations} />
       </div>
     </div>
   );
