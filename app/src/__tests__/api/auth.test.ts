@@ -6,6 +6,7 @@ const mockCreate = jest.fn();
 const mockUpdate = jest.fn();
 const mockNotificationFindFirst = jest.fn();
 const mockNotificationCreate = jest.fn();
+const mockAuditLogCreate = jest.fn();
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
@@ -17,6 +18,9 @@ jest.mock("@/lib/prisma", () => ({
     notification: {
       findFirst: (...args: unknown[]) => mockNotificationFindFirst(...args),
       create: (...args: unknown[]) => mockNotificationCreate(...args),
+    },
+    auditLog: {
+      create: (...args: unknown[]) => mockAuditLogCreate(...args),
     },
   },
 }));

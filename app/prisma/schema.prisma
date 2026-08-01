@@ -36,6 +36,7 @@ model User {
   following             Follow[]         @relation("following")
   followers             Follow[]         @relation("followers")
   createdBooks          Book[]           @relation("BookCreatedBy")
+  auditLogs             AuditLog[]       @relation("AuditLogActor")
 
   @@map("users")
 }
@@ -250,4 +251,23 @@ model ContactInquiry {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("contact_inquiries")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  eventType   String   @map("event_type")
+  actorUserId Int?     @map("actor_user_id")
+  actorEmail  String?  @map("actor_email")
+  targetType  String?  @map("target_type")
+  targetId    Int?     @map("target_id")
+  detail      Json?
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actorUser User? @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }

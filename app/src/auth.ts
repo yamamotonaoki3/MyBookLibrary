@@ -5,6 +5,7 @@ import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "./auth.config";
+import { recordAuditEvent, AUDIT_EVENT } from "@/lib/auditLog";
 import type { Adapter, AdapterUser } from "next-auth/adapters";
 
 export const LOCK_THRESHOLD = 10;
@@ -26,13 +27,19 @@ export async function authorizeCredentials(
   const valid = await bcrypt.compare(password, user.password);
   if (!valid) {
     const newCount = user.loginFailCount + 1;
+    const willLock = newCount >= LOCK_THRESHOLD;
     await prisma.user.update({
       where: { id: user.id },
       data: {
         loginFailCount: newCount,
-        lockedUntil:
-          newCount >= LOCK_THRESHOLD ? new Date(Date.now() + LOCK_DURATION_MS) : null,
+        lockedUntil: willLock ? new Date(Date.now() + LOCK_DURATION_MS) : null,
       },
+    });
+    await recordAuditEvent({
+      eventType: willLock ? AUDIT_EVENT.ACCOUNT_LOCKED : AUDIT_EVENT.LOGIN_FAILURE,
+      actorUserId: user.id,
+      actorEmail: user.email,
+      detail: { failCount: newCount },
     });
     return null;
   }

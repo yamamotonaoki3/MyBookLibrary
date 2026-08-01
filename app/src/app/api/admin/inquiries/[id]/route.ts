@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireAdminSession();
@@ -27,15 +28,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { error } = await requireAdminSession();
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { userId, error } = await requireAdminSession();
   if (error) return error;
 
   const { id } = await params;
   const inquiryId = Number(id);
 
   try {
-    await prisma.contactInquiry.delete({ where: { id: inquiryId } });
+    const deleted = await prisma.contactInquiry.delete({ where: { id: inquiryId } });
+    await recordAuditEvent({
+      eventType: AUDIT_EVENT.ADMIN_INQUIRY_DELETED,
+      actorUserId: userId,
+      targetType: "ContactInquiry",
+      targetId: inquiryId,
+      detail: { subject: deleted.subject, email: deleted.email },
+      ipAddress: getClientIp(req),
+    });
     return new Response(null, { status: 204 });
   } catch {
     return Response.json({ error: "Internal Server Error" }, { status: 500 });

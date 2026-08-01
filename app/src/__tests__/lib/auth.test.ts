@@ -1,11 +1,15 @@
 const mockFindUnique = jest.fn();
 const mockUpdate = jest.fn();
+const mockAuditLogCreate = jest.fn();
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
       update: (...args: unknown[]) => mockUpdate(...args),
+    },
+    auditLog: {
+      create: (...args: unknown[]) => mockAuditLogCreate(...args),
     },
   },
 }));

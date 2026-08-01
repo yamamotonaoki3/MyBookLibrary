@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { ResetPasswordSchema } from "@/lib/validations";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 const SECRET_WORD_LOCK_THRESHOLD = 10;
 const SECRET_WORD_LOCK_DURATION_MS = 15 * 60 * 1000;
@@ -69,15 +70,22 @@ export async function POST(req: NextRequest) {
       const lockExpired = user.secretWordLockedUntil && user.secretWordLockedUntil <= new Date();
       const baseCount = lockExpired ? 0 : user.secretWordFailCount;
       const newCount = baseCount + 1;
+      const willLock = newCount >= SECRET_WORD_LOCK_THRESHOLD;
       await prisma.user.update({
         where: { id: user.id },
         data: {
           secretWordFailCount: newCount,
-          secretWordLockedUntil:
-            newCount >= SECRET_WORD_LOCK_THRESHOLD
-              ? new Date(Date.now() + SECRET_WORD_LOCK_DURATION_MS)
-              : null,
+          secretWordLockedUntil: willLock
+            ? new Date(Date.now() + SECRET_WORD_LOCK_DURATION_MS)
+            : null,
         },
+      });
+      await recordAuditEvent({
+        eventType: willLock ? AUDIT_EVENT.SECRET_WORD_LOCKED : AUDIT_EVENT.SECRET_WORD_VERIFY_FAILURE,
+        actorUserId: user.id,
+        actorEmail: user.email,
+        detail: { failCount: newCount },
+        ipAddress: getClientIp(req),
       });
       return NextResponse.json({ error: "SECRET_WORD_INVALID" }, { status: 401 });
     }
@@ -110,6 +118,13 @@ export async function POST(req: NextRequest) {
         secretWordFailCount: 0,
         secretWordLockedUntil: null,
       },
+    });
+
+    await recordAuditEvent({
+      eventType: AUDIT_EVENT.PASSWORD_RESET_COMPLETED,
+      actorUserId: user.id,
+      actorEmail: user.email,
+      ipAddress: getClientIp(req),
     });
 
     return NextResponse.json({ ok: true });

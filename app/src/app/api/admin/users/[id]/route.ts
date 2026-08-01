@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { userId, error } = await requireAdminSession();
@@ -25,7 +26,7 @@ export async function DELETE(
 
   const target = await prisma.user.findUnique({
     where: { id: targetId },
-    select: { role: true },
+    select: { role: true, email: true },
   });
 
   if (!target) {
@@ -53,6 +54,15 @@ export async function DELETE(
     prisma.account.deleteMany({ where: { userId: targetId } }),
     prisma.user.delete({ where: { id: targetId } }),
   ]);
+
+  await recordAuditEvent({
+    eventType: AUDIT_EVENT.ADMIN_USER_DELETED,
+    actorUserId: userId,
+    targetType: "User",
+    targetId,
+    detail: { deletedUserEmail: target.email },
+    ipAddress: getClientIp(req),
+  });
 
   return NextResponse.json({ message: "ユーザーを削除しました" });
 }

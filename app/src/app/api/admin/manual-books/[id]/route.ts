@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -52,8 +53,8 @@ export async function PATCH(request: NextRequest, { params }: Props) {
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: Props) {
-  const { error } = await requireAdminSession();
+export async function DELETE(request: NextRequest, { params }: Props) {
+  const { userId, error } = await requireAdminSession();
   if (error) return error;
 
   try {
@@ -76,6 +77,15 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
     await prisma.readingStatus.deleteMany({ where: { bookId } });
     await prisma.awardEntry.deleteMany({ where: { bookId } });
     await prisma.book.delete({ where: { id: bookId } });
+
+    await recordAuditEvent({
+      eventType: AUDIT_EVENT.ADMIN_MANUAL_BOOK_DELETED,
+      actorUserId: userId,
+      targetType: "Book",
+      targetId: bookId,
+      detail: { title: book.title },
+      ipAddress: getClientIp(request),
+    });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
