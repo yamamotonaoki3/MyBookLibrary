@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 export async function POST(request: NextRequest) {
-  const { error } = await requireAdminSession();
+  const { userId, error } = await requireAdminSession();
   if (error) return error;
 
   try {
@@ -73,6 +74,15 @@ export async function POST(request: NextRequest) {
       });
 
       await tx.book.delete({ where: { id: sourceBookId } });
+    });
+
+    await recordAuditEvent({
+      eventType: AUDIT_EVENT.ADMIN_MANUAL_BOOK_MERGED,
+      actorUserId: userId,
+      targetType: "Book",
+      targetId: targetBookId,
+      detail: { sourceBookId, sourceTitle: sourceBook.title },
+      ipAddress: getClientIp(request),
     });
 
     return NextResponse.json({ success: true });

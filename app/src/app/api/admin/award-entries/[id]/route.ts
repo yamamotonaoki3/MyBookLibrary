@@ -3,13 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 type Props = { params: Promise<{ id: string }> };
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-export async function DELETE(_request: NextRequest, { params }: Props) {
-  const { error } = await requireAdminSession();
+export async function DELETE(request: NextRequest, { params }: Props) {
+  const { userId, error } = await requireAdminSession();
   if (error) return error;
 
   try {
@@ -20,12 +21,24 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "ID が不正です。" }, { status: 400 });
     }
 
-    const entry = await prisma.awardEntry.findUnique({ where: { id: entryId } });
+    const entry = await prisma.awardEntry.findUnique({
+      where: { id: entryId },
+      include: { book: true },
+    });
     if (!entry) {
       return NextResponse.json({ error: "受賞登録が見つかりません。" }, { status: 404 });
     }
 
     await prisma.awardEntry.delete({ where: { id: entryId } });
+
+    await recordAuditEvent({
+      eventType: AUDIT_EVENT.ADMIN_AWARD_ENTRY_DELETED,
+      actorUserId: userId,
+      targetType: "AwardEntry",
+      targetId: entryId,
+      detail: { bookTitle: entry.book.title, year: entry.year, type: entry.type },
+      ipAddress: getClientIp(request),
+    });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

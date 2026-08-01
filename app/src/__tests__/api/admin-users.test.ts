@@ -24,6 +24,7 @@ jest.mock("@/lib/prisma", () => ({
     favoriteAuthor: { deleteMany: jest.fn() },
     session: { deleteMany: jest.fn() },
     account: { deleteMany: jest.fn() },
+    auditLog: { create: jest.fn() },
     $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
 }));

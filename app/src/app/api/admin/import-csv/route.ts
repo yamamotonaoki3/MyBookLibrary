@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 function parsePublishedAt(raw: string | null | undefined): Date {
   if (!raw) return new Date();
@@ -87,7 +88,7 @@ function parseRow(row: string[]): ParsedRow {
 }
 
 export async function POST(request: NextRequest) {
-  const { error } = await requireAdminSession();
+  const { userId, error } = await requireAdminSession();
   if (error) return error;
 
   try {
@@ -192,6 +193,13 @@ export async function POST(request: NextRequest) {
         errors.push(`行 ${lineIndex + 2}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
+
+    await recordAuditEvent({
+      eventType: AUDIT_EVENT.ADMIN_CSV_IMPORTED,
+      actorUserId: userId,
+      detail: { success, errorCount: errors.length },
+      ipAddress: getClientIp(request),
+    });
 
     return NextResponse.json({ success, errors });
   } catch (error) {

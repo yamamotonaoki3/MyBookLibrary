@@ -1,0 +1,35 @@
+export const AUDIT_EVENT = {
+  LOGIN_FAILURE: "login_failure",
+  ACCOUNT_LOCKED: "account_locked",
+  PASSWORD_RESET_COMPLETED: "password_reset_completed",
+  SECRET_WORD_VERIFY_FAILURE: "secret_word_verify_failure",
+  SECRET_WORD_LOCKED: "secret_word_locked",
+  SECRET_WORD_UPDATED: "secret_word_updated",
+  USER_SELF_DELETED: "user_self_deleted",
+  ADMIN_USER_DELETED: "admin_user_deleted",
+  ADMIN_REVIEW_DELETED: "admin_review_deleted",
+  ADMIN_MANUAL_BOOK_DELETED: "admin_manual_book_deleted",
+  ADMIN_MANUAL_BOOK_MERGED: "admin_manual_book_merged",
+  ADMIN_AWARD_ENTRY_DELETED: "admin_award_entry_deleted",
+  ADMIN_CSV_IMPORTED: "admin_csv_imported",
+  ADMIN_INQUIRY_DELETED: "admin_inquiry_deleted",
+} as const;
+
+export type AuditEventType = (typeof AUDIT_EVENT)[keyof typeof AUDIT_EVENT];
+
+export const AUDIT_EVENT_LABEL: Record<AuditEventType, string> = {
+  [AUDIT_EVENT.LOGIN_FAILURE]: "ログイン失敗",
+  [AUDIT_EVENT.ACCOUNT_LOCKED]: "アカウントロック",
+  [AUDIT_EVENT.PASSWORD_RESET_COMPLETED]: "パスワードリセット完了",
+  [AUDIT_EVENT.SECRET_WORD_VERIFY_FAILURE]: "秘密の言葉 検証失敗",
+  [AUDIT_EVENT.SECRET_WORD_LOCKED]: "秘密の言葉 ロック",
+  [AUDIT_EVENT.SECRET_WORD_UPDATED]: "秘密の言葉 更新",
+  [AUDIT_EVENT.USER_SELF_DELETED]: "自己アカウント削除",
+  [AUDIT_EVENT.ADMIN_USER_DELETED]: "管理者: ユーザー削除",
+  [AUDIT_EVENT.ADMIN_REVIEW_DELETED]: "管理者: レビュー削除",
+  [AUDIT_EVENT.ADMIN_MANUAL_BOOK_DELETED]: "管理者: 手動登録本 削除",
+  [AUDIT_EVENT.ADMIN_MANUAL_BOOK_MERGED]: "管理者: 手動登録本 統合",
+  [AUDIT_EVENT.ADMIN_AWARD_ENTRY_DELETED]: "管理者: 受賞登録 削除",
+  [AUDIT_EVENT.ADMIN_CSV_IMPORTED]: "管理者: CSVインポート",
+  [AUDIT_EVENT.ADMIN_INQUIRY_DELETED]: "管理者: 問い合わせ削除",
+};

@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { SecretWordSchema } from "@/lib/validations";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 export async function POST(request: Request) {
   const { userId, error } = await getAuthenticatedUserId();
@@ -40,6 +41,13 @@ export async function POST(request: Request) {
   await prisma.notification.updateMany({
     where: { userId, type: "secret_word_required", isRead: false },
     data: { isRead: true },
+  });
+
+  await recordAuditEvent({
+    eventType: AUDIT_EVENT.SECRET_WORD_UPDATED,
+    actorUserId: userId,
+    actorEmail: user.email,
+    ipAddress: getClientIp(request),
   });
 
   return Response.json({ ok: true });

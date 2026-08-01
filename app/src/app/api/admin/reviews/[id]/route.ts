@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function DELETE(_req: Request, { params }: Params) {
-  const { error } = await requireAdminSession();
+export async function DELETE(req: Request, { params }: Params) {
+  const { userId, error } = await requireAdminSession();
   if (error) return error;
   const { id } = await params;
   const reviewId = Number(id);
@@ -30,6 +31,14 @@ export async function DELETE(_req: Request, { params }: Params) {
       },
     });
     await prisma.review.delete({ where: { id: reviewId } });
+    await recordAuditEvent({
+      eventType: AUDIT_EVENT.ADMIN_REVIEW_DELETED,
+      actorUserId: userId,
+      targetType: "Review",
+      targetId: reviewId,
+      detail: { reviewUserId: review.userId, bookTitle: review.book.title },
+      ipAddress: getClientIp(req),
+    });
     return new Response(null, { status: 204 });
   } catch {
     return Response.json({ error: "Internal Server Error" }, { status: 500 });

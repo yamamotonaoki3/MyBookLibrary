@@ -1,14 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
-import { NextResponse } from "next/server";
+import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const { userId, error } = await getAuthenticatedUserId();
   if (error) return error;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true },
+    select: { role: true, email: true },
   });
 
   if (!user) {
@@ -33,6 +34,14 @@ export async function DELETE() {
     prisma.account.deleteMany({ where: { userId } }),
     prisma.user.delete({ where: { id: userId } }),
   ]);
+
+  // 削除対象のユーザー自身が行為者のため、既に存在しないIDをactorUserIdに残さない
+  await recordAuditEvent({
+    eventType: AUDIT_EVENT.USER_SELF_DELETED,
+    actorUserId: null,
+    actorEmail: user.email,
+    ipAddress: getClientIp(request),
+  });
 
   return NextResponse.json({ message: "アカウントを削除しました" });
 }
