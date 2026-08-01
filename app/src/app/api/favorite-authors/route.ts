@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { FavoriteAuthorSchema } from "@/lib/validations";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 export async function GET() {
@@ -44,7 +45,7 @@ export async function GET() {
 
     return Response.json(result);
   } catch (error) {
-    console.error("[GET /api/favorite-authors]", error);
+    logger.error({ err: error }, "[GET /api/favorite-authors]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
 
     return Response.json(favoriteAuthor, { status: 201 });
   } catch (error) {
-    console.error("[POST /api/favorite-authors]", error);
+    logger.error({ err: error }, "[POST /api/favorite-authors]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

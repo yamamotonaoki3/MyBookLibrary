@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 export async function GET() {
@@ -32,7 +33,7 @@ export async function GET() {
 
     return Response.json(result);
   } catch (error) {
-    console.error("[GET /api/authors]", error);
+    logger.error({ err: error }, "[GET /api/authors]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

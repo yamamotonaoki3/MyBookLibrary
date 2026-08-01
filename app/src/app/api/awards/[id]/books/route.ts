@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -63,7 +64,7 @@ export async function GET(
 
     return Response.json(response);
   } catch (error) {
-    console.error(`[GET /api/awards/${id}/books]`, error);
+    logger.error({ err: error }, `[GET /api/awards/${id}/books]`);
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

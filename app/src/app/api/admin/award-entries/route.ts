@@ -3,6 +3,7 @@ import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   const { error } = await requireAdminSession();
@@ -18,7 +19,7 @@ export async function GET() {
     });
     return NextResponse.json(entries);
   } catch (error) {
-    console.error("[GET /api/admin/award-entries]", error);
+    logger.error({ err: error }, "[GET /api/admin/award-entries]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }
 }
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    console.error("[POST /api/admin/award-entries]", error);
+    logger.error({ err: error }, "[POST /api/admin/award-entries]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }
 }

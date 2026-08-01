@@ -1,4 +1,5 @@
 import { getAuthorBookCountNdl } from "@/lib/ndl";
+import { logger } from "@/lib/logger";
 
 const RAKUTEN_API_BASE =
   "https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404";
@@ -47,12 +48,12 @@ export async function fetchBookPage(params: {
         await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
         continue;
       }
-      console.error("楽天API 429: リトライ上限に達しました");
+      logger.error("楽天API 429: リトライ上限に達しました");
       return { items: [], pageCount: 0 };
     }
 
     if (!res.ok) {
-      console.error(`楽天API エラー: ${res.status} ${res.statusText}`);
+      logger.error({ status: res.status, statusText: res.statusText }, "楽天API エラー");
       return { items: [], pageCount: 0 };
     }
 

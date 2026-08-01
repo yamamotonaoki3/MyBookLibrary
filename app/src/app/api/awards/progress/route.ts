@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 export async function GET() {
@@ -35,7 +36,7 @@ export async function GET() {
 
     return NextResponse.json({ awards: result });
   } catch (error) {
-    console.error("[GET /api/awards/progress]", error);
+    logger.error({ err: error }, "[GET /api/awards/progress]");
     return NextResponse.json(
       { error: "サーバーエラーが発生しました。" },
       { status: 500 }

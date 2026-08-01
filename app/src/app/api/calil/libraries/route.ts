@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchLibraries } from "@/lib/calil";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const { error } = await getAuthenticatedUserId();
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     const libraries = await searchLibraries(pref, city);
     return NextResponse.json(libraries);
   } catch (err) {
-    console.error("[GET /api/calil/libraries]", err);
+    logger.error({ err }, "[GET /api/calil/libraries]");
     return NextResponse.json(
       { error: "図書館の検索に失敗しました" },
       { status: 500 }

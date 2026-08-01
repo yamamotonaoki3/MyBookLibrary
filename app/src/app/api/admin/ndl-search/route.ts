@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { searchBooksByIsbn, fetchBookPage } from "@/lib/rakuten";
+import { logger } from "@/lib/logger";
 
 const NDL_SRU_BASE = "https://ndlsearch.ndl.go.jp/api/sru";
 
@@ -138,7 +139,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(withCovers);
   } catch (err) {
-    console.error("[GET /api/admin/ndl-search]", err);
+    logger.error({ err }, "[GET /api/admin/ndl-search]");
     return NextResponse.json({ error: "国立国会図書館の検索に失敗しました" }, { status: 500 });
   }
 }

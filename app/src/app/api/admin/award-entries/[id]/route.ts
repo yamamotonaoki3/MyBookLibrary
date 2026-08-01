@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -28,7 +29,7 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    console.error("[DELETE /api/admin/award-entries/[id]]", error);
+    logger.error({ err: error }, "[DELETE /api/admin/award-entries/[id]]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }
 }
@@ -104,7 +105,7 @@ export async function PATCH(request: NextRequest, { params }: Props) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("[PATCH /api/admin/award-entries/[id]]", error);
+    logger.error({ err: error }, "[PATCH /api/admin/award-entries/[id]]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }
 }

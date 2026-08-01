@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 export async function DELETE(
@@ -25,7 +26,7 @@ export async function DELETE(
 
     return new Response(null, { status: 204 });
   } catch (error) {
-    console.error("[DELETE /api/favorite-authors/[authorId]]", error);
+    logger.error({ err: error }, "[DELETE /api/favorite-authors/[authorId]]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -53,7 +54,7 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("[PATCH /api/favorite-authors/[authorId]]", error);
+    logger.error({ err: error }, "[PATCH /api/favorite-authors/[authorId]]");
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

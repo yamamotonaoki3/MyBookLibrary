@@ -3,6 +3,7 @@ import { searchBooksByIsbn } from "@/lib/rakuten";
 import { searchBookByIsbn as searchBookByIsbnNdl } from "@/lib/ndl";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 async function getCurrentStatus(isbn: string, userId: number): Promise<string> {
   const dbBook = await prisma.book.findUnique({
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 楽天にない場合は国立国会図書館APIで検索
-  console.log("[ISBN検索] 楽天で見つからず、国立国会図書館APIにフォールバック:", isbn);
+  logger.info({ isbn }, "[ISBN検索] 楽天で見つからず、国立国会図書館APIにフォールバック");
   const ndlBook = await searchBookByIsbnNdl(isbn);
   if (!ndlBook || !ndlBook.title) {
     return NextResponse.json({ error: "本が見つかりませんでした" }, { status: 404 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 export async function GET() {
@@ -13,7 +14,7 @@ export async function GET() {
 
     return NextResponse.json({ totalLikes });
   } catch (e) {
-    console.error("[GET /api/reviews/stats]", e);
+    logger.error({ err: e }, "[GET /api/reviews/stats]");
     return NextResponse.json(
       { error: "サーバーエラーが発生しました。" },
       { status: 500 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { checkAvailability } from "@/lib/calil";
 import { searchBooksNdl } from "@/lib/ndl";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const { userId, error } = await getAuthenticatedUserId();
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ results: enriched });
   } catch (err) {
-    console.error("[GET /api/calil/check]", err);
+    logger.error({ err }, "[GET /api/calil/check]");
     return NextResponse.json(
       { error: "貸出状況の確認に失敗しました" },
       { status: 500 }

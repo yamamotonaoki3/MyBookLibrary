@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (e) {
-    console.error("[POST /api/follows]", e);
+    logger.error({ err: e }, "[POST /api/follows]");
     return NextResponse.json(
       { error: "サーバーエラーが発生しました。" },
       { status: 500 }
@@ -126,7 +127,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ following: false });
   } catch (e) {
-    console.error("[DELETE /api/follows]", e);
+    logger.error({ err: e }, "[DELETE /api/follows]");
     return NextResponse.json(
       { error: "サーバーエラーが発生しました。" },
       { status: 500 }

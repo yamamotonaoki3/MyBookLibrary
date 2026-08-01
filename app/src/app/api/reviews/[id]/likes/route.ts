@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 type Props = {
@@ -65,7 +66,7 @@ export async function POST(_request: NextRequest, { params }: Props) {
 
     return NextResponse.json({ liked: true, count }, { status: 201 });
   } catch (e) {
-    console.error("[POST /api/reviews/[id]/likes]", e);
+    logger.error({ err: e }, "[POST /api/reviews/[id]/likes]");
     return NextResponse.json(
       { error: "サーバーエラーが発生しました。" },
       { status: 500 }
@@ -103,7 +104,7 @@ export async function DELETE(_request: NextRequest, { params }: Props) {
 
     return NextResponse.json({ liked: false, count });
   } catch (e) {
-    console.error("[DELETE /api/reviews/[id]/likes]", e);
+    logger.error({ err: e }, "[DELETE /api/reviews/[id]/likes]");
     return NextResponse.json(
       { error: "サーバーエラーが発生しました。" },
       { status: 500 }
