@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ReviewSchema } from "@/lib/validations";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 type Props = {
@@ -94,7 +95,7 @@ export async function PATCH(request: NextRequest, { params }: Props) {
 
     return NextResponse.json(updated);
   } catch (e) {
-    console.error("[PATCH /api/reviews]", e);
+    logger.error({ err: e }, "[PATCH /api/reviews]");
     return NextResponse.json(
       { error: "サーバーエラーが発生しました。" },
       { status: 500 }

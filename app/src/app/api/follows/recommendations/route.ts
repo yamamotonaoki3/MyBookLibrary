@@ -1,5 +1,6 @@
 import { getAuthenticatedUserId } from "@/lib/session";
 import { getRecommendedUsers } from "@/lib/userRecommendations";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -10,7 +11,7 @@ export async function GET() {
 
     return Response.json(recommendations);
   } catch (error) {
-    console.error("[GET /api/follows/recommendations]", error);
+    logger.error({ err: error }, "[GET /api/follows/recommendations]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

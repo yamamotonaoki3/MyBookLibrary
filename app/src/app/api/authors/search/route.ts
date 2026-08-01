@@ -3,6 +3,7 @@ import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { searchAuthorsByName } from "@/lib/ndl";
 import { searchBooks } from "@/lib/rakuten";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 export async function GET(request: Request) {
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
 
     return Response.json(result);
   } catch (error) {
-    console.error("[GET /api/authors/search]", error);
+    logger.error({ err: error }, "[GET /api/authors/search]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

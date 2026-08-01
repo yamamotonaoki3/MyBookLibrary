@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { searchBooks } from "@/lib/rakuten";
+import { logger } from "@/lib/logger";
 
 // salesDate の形式 "2024年01月" や "2024年01月15日" を Date に変換する
 function parseSalesDate(salesDate: string): Date | null {
@@ -23,7 +24,7 @@ const MIN_CRON_SECRET_LENGTH = 16;
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || cronSecret.length < MIN_CRON_SECRET_LENGTH) {
-    console.error("CRON_SECRET is not configured or too short");
+    logger.error("CRON_SECRET is not configured or too short");
     return NextResponse.json(
       { error: "Cron secret is not configured" },
       { status: 500 },
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
     try {
       books = await searchBooks({ author: fav.author.name });
     } catch (err) {
-      console.error(`楽天API検索エラー（著者: ${fav.author.name}）:`, err);
+      logger.error({ err, author: fav.author.name }, "楽天API検索エラー");
       continue;
     }
 

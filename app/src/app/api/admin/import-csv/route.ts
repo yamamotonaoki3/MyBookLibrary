@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 function parsePublishedAt(raw: string | null | undefined): Date {
   if (!raw) return new Date();
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success, errors });
   } catch (error) {
-    console.error("[POST /api/admin/import-csv]", error);
+    logger.error({ err: error }, "[POST /api/admin/import-csv]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }
 }

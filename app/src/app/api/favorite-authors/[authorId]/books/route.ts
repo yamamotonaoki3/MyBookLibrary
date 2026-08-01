@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { searchBooks } from "@/lib/rakuten";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 export async function GET(
@@ -76,7 +77,7 @@ export async function GET(
 
     return Response.json(result);
   } catch (error) {
-    console.error("[GET /api/favorite-authors/[authorId]/books]", error);
+    logger.error({ err: error }, "[GET /api/favorite-authors/[authorId]/books]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

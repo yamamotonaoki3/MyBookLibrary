@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { ReadingStatusSchema } from "@/lib/validations";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 
 function parseSalesDate(salesDate: string): Date {
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
 
     return Response.json(readingStatus);
   } catch (error) {
-    console.error("[POST /api/reading-status]", error);
+    logger.error({ err: error }, "[POST /api/reading-status]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

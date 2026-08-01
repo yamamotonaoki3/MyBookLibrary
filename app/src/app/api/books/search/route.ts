@@ -10,6 +10,7 @@ import { searchBooksNdl } from "@/lib/ndl";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { isRateLimited } from "@/lib/rateLimit";
+import { logger } from "@/lib/logger";
 
 const HITS_PER_PAGE = 30;
 
@@ -280,7 +281,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (err) {
-    console.error(err);
+    logger.error({ err }, "[GET /api/books/search]");
     return NextResponse.json({ error: "検索に失敗しました" }, { status: 500 });
   }
 }

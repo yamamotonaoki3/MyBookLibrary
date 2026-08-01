@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   const { error } = await requireAdminSession();
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[POST /api/admin/manual-books/merge]", error);
+    logger.error({ err: error }, "[POST /api/admin/manual-books/merge]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }
 }

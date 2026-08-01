@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 const NDL_API_BASE = "https://ndlsearch.ndl.go.jp/api/opensearch";
 const NDL_SRU_BASE = "https://ndlsearch.ndl.go.jp/api/sru";
 const HITS_PER_PAGE = 30;
@@ -137,7 +139,7 @@ export async function searchBookByIsbn(isbn: string): Promise<NdlBook | null> {
 
   const res = await fetch(url.toString(), { cache: "no-store" });
   if (!res.ok) {
-    console.error(`NDL API エラー: ${res.status} ${res.statusText}`);
+    logger.error({ status: res.status, statusText: res.statusText }, "NDL API エラー");
     return null;
   }
 
@@ -196,7 +198,7 @@ export async function searchAuthorsByName(name: string): Promise<string[]> {
 
   const res = await fetch(url.toString());
   if (!res.ok) {
-    console.error(`NDL API エラー: ${res.status} ${res.statusText}`);
+    logger.error({ status: res.status, statusText: res.statusText }, "NDL API エラー");
     return [];
   }
 

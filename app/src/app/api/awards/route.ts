@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -12,7 +13,7 @@ export async function GET() {
 
     return Response.json(awards);
   } catch (error) {
-    console.error("[GET /api/awards]", error);
+    logger.error({ err: error }, "[GET /api/awards]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

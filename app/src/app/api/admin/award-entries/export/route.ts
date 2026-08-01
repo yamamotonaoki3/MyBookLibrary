@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
+import { logger } from "@/lib/logger";
 
 /** フィールドをCSV用にエスケープする。
  * インポートが行単位でパースするため、改行はスペースに正規化して1レコード1行を保証する。
@@ -71,7 +72,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("[GET /api/admin/award-entries/export]", error);
+    logger.error({ err: error }, "[GET /api/admin/award-entries/export]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }
 }

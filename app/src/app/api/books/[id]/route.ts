@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 const EditBookSchema = z.object({
@@ -78,7 +79,7 @@ export async function PATCH(
 
     return Response.json(updated);
   } catch (error) {
-    console.error("[PATCH /api/books/[id]]", error);
+    logger.error({ err: error }, "[PATCH /api/books/[id]]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -120,7 +121,7 @@ export async function DELETE(
 
     return Response.json({ success: true });
   } catch (error) {
-    console.error("[DELETE /api/books/[id]]", error);
+    logger.error({ err: error }, "[DELETE /api/books/[id]]");
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
