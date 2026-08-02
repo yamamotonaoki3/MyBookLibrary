@@ -221,6 +221,8 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const [deleteTargetUser, setDeleteTargetUser] = useState<UserRow | null>(null);
+  const [changingRoleUserId, setChangingRoleUserId] = useState<number | null>(null);
+  const [roleChangeTargetUser, setRoleChangeTargetUser] = useState<UserRow | null>(null);
   const [awardsOpen, setAwardsOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -292,6 +294,28 @@ export default function AdminPage() {
       return;
     }
     setUsers((prev) => prev.filter((u) => u.id !== target.id));
+  }
+
+  async function executeChangeUserRole() {
+    if (!roleChangeTargetUser) return;
+    const target = roleChangeTargetUser;
+    const newRole = target.role === "admin" ? "user" : "admin";
+    setChangingRoleUserId(target.id);
+    setRoleChangeTargetUser(null);
+    const res = await fetch(`/api/admin/users/${target.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: newRole }),
+    });
+    setChangingRoleUserId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      alert(data?.error ?? "ロールの変更に失敗しました。");
+      return;
+    }
+    setUsers((prev) =>
+      prev.map((u) => (u.id === target.id ? { ...u, role: newRole } : u))
+    );
   }
 
   function handleDeleteReview(id: number) {
@@ -1257,16 +1281,32 @@ export default function AdminPage() {
                             {new Date(user.createdAt).toLocaleDateString("ja-JP")}
                           </td>
                           <td className="px-4 py-3">
-                            {canDelete && (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => setDeleteTargetUser(user)}
-                                disabled={deletingUserId === user.id}
-                              >
-                                {deletingUserId === user.id ? "削除中..." : "削除"}
-                              </Button>
-                            )}
+                            <div className="flex flex-wrap gap-2">
+                              {!isMyself && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setRoleChangeTargetUser(user)}
+                                  disabled={changingRoleUserId === user.id}
+                                >
+                                  {changingRoleUserId === user.id
+                                    ? "変更中..."
+                                    : isAdmin
+                                      ? "管理者権限を外す"
+                                      : "管理者にする"}
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => setDeleteTargetUser(user)}
+                                  disabled={deletingUserId === user.id}
+                                >
+                                  {deletingUserId === user.id ? "削除中..." : "削除"}
+                                </Button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1454,6 +1494,23 @@ export default function AdminPage() {
         description={`「${deleteTargetUser?.name}」のアカウントとすべての関連データ（レビュー・いいね・読書状態など）を完全に削除します。この操作は元に戻せません。`}
         confirmLabel="削除する"
         onConfirm={executeDeleteUser}
+      />
+
+      <ConfirmDialog
+        open={roleChangeTargetUser !== null}
+        onOpenChange={(open) => { if (!open) setRoleChangeTargetUser(null); }}
+        title={
+          roleChangeTargetUser?.role === "admin"
+            ? "管理者権限を外しますか？"
+            : "管理者にしますか？"
+        }
+        description={
+          roleChangeTargetUser?.role === "admin"
+            ? `「${roleChangeTargetUser?.name}」（${roleChangeTargetUser?.email}）の管理者権限を外し、一般ユーザーにします。`
+            : `「${roleChangeTargetUser?.name}」（${roleChangeTargetUser?.email}）を管理者にします。管理画面へのアクセスなど強い権限を付与するため、信頼できる相手か確認してください。`
+        }
+        confirmLabel={roleChangeTargetUser?.role === "admin" ? "権限を外す" : "管理者にする"}
+        onConfirm={executeChangeUserRole}
       />
 
       <ConfirmDialog
