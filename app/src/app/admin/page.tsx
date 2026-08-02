@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -598,6 +599,12 @@ export default function AdminPage() {
       <h1 className="mb-5 flex items-center gap-2 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         <Settings className="h-6 w-6 lg:h-7 lg:w-7" />
         管理画面
+        <Link
+          href="/admin/audit-logs"
+          className="ml-auto text-sm font-normal text-blue-600 hover:underline dark:text-blue-400"
+        >
+          監査ログを見る
+        </Link>
       </h1>
 
       <div className="flex-1 overflow-y-auto">

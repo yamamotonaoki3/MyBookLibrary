@@ -62,6 +62,15 @@ export const SecretWordSchema = z.object({
     .max(50, "秘密の言葉は50文字以内で入力してください"),
 });
 
+export const AuditLogQuerySchema = z.object({
+  eventType: z.string().optional(),
+  actorUserId: z.coerce.number().int().positive().optional(),
+  from: z.iso.date("from は YYYY-MM-DD 形式で指定してください。").optional(),
+  to: z.iso.date("to は YYYY-MM-DD 形式で指定してください。").optional(),
+  page: z.coerce.number().int().positive().optional().default(1),
+  pageSize: z.coerce.number().int().positive().max(200).optional().default(50),
+});
+
 export const RegisterSchema = z
   .object({
     name: z
