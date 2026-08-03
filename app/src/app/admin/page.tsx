@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LibrarySettings } from "@/app/settings/_components/LibrarySettings";
+import { adminFetch } from "@/lib/adminFetch";
 
 type SearchResult = {
   title: string;
@@ -259,25 +260,25 @@ export default function AdminPage() {
   }, [entries, selectedAwardTab, selectedYear]);
 
   useEffect(() => {
-    fetch("/api/admin/stats")
+    adminFetch("/api/admin/stats")
       .then((res) => res.json())
       .then((data) => setStats(data));
   }, []);
 
   useEffect(() => {
-    fetch("/api/admin/reported-reviews")
+    adminFetch("/api/admin/reported-reviews")
       .then((res) => res.json())
       .then((data: ReportedReview[]) => setReportedReviews(data));
   }, []);
 
   useEffect(() => {
-    fetch("/api/admin/inquiries")
+    adminFetch("/api/admin/inquiries")
       .then((res) => res.json())
       .then((data: Inquiry[]) => setInquiries(data));
   }, []);
 
   useEffect(() => {
-    fetch("/api/admin/users")
+    adminFetch("/api/admin/users")
       .then((res) => res.json())
       .then((data: UserRow[]) => setUsers(data));
   }, []);
@@ -287,7 +288,7 @@ export default function AdminPage() {
     const target = deleteTargetUser;
     setDeletingUserId(target.id);
     setDeleteTargetUser(null);
-    const res = await fetch(`/api/admin/users/${target.id}`, { method: "DELETE" });
+    const res = await adminFetch(`/api/admin/users/${target.id}`, { method: "DELETE" });
     setDeletingUserId(null);
     if (!res.ok) {
       alert("ユーザーの削除に失敗しました。");
@@ -302,7 +303,7 @@ export default function AdminPage() {
     const newRole = target.role === "admin" ? "user" : "admin";
     setChangingRoleUserId(target.id);
     setRoleChangeTargetUser(null);
-    const res = await fetch(`/api/admin/users/${target.id}`, {
+    const res = await adminFetch(`/api/admin/users/${target.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role: newRole }),
@@ -327,7 +328,7 @@ export default function AdminPage() {
     const targetId = deleteTargetReviewId;
     setDeletingReviewId(targetId);
     setDeleteTargetReviewId(null);
-    const res = await fetch(`/api/admin/reviews/${targetId}`, { method: "DELETE" });
+    const res = await adminFetch(`/api/admin/reviews/${targetId}`, { method: "DELETE" });
     setDeletingReviewId(null);
     if (!res.ok) {
       alert("レビューの削除に失敗しました。");
@@ -339,7 +340,7 @@ export default function AdminPage() {
   async function handleToggleInquiryStatus(inquiry: Inquiry) {
     const newStatus = inquiry.status === "open" ? "closed" : "open";
     setUpdatingInquiryId(inquiry.id);
-    const res = await fetch(`/api/admin/inquiries/${inquiry.id}`, {
+    const res = await adminFetch(`/api/admin/inquiries/${inquiry.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus }),
@@ -360,7 +361,7 @@ export default function AdminPage() {
     const target = deleteTargetInquiry;
     setDeletingInquiryId(target.id);
     setDeleteTargetInquiry(null);
-    const res = await fetch(`/api/admin/inquiries/${target.id}`, { method: "DELETE" });
+    const res = await adminFetch(`/api/admin/inquiries/${target.id}`, { method: "DELETE" });
     setDeletingInquiryId(null);
     if (!res.ok) {
       alert("削除に失敗しました。");
@@ -370,7 +371,7 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    fetch("/api/admin/award-entries")
+    adminFetch("/api/admin/award-entries")
       .then((res) => res.json())
       .then((data: AwardEntry[]) => setEntries(data));
   }, [refreshKey]);
@@ -380,7 +381,7 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    fetch("/api/admin/manual-books")
+    adminFetch("/api/admin/manual-books")
       .then((res) => res.json())
       .then((data: ManualBook[]) => setManualBooks(data));
   }, [manualBooksRefreshKey]);
@@ -398,7 +399,7 @@ export default function AdminPage() {
 
   async function saveManualBookEdit(id: number) {
     setManualBookSaving(true);
-    await fetch(`/api/admin/manual-books/${id}`, {
+    await adminFetch(`/api/admin/manual-books/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -417,7 +418,7 @@ export default function AdminPage() {
     const target = deleteTargetManualBook;
     setDeletingManualBookId(target.id);
     setDeleteTargetManualBook(null);
-    await fetch(`/api/admin/manual-books/${target.id}`, { method: "DELETE" });
+    await adminFetch(`/api/admin/manual-books/${target.id}`, { method: "DELETE" });
     setDeletingManualBookId(null);
     refreshManualBooks();
   }
@@ -426,7 +427,7 @@ export default function AdminPage() {
     if (!mergeSourceId || !mergeTargetId || mergeSourceId === mergeTargetId) return;
     setMerging(true);
     setMergeResult(null);
-    const res = await fetch("/api/admin/manual-books/merge", {
+    const res = await adminFetch("/api/admin/manual-books/merge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -468,7 +469,7 @@ export default function AdminPage() {
     await loadAwards();
 
     if (searchMode === "ndl") {
-      const res = await fetch(`/api/admin/ndl-search?q=${encodeURIComponent(query)}`);
+      const res = await adminFetch(`/api/admin/ndl-search?q=${encodeURIComponent(query)}`);
       const data = await res.json();
       const ndlItems: SearchResult[] = Array.isArray(data)
         ? data.map((b: { title: string; author: string; publisher: string; date: string; isbn: string; coverImageUrl: string | null }) => ({
@@ -510,7 +511,7 @@ export default function AdminPage() {
     e.preventDefault();
     setRegistering(true);
     setRegisterResult(null);
-    const res = await fetch("/api/admin/award-entries", {
+    const res = await adminFetch("/api/admin/award-entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -540,7 +541,7 @@ export default function AdminPage() {
     setImportResult(null);
     const formData = new FormData();
     formData.append("file", csvFile);
-    const res = await fetch("/api/admin/import-csv", { method: "POST", body: formData });
+    const res = await adminFetch("/api/admin/import-csv", { method: "POST", body: formData });
     const data = await res.json();
     setImportResult(data);
     setImporting(false);
@@ -551,7 +552,7 @@ export default function AdminPage() {
     setExporting(true);
     setExportError(null);
     try {
-      const res = await fetch("/api/admin/award-entries/export");
+      const res = await adminFetch("/api/admin/award-entries/export");
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         setExportError(data?.error ?? "エクスポートに失敗しました。");
@@ -582,7 +583,7 @@ export default function AdminPage() {
     if (deleteTargetId === null) return;
     setDeletingId(deleteTargetId);
     setDeleteTargetId(null);
-    await fetch(`/api/admin/award-entries/${deleteTargetId}`, { method: "DELETE" });
+    await adminFetch(`/api/admin/award-entries/${deleteTargetId}`, { method: "DELETE" });
     setDeletingId(null);
     refreshEntries();
   }
@@ -600,7 +601,7 @@ export default function AdminPage() {
 
   async function handleEditSave(id: number) {
     setEditSaving(true);
-    await fetch(`/api/admin/award-entries/${id}`, {
+    await adminFetch(`/api/admin/award-entries/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

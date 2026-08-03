@@ -6,6 +6,7 @@ import { ScrollText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AUDIT_EVENT_LABEL, type AuditEventType } from "@/lib/auditEvents";
+import { adminFetch } from "@/lib/adminFetch";
 
 type AuditLogRow = {
   id: number;
@@ -57,7 +58,7 @@ export default function AuditLogsPage() {
         if (from) params.set("from", from);
         if (to) params.set("to", to);
 
-        const res = await fetch(`/api/admin/audit-logs?${params}`);
+        const res = await adminFetch(`/api/admin/audit-logs?${params}`);
         if (res.ok) {
           const data: AuditLogResponse = await res.json();
           applyResponse(data);
@@ -71,7 +72,7 @@ export default function AuditLogsPage() {
 
   // 初回ロードのみ：エフェクト内でのsetStateはPromiseコールバック経由にする
   useEffect(() => {
-    fetch(`/api/admin/audit-logs?page=1&pageSize=${PAGE_SIZE}`)
+    adminFetch(`/api/admin/audit-logs?page=1&pageSize=${PAGE_SIZE}`)
       .then((res) => {
         if (!res.ok) return null;
         return res.json() as Promise<AuditLogResponse>;
