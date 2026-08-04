@@ -69,6 +69,16 @@
 
 ---
 
+## 学び・手直しの記録
+
+Codexレビューで採用された指摘や、実装中の手直しを [docs/lessons-learned.md](docs/lessons-learned.md) に記録する。
+
+- 記録先は `docs/lessons-learned.md`
+- 記録のタイミング・基準・形式は `lessons-learned` Skill（`~/.claude/skills/lessons-learned/SKILL.md`）に従う
+- ユーザーが明示的に「覚えておいて」と言った場合は、除外条件（秘密情報・一時的指示・既存ルールと矛盾する内容等）に触れない限り即記録する
+
+---
+
 ## コミットメッセージ規則
 
 ```
@@ -97,6 +107,10 @@ docs: 要件定義書を追加
 | 外部API | 楽天ブックスAPI（候補） |
 | デプロイ | 未定（Vercel 候補） |
 
+### 新しい技術選定が必要になったとき
+
+上記は決定済みの技術方針であり、変更しない。**今後、明記の無い新しい技術要素の選定が必要になった場合は、`resolve-tech-stack` Skill（`~/.claude/skills/resolve-tech-stack/SKILL.md`）に従う。** 明記が無ければ必ずユーザーに確認し、決定したらバージョンを明記した上でこのPCでの利用可否を検査する。導入が必要な場合は手順を提示し、実際の導入はユーザーが行う。
+
 ## アプリ起動手順
 
 ```bash
@@ -106,4 +120,11 @@ docker compose up -d
 # 2. 開発サーバー起動（app/ ディレクトリで）
 cd app
 npm run dev
+```
+
+## テスト実行
+
+```bash
+cd app
+npm test
 ```
