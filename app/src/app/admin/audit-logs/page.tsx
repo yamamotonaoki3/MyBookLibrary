@@ -6,7 +6,7 @@ import { ScrollText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AUDIT_EVENT_LABEL, type AuditEventType } from "@/lib/auditEvents";
-import { adminFetch } from "@/lib/adminFetch";
+import { useAdminFetch } from "@/lib/adminFetch";
 
 type AuditLogRow = {
   id: number;
@@ -31,6 +31,7 @@ type AuditLogResponse = {
 const PAGE_SIZE = 50;
 
 export default function AuditLogsPage() {
+  const adminFetch = useAdminFetch();
   const [items, setItems] = useState<AuditLogRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -67,7 +68,7 @@ export default function AuditLogsPage() {
         setLoading(false);
       }
     },
-    [eventType, actorUserId, from, to, applyResponse]
+    [eventType, actorUserId, from, to, applyResponse, adminFetch]
   );
 
   // 初回ロードのみ：エフェクト内でのsetStateはPromiseコールバック経由にする
@@ -81,7 +82,7 @@ export default function AuditLogsPage() {
         if (data) applyResponse(data);
       })
       .finally(() => setLoading(false));
-  }, [applyResponse]);
+  }, [applyResponse, adminFetch]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;

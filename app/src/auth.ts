@@ -115,11 +115,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       if (user) {
         token.id = user.id;
         token.name = (user as { name?: string | null }).name ?? null;
         token.role = (user as { role?: string }).role ?? "user";
+      }
+      // update() が呼ばれた時点でのDBの最新roleを反映する（Issue #417の
+      // クライアント側キャッシュ問題への対応）
+      if (trigger === "update" && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: Number(token.id) },
+          select: { role: true },
+        });
+        if (dbUser) {
+          token.role = dbUser.role;
+        }
       }
       // token.name が未設定の旧JWTのみDBから1回補完（null は再クエリしない）
       if (token.name === undefined && token.id && !user) {
