@@ -88,9 +88,6 @@ export async function DELETE(
   return NextResponse.json({ message: "ユーザーを削除しました" });
 }
 
-// NOTE: requireAdminSession() はJWTのroleを信頼するため、ここで降格しても
-// JWTの有効期限が切れる（または再ログインする）までは旧セッションのまま
-// admin操作を継続できてしまう。この既知の制約はIssue #417で対応予定。
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
