@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
+import { MAX_ADMIN_COUNT } from "@/lib/adminLimits";
 import { NextRequest, NextResponse } from "next/server";
 
 class LastAdminDemotionError extends Error {}
 class ConcurrentAdminPromotionError extends Error {}
+class MaxAdminCountExceededError extends Error {}
 
 export async function DELETE(
   req: NextRequest,
@@ -156,6 +158,31 @@ export async function PATCH(
       if (e instanceof LastAdminDemotionError) {
         return NextResponse.json(
           { error: "最後の管理者を降格することはできません" },
+          { status: 400 }
+        );
+      }
+      throw e;
+    }
+  } else if (target.role === "user" && role === "admin") {
+    // 管理者数の上限を超えないようにする。カウントと更新の間に別の昇格
+    // リクエストが割り込むと上限を超えうるため、降格時と同様に
+    // SELECT ... FOR UPDATE で管理者行をロックしたトランザクション内で
+    // カウント・更新を原子的に行う。
+    try {
+      await prisma.$transaction(async (tx) => {
+        const rows = await tx.$queryRaw<{ count: number | bigint | string }[]>`
+          SELECT COUNT(*) as count FROM users WHERE role = 'admin' FOR UPDATE
+        `;
+        const adminCount = Number(rows[0].count);
+        if (adminCount >= MAX_ADMIN_COUNT) {
+          throw new MaxAdminCountExceededError();
+        }
+        await tx.user.update({ where: { id: targetId }, data: { role } });
+      });
+    } catch (e) {
+      if (e instanceof MaxAdminCountExceededError) {
+        return NextResponse.json(
+          { error: `管理者は最大${MAX_ADMIN_COUNT}人までです` },
           { status: 400 }
         );
       }

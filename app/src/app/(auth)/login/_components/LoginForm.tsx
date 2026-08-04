@@ -20,8 +20,6 @@ function getErrorMessage(error?: string) {
     return "このメールアドレスはパスワードで登録済みです。メールアドレスとパスワードでログインしてください。";
   if (error === "OAuthCallbackError")
     return "Googleログイン中にエラーが発生しました。しばらくしてから再度お試しください。";
-  if (error === "ADMIN_FORBIDDEN")
-    return "管理者権限がなくなったため、ログインし直してください。";
   return null;
 }
 

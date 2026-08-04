@@ -239,6 +239,7 @@ describe("PATCH /api/admin/users/[id]", () => {
   it("正常系: 一般ユーザーを管理者に昇格 → 200を返し監査ログを記録する", async () => {
     mockRequireAdminSession.mockResolvedValue(adminOk);
     mockFindUnique.mockResolvedValue({ role: "user", email: "u@example.com" });
+    mockQueryRaw.mockResolvedValue([{ count: 1 }]);
     mockUserUpdate.mockResolvedValue({});
 
     const res = await call("2", "admin");
@@ -248,6 +249,18 @@ describe("PATCH /api/admin/users/[id]", () => {
       data: { role: "admin" },
     });
     expect(mockAuditLogCreate).toHaveBeenCalled();
+  });
+
+  it("管理者数が上限（5人）に達している状態で昇格しようとする → 400を返す", async () => {
+    mockRequireAdminSession.mockResolvedValue(adminOk);
+    mockFindUnique.mockResolvedValue({ role: "user", email: "u@example.com" });
+    mockQueryRaw.mockResolvedValue([{ count: 5 }]);
+
+    const res = await call("2", "admin");
+    const data = await res.json();
+    expect(res.status).toBe(400);
+    expect(data.error).toBe("管理者は最大5人までです");
+    expect(mockUserUpdate).not.toHaveBeenCalled();
   });
 
   it("正常系: 管理者を降格（他にも管理者がいる） → 200を返す", async () => {
