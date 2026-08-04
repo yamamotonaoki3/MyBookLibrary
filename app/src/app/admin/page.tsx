@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LibrarySettings } from "@/app/settings/_components/LibrarySettings";
-import { adminFetch } from "@/lib/adminFetch";
+import { useAdminFetch } from "@/lib/adminFetch";
 
 type SearchResult = {
   title: string;
@@ -150,6 +150,7 @@ const STAT_CARDS = [
 export default function AdminPage() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ? Number(session.user.id) : null;
+  const adminFetch = useAdminFetch();
 
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -263,25 +264,25 @@ export default function AdminPage() {
     adminFetch("/api/admin/stats")
       .then((res) => res.json())
       .then((data) => setStats(data));
-  }, []);
+  }, [adminFetch]);
 
   useEffect(() => {
     adminFetch("/api/admin/reported-reviews")
       .then((res) => res.json())
       .then((data: ReportedReview[]) => setReportedReviews(data));
-  }, []);
+  }, [adminFetch]);
 
   useEffect(() => {
     adminFetch("/api/admin/inquiries")
       .then((res) => res.json())
       .then((data: Inquiry[]) => setInquiries(data));
-  }, []);
+  }, [adminFetch]);
 
   useEffect(() => {
     adminFetch("/api/admin/users")
       .then((res) => res.json())
       .then((data: UserRow[]) => setUsers(data));
-  }, []);
+  }, [adminFetch]);
 
   async function executeDeleteUser() {
     if (!deleteTargetUser) return;
@@ -374,7 +375,7 @@ export default function AdminPage() {
     adminFetch("/api/admin/award-entries")
       .then((res) => res.json())
       .then((data: AwardEntry[]) => setEntries(data));
-  }, [refreshKey]);
+  }, [refreshKey, adminFetch]);
 
   function refreshEntries() {
     setRefreshKey((k) => k + 1);
@@ -384,7 +385,7 @@ export default function AdminPage() {
     adminFetch("/api/admin/manual-books")
       .then((res) => res.json())
       .then((data: ManualBook[]) => setManualBooks(data));
-  }, [manualBooksRefreshKey]);
+  }, [manualBooksRefreshKey, adminFetch]);
 
   function refreshManualBooks() {
     setManualBooksRefreshKey((k) => k + 1);
