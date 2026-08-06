@@ -1,27 +1,11 @@
 import { NextRequest } from "next/server";
 
-// ─── Prisma モック ────────────────────────────────────────────────────────────
-const mockNotificationFindMany = jest.fn();
-const mockNotificationFindUnique = jest.fn();
-const mockNotificationUpdate = jest.fn();
-const mockNotificationUpdateMany = jest.fn();
+jest.mock("@/lib/prisma");
+jest.mock("@/auth");
 
-jest.mock("@/lib/prisma", () => ({
-  prisma: {
-    notification: {
-      findMany: (...args: unknown[]) => mockNotificationFindMany(...args),
-      findUnique: (...args: unknown[]) => mockNotificationFindUnique(...args),
-      update: (...args: unknown[]) => mockNotificationUpdate(...args),
-      updateMany: (...args: unknown[]) => mockNotificationUpdateMany(...args),
-    },
-  },
-}));
-
-// ─── セッションモック ─────────────────────────────────────────────────────────
-const mockAuth = jest.fn();
-jest.mock("@/auth", () => ({
-  auth: (...args: unknown[]) => mockAuth(...args),
-}));
+import { prismaMock } from "../helpers/prismaMock";
+import { signedIn, signedOut } from "../helpers/authMock";
+import { getRequest, routeCtx, makeNotification } from "../helpers";
 
 // ─── /api/notifications ───────────────────────────────────────────────────────
 
@@ -35,10 +19,10 @@ describe("GET /api/notifications", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("6-1: 未読通知一覧を返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "1" } });
-    mockNotificationFindMany.mockResolvedValue([
-      { id: 1, userId: 1, type: "new_book", content: "新刊が出ました", isRead: false },
-      { id: 2, userId: 1, type: "like", content: "いいねが付きました", isRead: false },
+    signedIn({ id: 1 });
+    prismaMock.notification.findMany.mockResolvedValue([
+      makeNotification({ id: 1, type: "new_book", content: "新刊が出ました" }),
+      makeNotification({ id: 2, type: "like", content: "いいねが付きました" }),
     ]);
 
     const res = await GET();
@@ -49,7 +33,7 @@ describe("GET /api/notifications", () => {
   });
 
   it("認証なし → 401を返す", async () => {
-    mockAuth.mockResolvedValue(null);
+    signedOut();
 
     const res = await GET();
     expect(res.status).toBe(401);
@@ -67,49 +51,47 @@ describe("PATCH /api/notifications/[id]/read", () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  it("6-2: 通知を既読にする → 更新された通知を返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "1" } });
-    mockNotificationFindUnique.mockResolvedValue({ id: 1, userId: 1, isRead: false });
-    mockNotificationUpdate.mockResolvedValue({ id: 1, isRead: true });
+  const call = (id: string) =>
+    PATCH(getRequest(`/api/notifications/${id}/read`, undefined, { method: "PATCH" }), routeCtx({ id }));
 
-    const req = new NextRequest("http://localhost/api/notifications/1/read", { method: "PATCH" });
-    const res = await PATCH(req, { params: Promise.resolve({ id: "1" }) });
+  it("6-2: 通知を既読にする → 更新された通知を返す", async () => {
+    signedIn({ id: 1 });
+    prismaMock.notification.findUnique.mockResolvedValue(makeNotification({ id: 1, userId: 1 }));
+    prismaMock.notification.update.mockResolvedValue(makeNotification({ id: 1, isRead: true }));
+
+    const res = await call("1");
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.isRead).toBe(true);
   });
 
   it("不正なID → 400を返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "1" } });
+    signedIn({ id: 1 });
 
-    const req = new NextRequest("http://localhost/api/notifications/abc/read", { method: "PATCH" });
-    const res = await PATCH(req, { params: Promise.resolve({ id: "abc" }) });
+    const res = await call("abc");
     expect(res.status).toBe(400);
   });
 
   it("未認証 → 401を返す", async () => {
-    mockAuth.mockResolvedValue(null);
+    signedOut();
 
-    const req = new NextRequest("http://localhost/api/notifications/1/read", { method: "PATCH" });
-    const res = await PATCH(req, { params: Promise.resolve({ id: "1" }) });
+    const res = await call("1");
     expect(res.status).toBe(401);
   });
 
   it("他人の通知 → 403を返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "1" } });
-    mockNotificationFindUnique.mockResolvedValue({ id: 1, userId: 2, isRead: false });
+    signedIn({ id: 1 });
+    prismaMock.notification.findUnique.mockResolvedValue(makeNotification({ id: 1, userId: 2 }));
 
-    const req = new NextRequest("http://localhost/api/notifications/1/read", { method: "PATCH" });
-    const res = await PATCH(req, { params: Promise.resolve({ id: "1" }) });
+    const res = await call("1");
     expect(res.status).toBe(403);
   });
 
   it("存在しない通知 → 404を返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "1" } });
-    mockNotificationFindUnique.mockResolvedValue(null);
+    signedIn({ id: 1 });
+    prismaMock.notification.findUnique.mockResolvedValue(null);
 
-    const req = new NextRequest("http://localhost/api/notifications/1/read", { method: "PATCH" });
-    const res = await PATCH(req, { params: Promise.resolve({ id: "1" }) });
+    const res = await call("1");
     expect(res.status).toBe(404);
   });
 });
@@ -126,8 +108,8 @@ describe("PATCH /api/notifications/read-all", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("6-3: 全通知を既読にする → success=trueを返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "1" } });
-    mockNotificationUpdateMany.mockResolvedValue({ count: 3 });
+    signedIn({ id: 1 });
+    prismaMock.notification.updateMany.mockResolvedValue({ count: 3 });
 
     const res = await PATCH();
     expect(res.status).toBe(200);
@@ -136,7 +118,7 @@ describe("PATCH /api/notifications/read-all", () => {
   });
 
   it("認証なし → 401を返す", async () => {
-    mockAuth.mockResolvedValue(null);
+    signedOut();
 
     const res = await PATCH();
     expect(res.status).toBe(401);

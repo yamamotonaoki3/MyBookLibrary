@@ -1,13 +1,10 @@
-const mockQueryRaw = jest.fn();
-
-jest.mock("@/lib/prisma", () => ({
-  prisma: {
-    $queryRaw: (...args: unknown[]) => mockQueryRaw(...args),
-  },
-}));
+jest.mock("@/lib/prisma");
 
 import { Prisma } from "@/generated/prisma";
 import { getRecommendedAuthors } from "@/lib/recommendations";
+import { prismaMock } from "../helpers/prismaMock";
+
+const mockQueryRaw = prismaMock.$queryRaw;
 
 describe("getRecommendedAuthors", () => {
   beforeEach(() => {

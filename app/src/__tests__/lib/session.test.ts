@@ -1,19 +1,9 @@
-const mockAuth = jest.fn();
-const mockFindUnique = jest.fn();
-
-jest.mock("@/auth", () => ({
-  auth: (...args: unknown[]) => mockAuth(...args),
-}));
-
-jest.mock("@/lib/prisma", () => ({
-  prisma: {
-    user: {
-      findUnique: (...args: unknown[]) => mockFindUnique(...args),
-    },
-  },
-}));
+jest.mock("@/auth");
+jest.mock("@/lib/prisma");
 
 import { getAuthenticatedUserId, requireAdminSession } from "@/lib/session";
+import { prismaMock } from "../helpers/prismaMock";
+import { authMock, signedIn, signedInAsAdmin, signedOut } from "../helpers/authMock";
 
 describe("getAuthenticatedUserId", () => {
   beforeEach(() => {
@@ -21,7 +11,7 @@ describe("getAuthenticatedUserId", () => {
   });
 
   it("未ログイン（session=null） → 401エラーを返す", async () => {
-    mockAuth.mockResolvedValue(null);
+    signedOut();
 
     const result = await getAuthenticatedUserId();
 
@@ -30,7 +20,7 @@ describe("getAuthenticatedUserId", () => {
   });
 
   it("session.user.id が存在しない → 401エラーを返す", async () => {
-    mockAuth.mockResolvedValue({ user: {} });
+    authMock.mockResolvedValue({ user: {} });
 
     const result = await getAuthenticatedUserId();
 
@@ -39,7 +29,7 @@ describe("getAuthenticatedUserId", () => {
   });
 
   it("ログイン済み → 数値のuserIdを返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "42" } });
+    signedIn({ id: 42 });
 
     const result = await getAuthenticatedUserId();
 
@@ -54,7 +44,7 @@ describe("requireAdminSession", () => {
   });
 
   it("未ログイン → 401エラーを返す", async () => {
-    mockAuth.mockResolvedValue(null);
+    signedOut();
 
     const result = await requireAdminSession();
 
@@ -63,32 +53,32 @@ describe("requireAdminSession", () => {
   });
 
   it("一般ユーザー（role=user） → DBに問い合わせず403エラーを返す（fast-path）", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "1", role: "user" } });
+    signedIn({ id: 1, role: "user" });
 
     const result = await requireAdminSession();
 
     expect(result.userId).toBeNull();
     expect(result.error?.status).toBe(403);
-    expect(mockFindUnique).not.toHaveBeenCalled();
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
   });
 
   it("管理者（JWT・DBともにrole=admin） → 数値のuserIdを返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "7", role: "admin" } });
-    mockFindUnique.mockResolvedValue({ role: "admin" });
+    signedInAsAdmin({ id: 7 });
+    prismaMock.user.findUnique.mockResolvedValue({ role: "admin" });
 
     const result = await requireAdminSession();
 
     expect(result.userId).toBe(7);
     expect(result.error).toBeNull();
-    expect(mockFindUnique).toHaveBeenCalledWith({
+    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
       where: { id: 7 },
       select: { role: true },
     });
   });
 
   it("JWTはadminのままだがDB上はuserに降格済み → 403エラーを返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "7", role: "admin" } });
-    mockFindUnique.mockResolvedValue({ role: "user" });
+    signedInAsAdmin({ id: 7 });
+    prismaMock.user.findUnique.mockResolvedValue({ role: "user" });
 
     const result = await requireAdminSession();
 
@@ -97,8 +87,8 @@ describe("requireAdminSession", () => {
   });
 
   it("JWTはadminだがDB上のユーザーが削除済み → 403エラーを返す", async () => {
-    mockAuth.mockResolvedValue({ user: { id: "7", role: "admin" } });
-    mockFindUnique.mockResolvedValue(null);
+    signedInAsAdmin({ id: 7 });
+    prismaMock.user.findUnique.mockResolvedValue(null);
 
     const result = await requireAdminSession();
 
