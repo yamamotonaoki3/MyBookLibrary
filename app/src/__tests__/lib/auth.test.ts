@@ -1,18 +1,4 @@
-const mockFindUnique = jest.fn();
-const mockUpdate = jest.fn();
-const mockAuditLogCreate = jest.fn();
-
-jest.mock("@/lib/prisma", () => ({
-  prisma: {
-    user: {
-      findUnique: (...args: unknown[]) => mockFindUnique(...args),
-      update: (...args: unknown[]) => mockUpdate(...args),
-    },
-    auditLog: {
-      create: (...args: unknown[]) => mockAuditLogCreate(...args),
-    },
-  },
-}));
+jest.mock("@/lib/prisma");
 
 const mockCompare = jest.fn();
 jest.mock("bcryptjs", () => ({
@@ -26,6 +12,10 @@ jest.mock("next-auth/providers/google", () => jest.fn());
 jest.mock("../../auth.config", () => ({ authConfig: {} }));
 
 import { authorizeCredentials, LOCK_THRESHOLD } from "@/auth";
+import { prismaMock } from "../helpers/prismaMock";
+
+const mockFindUnique = prismaMock.user.findUnique;
+const mockUpdate = prismaMock.user.update;
 
 describe("authorizeCredentials", () => {
   beforeEach(() => {

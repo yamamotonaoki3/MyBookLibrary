@@ -1,35 +1,15 @@
 import { NextRequest } from "next/server";
 
-// ─── Prisma モック ────────────────────────────────────────────────────────────
-const mockFindUnique = jest.fn();
-const mockCreate = jest.fn();
-const mockUpdate = jest.fn();
-const mockNotificationFindFirst = jest.fn();
-const mockNotificationCreate = jest.fn();
-const mockAuditLogCreate = jest.fn();
-
-jest.mock("@/lib/prisma", () => ({
-  prisma: {
-    user: {
-      findUnique: (...args: unknown[]) => mockFindUnique(...args),
-      create: (...args: unknown[]) => mockCreate(...args),
-      update: (...args: unknown[]) => mockUpdate(...args),
-    },
-    notification: {
-      findFirst: (...args: unknown[]) => mockNotificationFindFirst(...args),
-      create: (...args: unknown[]) => mockNotificationCreate(...args),
-    },
-    auditLog: {
-      create: (...args: unknown[]) => mockAuditLogCreate(...args),
-    },
-  },
-}));
+jest.mock("@/lib/prisma");
 
 // bcrypt をモック（ハッシュ計算をスキップして高速化）
 jest.mock("bcryptjs", () => ({
   hash: jest.fn().mockResolvedValue("hashed_password"),
   compare: jest.fn().mockResolvedValue(true),
 }));
+
+import { prismaMock } from "../helpers/prismaMock";
+import { getRequest, jsonRequest, makeUser } from "../helpers";
 
 // ─── /api/auth/register ───────────────────────────────────────────────────────
 
@@ -52,42 +32,28 @@ describe("POST /api/auth/register", () => {
   };
 
   it("3-1: 正常系 — 201を返す", async () => {
-    mockFindUnique.mockResolvedValue(null);
-    mockCreate.mockResolvedValue({ id: 1 });
+    prismaMock.user.findUnique.mockResolvedValue(null);
+    prismaMock.user.create.mockResolvedValue(makeUser());
 
-    const req = new NextRequest("http://localhost/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify(validBody),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const res = await POST(req);
+    const res = await POST(jsonRequest("/api/auth/register", { body: validBody }));
     expect(res.status).toBe(201);
     const json = await res.json();
     expect(json.ok).toBe(true);
   });
 
   it("3-2: メール重複 — 409を返す", async () => {
-    mockFindUnique.mockResolvedValue({ id: 1, email: "test@example.com" });
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ email: "test@example.com" }));
 
-    const req = new NextRequest("http://localhost/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify(validBody),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const res = await POST(req);
+    const res = await POST(jsonRequest("/api/auth/register", { body: validBody }));
     expect(res.status).toBe(409);
   });
 
   it("3-3: バリデーション失敗（短いパスワード） — 400を返す", async () => {
-    const req = new NextRequest("http://localhost/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ ...validBody, password: "short", confirmPassword: "short" }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const res = await POST(req);
+    const res = await POST(
+      jsonRequest("/api/auth/register", {
+        body: { ...validBody, password: "short", confirmPassword: "short" },
+      })
+    );
     expect(res.status).toBe(400);
   });
 });
@@ -105,87 +71,66 @@ describe("POST /api/auth/reset-password", () => {
     jest.clearAllMocks();
   });
 
+  const resetBody = {
+    step: "reset",
+    email: "user@example.com",
+    secretWord: "ひみつのことば",
+    password: "newpassword1",
+    confirmPassword: "newpassword1",
+  };
+
   it("3-4: step=check — 秘密の言葉設定済みユーザー → 200を返す", async () => {
-    mockFindUnique.mockResolvedValue({
-      id: 1,
-      email: "user@example.com",
-      password: "hashed",
-      secretWordHash: "hashed_secret_word",
-    });
+    prismaMock.user.findUnique.mockResolvedValue(
+      makeUser({ password: "hashed", secretWordHash: "hashed_secret_word" })
+    );
 
-    const req = new NextRequest("http://localhost/api/auth/reset-password", {
-      method: "POST",
-      body: JSON.stringify({ step: "check", email: "user@example.com" }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const res = await POST(req);
+    const res = await POST(
+      jsonRequest("/api/auth/reset-password", {
+        body: { step: "check", email: "user@example.com" },
+      })
+    );
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.ok).toBe(true);
   });
 
   it("3-4b: step=check — 秘密の言葉未設定ユーザー → 422を返し通知を作成する", async () => {
-    mockFindUnique.mockResolvedValue({
-      id: 1,
-      email: "user@example.com",
-      password: "hashed",
-      secretWordHash: null,
-    });
-    mockNotificationFindFirst.mockResolvedValue(null);
+    prismaMock.user.findUnique.mockResolvedValue(
+      makeUser({ password: "hashed", secretWordHash: null })
+    );
+    prismaMock.notification.findFirst.mockResolvedValue(null);
 
-    const req = new NextRequest("http://localhost/api/auth/reset-password", {
-      method: "POST",
-      body: JSON.stringify({ step: "check", email: "user@example.com" }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const res = await POST(req);
+    const res = await POST(
+      jsonRequest("/api/auth/reset-password", {
+        body: { step: "check", email: "user@example.com" },
+      })
+    );
     expect(res.status).toBe(422);
     const json = await res.json();
     expect(json.error).toBe("SECRET_WORD_NOT_SET");
-    expect(mockNotificationCreate).toHaveBeenCalled();
+    expect(prismaMock.notification.create).toHaveBeenCalled();
   });
 
   it("3-5: step=check — 存在しないメール → 404を返す", async () => {
-    mockFindUnique.mockResolvedValue(null);
+    prismaMock.user.findUnique.mockResolvedValue(null);
 
-    const req = new NextRequest("http://localhost/api/auth/reset-password", {
-      method: "POST",
-      body: JSON.stringify({ step: "check", email: "notfound@example.com" }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const res = await POST(req);
+    const res = await POST(
+      jsonRequest("/api/auth/reset-password", {
+        body: { step: "check", email: "notfound@example.com" },
+      })
+    );
     expect(res.status).toBe(404);
   });
 
   it("3-6: step=reset — 正常系（パスワード更新）→ 200を返す", async () => {
-    mockFindUnique.mockResolvedValue({
-      id: 1,
-      email: "user@example.com",
-      password: "old_hash",
-      secretWordHash: "hashed_secret_word",
-      secretWordFailCount: 0,
-      secretWordLockedUntil: null,
-    });
-    mockUpdate.mockResolvedValue({ id: 1 });
+    prismaMock.user.findUnique.mockResolvedValue(
+      makeUser({ password: "old_hash", secretWordHash: "hashed_secret_word" })
+    );
+    prismaMock.user.update.mockResolvedValue(makeUser());
 
-    const req = new NextRequest("http://localhost/api/auth/reset-password", {
-      method: "POST",
-      body: JSON.stringify({
-        step: "reset",
-        email: "user@example.com",
-        secretWord: "ひみつのことば",
-        password: "newpassword1",
-        confirmPassword: "newpassword1",
-      }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const res = await POST(req);
+    const res = await POST(jsonRequest("/api/auth/reset-password", { body: resetBody }));
     expect(res.status).toBe(200);
-    expect(mockUpdate).toHaveBeenCalledWith(
+    expect(prismaMock.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 1 },
         data: expect.objectContaining({ loginFailCount: 0, lockedUntil: null }),
@@ -194,28 +139,15 @@ describe("POST /api/auth/reset-password", () => {
   });
 
   it("3-7: step=reset — パスワード不一致 → 400を返す", async () => {
-    mockFindUnique.mockResolvedValue({
-      id: 1,
-      email: "user@example.com",
-      password: "old_hash",
-      secretWordHash: "hashed_secret_word",
-      secretWordFailCount: 0,
-      secretWordLockedUntil: null,
-    });
+    prismaMock.user.findUnique.mockResolvedValue(
+      makeUser({ password: "old_hash", secretWordHash: "hashed_secret_word" })
+    );
 
-    const req = new NextRequest("http://localhost/api/auth/reset-password", {
-      method: "POST",
-      body: JSON.stringify({
-        step: "reset",
-        email: "user@example.com",
-        secretWord: "ひみつのことば",
-        password: "newpassword1",
-        confirmPassword: "different",
-      }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const res = await POST(req);
+    const res = await POST(
+      jsonRequest("/api/auth/reset-password", {
+        body: { ...resetBody, confirmPassword: "different" },
+      })
+    );
     expect(res.status).toBe(400);
   });
 });
@@ -234,34 +166,28 @@ describe("GET /api/auth/remaining-attempts", () => {
   });
 
   it("3-8: ロックなしユーザー（failCount=3）→ remaining=7を返す", async () => {
-    mockFindUnique.mockResolvedValue({ loginFailCount: 3 });
+    prismaMock.user.findUnique.mockResolvedValue({ loginFailCount: 3 });
 
-    const req = new NextRequest(
-      "http://localhost/api/auth/remaining-attempts?email=user@example.com"
+    const res = await GET(
+      getRequest("/api/auth/remaining-attempts", { email: "user@example.com" })
     );
-
-    const res = await GET(req);
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.remaining).toBe(7);
   });
 
   it("3-9: ロック中ユーザー（failCount=10）→ remaining=0を返す", async () => {
-    mockFindUnique.mockResolvedValue({ loginFailCount: 10 });
+    prismaMock.user.findUnique.mockResolvedValue({ loginFailCount: 10 });
 
-    const req = new NextRequest(
-      "http://localhost/api/auth/remaining-attempts?email=locked@example.com"
+    const res = await GET(
+      getRequest("/api/auth/remaining-attempts", { email: "locked@example.com" })
     );
-
-    const res = await GET(req);
     const json = await res.json();
     expect(json.remaining).toBe(0);
   });
 
   it("メールパラメータなし → remaining=nullを返す", async () => {
-    const req = new NextRequest("http://localhost/api/auth/remaining-attempts");
-
-    const res = await GET(req);
+    const res = await GET(getRequest("/api/auth/remaining-attempts"));
     const json = await res.json();
     expect(json.remaining).toBeNull();
   });

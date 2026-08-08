@@ -5,8 +5,29 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 ## 索引
 
 - 2026-08-04: NextAuth `update()` の2つの落とし穴（引数なし呼び出しはGET化／SessionProvider初回ロード中は無視される）
+- 2026-08-06: Prisma共通モックは手動モック（`__mocks__`）＋Proxyで実装する（jest.mockのhoisting制約とProxyの落とし穴）
 
 ## 記録
+
+### 2026-08-06: Prisma共通モックは手動モック（`__mocks__`）＋Proxyで実装する
+
+- **種別**: 設計判断（Issue #430 / Phase 0-1 の実装中に確定）
+- **対象領域・関連ファイル**: テスト基盤 / `app/src/lib/__mocks__/prisma.ts`, `app/src/__mocks__/auth.ts`, `app/src/lib/__mocks__/session.ts`, `app/src/__tests__/helpers/`
+- **何が起きたか**:
+  - Prismaモックの共通化を「ヘルパー関数の中で `jest.mock()` を呼ぶ」方式にしようとしたが、ts-jest は `jest.mock()` の呼び出しを import より上に**巻き上げる（hoisting）**ため、ヘルパー関数経由では巻き上げが効かない。`jest.doMock()` なら動くが、静的 import しているテスト（`src/__tests__/lib/session.test.ts` 等）ではモックが適用されない。
+  - `jest.mock("@/lib/prisma", () => require(...))` 形式は eslint（`@typescript-eslint/no-require-imports`）に抵触する。
+  - Proxy でモデル・メソッドを遅延生成する際、`get` は テストコードからの参照だけでなく `await` の解決や jest の等値比較・整形の過程でも呼ばれる。`then` に `jest.fn()` を返すと `await prisma` が解決しなくなる。
+- **対応**:
+  - Jest の**手動モック**（`src/lib/__mocks__/prisma.ts`）方式を採用した。テスト側は `jest.mock("@/lib/prisma")` の1行だけで済み、hoisting も eslint も問題にならない。型付きアクセスは `src/__tests__/helpers/prismaMock.ts` が `@/lib/prisma` を import してキャストする形で提供する。
+  - Proxy の `get` では `then` / `catch` / `constructor` / `toJSON` / `asymmetricMatch` / `$$typeof` 等を「メンバーではない」として `undefined` を返すようにした。
+  - `$transaction` のコールバックには**ルートと同一の**モックを渡した。これによりトランザクション内の `tx.user.deleteMany` も `prismaMock.user.deleteMany` で検証でき、テストごとに tx 用モックを組み立てる必要がなくなった（`admin-users.test.ts` の beforeEach が丸ごと不要になった）。
+  - ヘルパーが本物のモジュールを読み込んでしまう事故を防ぐため、`jest.mock(...)` の書き忘れを検知して明示的に throw するガードを各ヘルパーに入れた。
+- **次回の行動規則**:
+  - モジュール単位のモックを複数テストで共有したくなったら、ヘルパー関数で `jest.mock()` を呼ぶのではなく `__mocks__/` の手動モックを作り、テスト側は引数なしの `jest.mock("<path>")` を書く。型付けだけをヘルパーに置く。
+  - Proxy でモックを自動生成する場合は、必ず `then` 等の「JS処理系・jestが触れるプロパティ」を除外リストに入れる。
+  - モックに既定実装を持たせる場合、`jest.clearAllMocks()` は呼び出し履歴のみを消して実装を残すが、`jest.resetAllMocks()` は実装も消す。既定実装に依存する設計なら reset を使わない。
+- **状態**: 有効
+- **根拠**: Issue #430
 
 ### 2026-08-04: NextAuth `update()` の2つの落とし穴
 

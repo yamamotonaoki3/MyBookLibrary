@@ -4,9 +4,9 @@ import { resetRateLimits } from "@/lib/rateLimit";
 const mockFetchBookPage = jest.fn();
 const mockDeduplicateByTitle = jest.fn((items: unknown[]) => items);
 const mockSearchBooksNdl = jest.fn();
-const mockFindMany = jest.fn();
-const mockGetAuthenticatedUserId = jest.fn();
 
+// 外部APIクライアントは実リクエストを飛ばさないようモジュール単位で差し替える。
+// 純粋関数（normalizeTitle 等）は実装と同じ挙動を保つため、ここで再現しておく。
 jest.mock("@/lib/rakuten", () => ({
   fetchBookPage: (...args: unknown[]) => mockFetchBookPage(...args),
   deduplicateByTitle: (items: unknown[]) => mockDeduplicateByTitle(items),
@@ -19,17 +19,11 @@ jest.mock("@/lib/ndl", () => ({
   searchBooksNdl: (...args: unknown[]) => mockSearchBooksNdl(...args),
 }));
 
-jest.mock("@/lib/prisma", () => ({
-  prisma: {
-    book: {
-      findMany: (...args: unknown[]) => mockFindMany(...args),
-    },
-  },
-}));
+jest.mock("@/lib/prisma");
+jest.mock("@/lib/session");
 
-jest.mock("@/lib/session", () => ({
-  getAuthenticatedUserId: () => mockGetAuthenticatedUserId(),
-}));
+import { prismaMock } from "../helpers/prismaMock";
+import { asUser, getAuthenticatedUserIdMock, unauthorizedResponse } from "../helpers/sessionMock";
 
 describe("GET /api/books/search", () => {
   let GET: (req: NextRequest) => Promise<Response>;
@@ -42,8 +36,8 @@ describe("GET /api/books/search", () => {
     jest.clearAllMocks();
     resetRateLimits();
     mockDeduplicateByTitle.mockImplementation((items: unknown[]) => items);
-    mockGetAuthenticatedUserId.mockResolvedValue({ userId: 1, error: null });
-    mockFindMany.mockResolvedValue([]);
+    asUser(1);
+    prismaMock.book.findMany.mockResolvedValue([]);
   });
 
   const makeRequest = (query: string) =>
@@ -60,9 +54,9 @@ describe("GET /api/books/search", () => {
   });
 
   it("未認証 → getAuthenticatedUserIdのエラーをそのまま返す", async () => {
-    mockGetAuthenticatedUserId.mockResolvedValue({
+    getAuthenticatedUserIdMock.mockResolvedValue({
       userId: null,
-      error: new Response(JSON.stringify({ error: "認証が必要です" }), { status: 401 }),
+      error: unauthorizedResponse(),
     });
 
     const res = await GET(makeRequest("q=test&type=title"));
