@@ -110,7 +110,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | なぜ困難か | `navigator.setAppBadge` はブラウザAPIで、未対応環境もある（実装側も `"setAppBadge" in navigator` でガードしている） |
-| どうテストするか | jsdom の setup で `navigator.setAppBadge` をスタブ化し、「未対応環境で例外を投げない」「0件でクリアされる」を単体テストする |
+| どうテストするか | jsdom の setup では `navigator.setAppBadge` と `navigator.clearAppBadge` の**両方**をスタブ化し、「0件でクリアされる」ことを単体テストする。`setAppBadge` だけをスタブすると機能検出ガードを通過した後、0件以下で `clearAppBadge` が呼ばれて `TypeError` になる。「未対応環境で例外を投げない」ケースは、逆に両方を `navigator` から取り除いた状態で検証する |
 | 状態 | 未対応（Phase 7 で実施） |
 
 ### 1-9. `lib/auditLog.ts`（監査ログ）
