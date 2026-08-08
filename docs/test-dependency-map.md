@@ -58,7 +58,7 @@
 | なぜ困難か | `authorize` / `jwt` / `session` が設定オブジェクト内のクロージャで外から掴みにくい。bcrypt と Prisma に密結合している |
 | どうテストするか | 既に `src/__tests__/lib/auth.test.ts` が `authorizeCredentials` を export させて単体テストしている。この方式を踏襲する |
 | 改善案 | さらに難しくなるようなら、`authorize` の中身を `lib/authenticateUser.ts` として切り出し、設定側を薄いアダプタにする |
-| 状態 | 部分的に対応済み（ロック閾値の分岐のみ） |
+| 状態 | `src/__tests__/lib/auth.test.ts` で `authorizeCredentials` を8ケース（未入力、ユーザー不存在、パスワード未設定、ロック中、ロック期限切れ、パスワード不一致の閾値未満／到達、正常系のカウンタリセット）網羅済み。未対応は `jwt` / `session` コールバック |
 
 ### 1-4. 全 API Route の Prisma 直依存
 
@@ -120,7 +120,7 @@
 | なぜ困難か | 各 Route の副作用として発火するため、呼び出し元のテストで存在を意識しづらい |
 | どうテストするか | 呼び出し元では `jest.mock` して「呼ばれたか＋イベント種別＋対象ID」を検証する。`recordAuditEvent` 自体は Prisma モックで単体テストする |
 | 必ず入れるケース | **DB書き込みが失敗しても呼び出し元の本処理を巻き込まない**こと。これは実装のコメントで明示されている設計意図なので、テストで固定する |
-| 状態 | 未対応（Phase 12 で実施） |
+| 状態 | 部分的に対応済み。`src/__tests__/api/admin-users.test.ts` で管理者昇格時の監査ログ作成を検証済み。`recordAuditEvent` 自体の単体テスト、他の呼び出し元、DB書き込み失敗時の継続動作は未対応（Phase 12 で実施） |
 
 ### 1-10. `lib/rateLimit.ts`
 
@@ -129,7 +129,7 @@
 | なぜ困難か | プロセス内メモリ（`Map`）の状態と `Date.now()` に依存する |
 | どうテストするか | `jest.useFakeTimers()` と `resetRateLimits()`（テスト用に export 済み）を併用する |
 | **設計上の限界** | **インメモリのため単一インスタンス運用が前提。** サーバーレスや複数インスタンスにスケールすると、インスタンス間でレート制限が共有されない。実装のコメントにも記載があり、Redis 等の共有ストアへの置き換えが必要。**この限界はテストでは検出できない** |
-| 状態 | 部分的に対応済み（`src/__tests__/lib/rateLimit.test.ts`、29行） |
+| 状態 | `src/__tests__/lib/rateLimit.test.ts` で連続呼び出しの制限、時間経過後の許可、キー間の独立、`resetRateLimits()` によるクリアを検証済み。古いエントリの間引きは未対応 |
 
 ### 1-11. `lib/adminFetch.ts`
 
