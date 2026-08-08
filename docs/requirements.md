@@ -353,3 +353,5 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | [ER図](./er-diagram.md) | データベーステーブル構成とリレーション |
 | [ワイヤーフレーム](./wireframes.md) | 全画面のレイアウト（PC・モバイル） |
 | [画面遷移図](./screen-transition.md) | 画面間の遷移フローとルーティング一覧 |
+| [テスト計画表](./test-plan.md) | 単体テスト・結合テストの対象範囲と進捗 |
+| [テスト依存関係マップ](./test-dependency-map.md) | 単体テストしにくい箇所とその理由・代替手段、外部APIへの配慮 |
