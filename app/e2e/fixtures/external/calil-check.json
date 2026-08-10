@@ -7,7 +7,7 @@
         "status": "OK",
         "reserveurl": "https://example.com/stub-reserve",
         "libkey": {
-          "スタブ図書館本館": "貸出可"
+          "図書館": "貸出可"
         }
       }
     }
