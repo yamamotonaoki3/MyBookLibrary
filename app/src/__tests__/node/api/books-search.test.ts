@@ -22,8 +22,8 @@ jest.mock("@/lib/ndl", () => ({
 jest.mock("@/lib/prisma");
 jest.mock("@/lib/session");
 
-import { prismaMock } from "../helpers/prismaMock";
-import { asUser, getAuthenticatedUserIdMock, unauthorizedResponse } from "../helpers/sessionMock";
+import { prismaMock } from "../../helpers/prismaMock";
+import { asUser, getAuthenticatedUserIdMock, unauthorizedResponse } from "../../helpers/sessionMock";
 
 describe("GET /api/books/search", () => {
   let GET: (req: NextRequest) => Promise<Response>;

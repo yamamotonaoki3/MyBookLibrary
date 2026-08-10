@@ -2,8 +2,8 @@ jest.mock("@/auth");
 jest.mock("@/lib/prisma");
 
 import { getAuthenticatedUserId, requireAdminSession } from "@/lib/session";
-import { prismaMock } from "../helpers/prismaMock";
-import { authMock, signedIn, signedInAsAdmin, signedOut } from "../helpers/authMock";
+import { prismaMock } from "../../helpers/prismaMock";
+import { authMock, signedIn, signedInAsAdmin, signedOut } from "../../helpers/authMock";
 
 describe("getAuthenticatedUserId", () => {
   beforeEach(() => {

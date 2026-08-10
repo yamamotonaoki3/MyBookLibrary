@@ -1,8 +1,8 @@
 jest.mock("@/lib/prisma");
 jest.mock("@/auth");
 
-import { prismaMock } from "../helpers/prismaMock";
-import { signedIn, signedOut } from "../helpers/authMock";
+import { prismaMock } from "../../helpers/prismaMock";
+import { signedIn, signedOut } from "../../helpers/authMock";
 import {
   getRequest,
   jsonRequest,
@@ -11,7 +11,7 @@ import {
   makeBook,
   makeFavoriteAuthor,
   makeReadingStatus,
-} from "../helpers";
+} from "../../helpers";
 
 // ─── /api/reading-status ──────────────────────────────────────────────────────
 

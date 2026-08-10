@@ -11,9 +11,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "jest --selectProjects node jsdom",
+    "test:watch": "jest --selectProjects node jsdom --watch",
+    "test:coverage": "jest --selectProjects node jsdom --coverage",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm run test",
     "start": "next start",

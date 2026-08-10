@@ -1,7 +1,7 @@
 jest.mock("@/lib/prisma");
 
 import { getRecommendedUsers } from "@/lib/userRecommendations";
-import { prismaMock } from "../helpers/prismaMock";
+import { prismaMock } from "../../helpers/prismaMock";
 
 const mockQueryRaw = prismaMock.$queryRaw;
 

@@ -14,7 +14,12 @@
  * mockFetchSequence([{ json: a }, { json: b }]);      // 呼び出し順に返す（ポーリング検証など）
  * mockFetchNetworkError();                            // 通信エラー
  * ```
+ *
+ * 実際は `jest.setup.network.ts` の `beforeEach` が全テストの開始前に
+ * ガードへ戻すため `restoreFetch()` は必須ではないが、同一テスト内で
+ * モックを解除した後も fetch を呼ぶ可能性がある場合に備えて用意している。
  */
+import { createNetworkGuardFetch } from "./networkGuard";
 
 /** 1回分のレスポンス指定。`error` を指定すると fetch 自体が reject する。 */
 export type MockResponseSpec = {
@@ -24,8 +29,6 @@ export type MockResponseSpec = {
   headers?: Record<string, string>;
   error?: Error;
 };
-
-const originalFetch: typeof globalThis.fetch | undefined = globalThis.fetch;
 
 function toResponse(spec: MockResponseSpec): Response {
   const { json, text, status = 200, headers = {} } = spec;
@@ -99,7 +102,13 @@ export function mockFetchTimeout(): jest.Mock {
   return mock;
 }
 
-/** 差し替えた `global.fetch` を元に戻す。`afterEach` で必ず呼ぶ。 */
+/**
+ * 差し替えた `global.fetch` を外部通信ガードへ戻す。
+ *
+ * **本物の fetch には戻さない。** 戻すとモック解除後のコードパスで
+ * 実リクエストが漏れる可能性が残るため、常にガード（呼ばれたら throw する
+ * 実装）へ戻す。
+ */
 export function restoreFetch(): void {
-  globalThis.fetch = originalFetch as typeof globalThis.fetch;
+  globalThis.fetch = createNetworkGuardFetch();
 }

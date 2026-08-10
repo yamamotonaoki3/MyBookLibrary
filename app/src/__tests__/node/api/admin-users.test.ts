@@ -3,9 +3,9 @@ import { NextRequest } from "next/server";
 jest.mock("@/lib/prisma");
 jest.mock("@/lib/session");
 
-import { prismaMock } from "../helpers/prismaMock";
-import { asAdmin, asForbidden } from "../helpers/sessionMock";
-import { getRequest, jsonRequest, routeCtx, makeUser } from "../helpers";
+import { prismaMock } from "../../helpers/prismaMock";
+import { asAdmin, asForbidden } from "../../helpers/sessionMock";
+import { getRequest, jsonRequest, routeCtx, makeUser } from "../../helpers";
 
 // 管理者自身のID。「自分自身を操作しようとした」ケースの判定に使われる。
 const ADMIN_ID = 99;
