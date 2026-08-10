@@ -12,5 +12,27 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  # 実DB統合テスト専用（#433）。開発用 db とはポート・認証情報を分離する。
+  # 認証情報は変数展開で受け取り、実値はリポジトリ直下の .env（gitignore対象）に置く。
+  # .env の作り方は .env.example を参照。
+  db-test:
+    image: mysql:8.4
+    container_name: mybooklibrary_db_test
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_TEST_MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_TEST_MYSQL_USER}
+      MYSQL_PASSWORD: ${DB_TEST_MYSQL_PASSWORD}
+      MYSQL_DATABASE: mybooklibrary_test
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_TEST_MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   mysql_data:
+  mysql_test_data:
