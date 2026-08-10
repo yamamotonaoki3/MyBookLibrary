@@ -25,6 +25,8 @@ const eslintConfig = defineConfig([
     "public/sw.js",
     "public/workbox-*.js",
     "public/swe-worker-*.js",
+    // jest --coverage の出力（.gitignore の /coverage と対応）:
+    "coverage/**",
   ]),
 ]);
 

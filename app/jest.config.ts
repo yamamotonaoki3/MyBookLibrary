@@ -52,6 +52,9 @@ const config: Config = {
       displayName: "integration",
       testEnvironment: "node",
       testMatch: ["<rootDir>/src/__tests__/integration/**/*.itest.ts"],
+      // .env.test の読み込みと接続先の安全確認、prisma migrate deploy を行う。
+      // 開発用DBへ誤って migrate してしまう事故を防ぐガードを含む。
+      globalSetup: "<rootDir>/jest.global-setup.integration.ts",
     },
   ],
   // .tsx（未テストのコンポーネント・ページ）も含めて測定する。含めないと
