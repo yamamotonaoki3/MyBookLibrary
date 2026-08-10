@@ -1,0 +1,15 @@
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:openSearch="http://a9.com/-/spec/opensearchrss/1.0/" version="2.0">
+  <channel>
+    <title>吾輩は猫である - 国立国会図書館サーチ OpenSearch（スタブ）</title>
+    <openSearch:totalResults>1</openSearch:totalResults>
+    <openSearch:startIndex>1</openSearch:startIndex>
+    <openSearch:itemsPerPage>1</openSearch:itemsPerPage>
+    <item>
+      <title>吾輩は猫である / 夏目漱石</title>
+      <link>https://ndlsearch.ndl.go.jp/books/stub-0000000001</link>
+      <dc:creator>夏目, 漱石, 1867-1916</dc:creator>
+      <dc:publisher>新潮社</dc:publisher>
+      <dc:date>1990.04</dc:date>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,18 @@
+[
+  {
+    "libid": "100000",
+    "formal": "スタブ図書館",
+    "short": "スタブ図書館",
+    "systemid": "Tokyo_Bunkyo",
+    "systemname": "文京区立図書館",
+    "libkey": "図書館",
+    "category": "CITY",
+    "post": "112-0001",
+    "tel": "03-0000-0000",
+    "pref": "東京都",
+    "city": "文京区",
+    "address": "東京都文京区スタブ1-1-1",
+    "geocode": "139.752921,35.705602",
+    "url_pc": "https://example.com/stub-library"
+  }
+]
