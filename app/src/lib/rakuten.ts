@@ -1,7 +1,10 @@
 import { getAuthorBookCountNdl } from "@/lib/ndl";
 import { logger } from "@/lib/logger";
 
+// E2Eテストではローカルのスタブサーバーへ向ける（未指定時は本番エンドポイント）。
+// 詳細は docs/test-dependency-map.md「外部APIへの配慮」を参照。
 const RAKUTEN_API_BASE =
+  process.env.RAKUTEN_API_BASE ??
   "https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404";
 
 export type RakutenBook = {

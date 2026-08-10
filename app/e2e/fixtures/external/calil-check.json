@@ -1,0 +1,15 @@
+{
+  "session": "",
+  "continue": 0,
+  "books": {
+    "9784101010014": {
+      "Tokyo_Bunkyo": {
+        "status": "OK",
+        "reserveurl": "https://example.com/stub-reserve",
+        "libkey": {
+          "図書館": "貸出可"
+        }
+      }
+    }
+  }
+}

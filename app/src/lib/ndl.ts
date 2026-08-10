@@ -1,7 +1,9 @@
 import { logger } from "@/lib/logger";
 
-const NDL_API_BASE = "https://ndlsearch.ndl.go.jp/api/opensearch";
-const NDL_SRU_BASE = "https://ndlsearch.ndl.go.jp/api/sru";
+// E2Eテストではローカルのスタブサーバーへ向ける（未指定時は本番エンドポイント）。
+// 詳細は docs/test-dependency-map.md「外部APIへの配慮」を参照。
+const NDL_API_BASE = process.env.NDL_API_BASE ?? "https://ndlsearch.ndl.go.jp/api/opensearch";
+const NDL_SRU_BASE = process.env.NDL_SRU_BASE ?? "https://ndlsearch.ndl.go.jp/api/sru";
 const HITS_PER_PAGE = 30;
 
 export type NdlSearchBook = {
@@ -181,7 +183,7 @@ export async function getAuthorBookCountNdl(authorName: string): Promise<number>
     startRecord: "1",
   });
   try {
-    const res = await fetch(`https://ndlsearch.ndl.go.jp/api/sru?${params}`);
+    const res = await fetch(`${NDL_SRU_BASE}?${params}`);
     if (!res.ok) return 0;
     const xml = await res.text();
     const match = xml.match(/<numberOfRecords>(\d+)<\/numberOfRecords>/);

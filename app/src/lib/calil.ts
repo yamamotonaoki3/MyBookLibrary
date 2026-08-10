@@ -1,4 +1,6 @@
-const CALIL_API_BASE = "https://api.calil.jp";
+// E2Eテストではローカルのスタブサーバーへ向ける（未指定時は本番エンドポイント）。
+// 詳細は docs/test-dependency-map.md「外部APIへの配慮」を参照。
+const CALIL_API_BASE = process.env.CALIL_API_BASE ?? "https://api.calil.jp";
 
 export type LibraryResult = {
   systemid: string;
