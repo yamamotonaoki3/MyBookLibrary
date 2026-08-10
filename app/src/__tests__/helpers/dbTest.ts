@@ -9,7 +9,7 @@
  * 実際に `prisma.$executeRawUnsafe` で DB に書き込むため、モックしたテストで
  * 誤って import すると実DBへの接続を試みてしまう。
  */
-import { PrismaClient } from "@/generated/prisma";
+import { Prisma, PrismaClient } from "@/generated/prisma";
 import { assertTestDatabaseUrl, EXPECTED_TEST_DB_NAME } from "./testDbGuard";
 
 assertTestDatabaseUrl(process.env.DATABASE_URL);
@@ -35,12 +35,14 @@ export async function resetDb(): Promise<void> {
       AND table_name != '_prisma_migrations'
   `;
 
-  await testPrisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
-  try {
-    for (const { TABLE_NAME: tableName } of tables) {
-      await testPrisma.$executeRawUnsafe(`TRUNCATE TABLE \`${tableName}\``);
+  await testPrisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
+    try {
+      for (const { TABLE_NAME: tableName } of tables) {
+        await tx.$executeRawUnsafe(`TRUNCATE TABLE \`${tableName}\``);
+      }
+    } finally {
+      await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
     }
-  } finally {
-    await testPrisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
-  }
+  });
 }
