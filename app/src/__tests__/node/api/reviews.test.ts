@@ -3,9 +3,9 @@ import { NextRequest } from "next/server";
 jest.mock("@/lib/prisma");
 jest.mock("@/auth");
 
-import { prismaMock } from "../helpers/prismaMock";
-import { signedIn, signedOut } from "../helpers/authMock";
-import { getRequest, jsonRequest, routeCtx, makeBook, makeReview } from "../helpers";
+import { prismaMock } from "../../helpers/prismaMock";
+import { signedIn, signedOut } from "../../helpers/authMock";
+import { getRequest, jsonRequest, routeCtx, makeBook, makeReview } from "../../helpers";
 
 // ─── /api/reviews ─────────────────────────────────────────────────────────────
 

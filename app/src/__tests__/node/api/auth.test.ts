@@ -8,8 +8,8 @@ jest.mock("bcryptjs", () => ({
   compare: jest.fn().mockResolvedValue(true),
 }));
 
-import { prismaMock } from "../helpers/prismaMock";
-import { getRequest, jsonRequest, makeUser } from "../helpers";
+import { prismaMock } from "../../helpers/prismaMock";
+import { getRequest, jsonRequest, makeUser } from "../../helpers";
 
 // ─── /api/auth/register ───────────────────────────────────────────────────────
 

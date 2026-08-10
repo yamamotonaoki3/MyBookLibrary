@@ -1,9 +1,9 @@
 jest.mock("@/lib/prisma");
 jest.mock("@/lib/session");
 
-import { prismaMock } from "../helpers/prismaMock";
-import { asAdmin, asForbidden } from "../helpers/sessionMock";
-import { getRequest } from "../helpers";
+import { prismaMock } from "../../helpers/prismaMock";
+import { asAdmin, asForbidden } from "../../helpers/sessionMock";
+import { getRequest } from "../../helpers";
 
 describe("GET /api/admin/inquiries", () => {
   let GET: (req: Request) => Promise<Response>;

@@ -9,10 +9,10 @@ jest.mock("@auth/prisma-adapter", () => ({ PrismaAdapter: () => ({}) }));
 jest.mock("next-auth", () => jest.fn(() => ({ handlers: {}, auth: jest.fn(), signIn: jest.fn(), signOut: jest.fn() })));
 jest.mock("next-auth/providers/credentials", () => jest.fn((config: unknown) => config));
 jest.mock("next-auth/providers/google", () => jest.fn());
-jest.mock("../../auth.config", () => ({ authConfig: {} }));
+jest.mock("../../../auth.config", () => ({ authConfig: {} }));
 
 import { authorizeCredentials, LOCK_THRESHOLD } from "@/auth";
-import { prismaMock } from "../helpers/prismaMock";
+import { prismaMock } from "../../helpers/prismaMock";
 
 const mockFindUnique = prismaMock.user.findUnique;
 const mockUpdate = prismaMock.user.update;
