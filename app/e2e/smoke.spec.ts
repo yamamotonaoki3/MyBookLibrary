@@ -20,7 +20,7 @@ test("ログイン → 書籍検索 → 読書ステータス登録 → レビ�
   await expect(bookLink).toBeVisible();
 
   await bookLink.click();
-  await expect(page).toHaveURL(/\/books\/isbn\/9784101010014/);
+  await page.waitForURL(/\/books\/\d+$/);
 
   await page.getByRole("button", { name: "読了" }).click();
   await expect(page.getByRole("button", { name: "読了" })).toHaveClass(/bg-green-600/);
