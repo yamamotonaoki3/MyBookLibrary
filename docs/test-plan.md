@@ -45,8 +45,9 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 | `src/lib/validations.ts`（Zodスキーマ） | 実施済み（Phase 1で全スキーマに拡大） | `node/lib/validations.test.ts`。`SecretWordSchema` / `AuditLogQuerySchema` を追加、`ReadingStatusSchema` の `coverImageUrl` / `source` 分岐を追加 |
 | `src/lib/rateLimit.ts` | 実施済み | `node/lib/rateLimit.test.ts`。古いエントリの間引きは戻り値から観測不能なため対象外（[テスト依存関係マップ](test-dependency-map.md) 1-10 参照） |
 | `src/lib/adminLimits.ts` | 対象外（判断済み） | 単一定数で分岐が無いため専用テストを作らない。`api/admin-users.test.ts` で間接的に検証済み |
-| `src/lib/rakuten.ts`（`deduplicateByTitle` 等） | 未実施 | 純粋関数部分のみ切り出してテスト可能 |
-| `src/lib/ndl.ts` | 未実施 | 外部APIクライアント、モックが必要 |
+| `src/lib/rakuten.ts` | 実施済み（Phase 2） | `node/lib/rakuten.test.ts`。429リトライ上限（3回で打ち切り）、`deduplicateByTitle`の形式優先度・出版日タイブレーク、`getAuthorBookCount`のNDLフォールバックを検証 |
+| `src/lib/ndl.ts` | 実施済み（Phase 2） | `node/lib/ndl.test.ts`。SRU/OpenSearchのXMLパース分岐、`type`別クエリ組み立て、ページング、著者名の生年サフィックス処理を検証 |
+| `src/lib/calil.ts` | 実施済み（Phase 2） | `node/lib/calil.test.ts`。ポーリング継続・打ち切り条件（`continue=0`／20秒デッドライン）を`jest.useFakeTimers()`で検証、`mergeResults`のsystemid+libkey単位のマージ優先度を確認 |
 | `app/api/contact` | 未実施 | |
 | `app/api/cron/check-new-books` | 未実施 | Bearerトークン認証の検証を含む |
 
