@@ -113,3 +113,25 @@ Jest + ts-jest によるブラックボックス（API結合テスト）・ホ�
 cd app
 npm test
 ```
+
+### 実DB統合テスト
+
+`docker-compose.yml` の `db-test` サービス（開発用DBとは別、ポート3307）に対して実行する。初回のみ `.env.example` / `app/.env.test.example` を参考に `.env` / `app/.env.test` を作成する。
+
+```bash
+docker compose up -d db-test
+cd app
+npm run test:integration
+```
+
+### E2E（Playwright）
+
+初回のみブラウザのインストールが必要（CIでの自動インストールは #446 で対応予定）。
+
+```bash
+cd app
+npx playwright install chromium
+npm run test:e2e
+```
+
+`app/.env.test` の接続情報を使い、DBは自動でリセット・シードされる。外部API（楽天・NDL・カーリル）はローカルのスタブサーバーに向くため、実際の外部通信は発生しない（詳細は [テスト依存関係マップ](docs/test-dependency-map.md) を参照）。

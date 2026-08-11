@@ -4,12 +4,16 @@
  * `jest.global-setup.integration.ts` が `.env.test` の読み込みと
  * `prisma migrate deploy` まで済ませた後、各テストファイルはここの
  * `resetDb()` でテーブルを空にしてから使う。
+ * Playwright の `e2e/global-setup.ts`（E2E用DBのリセット）からも共用する。
  *
- * **このファイルは integration project 以外から import しない。**
- * 実際に `prisma.$executeRawUnsafe` で DB に書き込むため、モックしたテストで
- * 誤って import すると実DBへの接続を試みてしまう。
+ * **このファイルは integration project の *.itest.ts と Playwright の
+ * globalSetup 以外から import しない。** 実際に `prisma.$executeRawUnsafe` で
+ * DB に書き込むため、モックしたテスト（node/jsdom project）で誤って import
+ * すると実DBへの接続を試みてしまう。
  */
-import { Prisma, PrismaClient } from "@/generated/prisma";
+// Playwright（e2e/global-setup.ts）は ts-jest の moduleNameMapper（"@/..."）を
+// 解決できないため、ここは相対パスで import する。
+import { Prisma, PrismaClient } from "../../generated/prisma";
 import { assertTestDatabaseUrl, EXPECTED_TEST_DB_NAME } from "./testDbGuard";
 
 assertTestDatabaseUrl(process.env.DATABASE_URL);

@@ -27,6 +27,9 @@ const eslintConfig = defineConfig([
     "public/swe-worker-*.js",
     // jest --coverage の出力（.gitignore の /coverage と対応）:
     "coverage/**",
+    // playwright test の出力（.gitignore の /playwright-report, /test-results と対応）:
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 
