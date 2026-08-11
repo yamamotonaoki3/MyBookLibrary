@@ -1,11 +1,13 @@
 services:
+  # 開発用DB。認証情報は変数展開で受け取り、実値はリポジトリ直下の .env
+  # （gitignore対象）に置く。.env の作り方は .env.example を参照（#443）。
   db:
     image: mysql:8.4
     container_name: mybooklibrary_db
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: mysql
-      MYSQL_PASSWORD: mysql
+      MYSQL_ROOT_PASSWORD: ${DB_MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_MYSQL_USER}
+      MYSQL_PASSWORD: ${DB_MYSQL_PASSWORD}
       MYSQL_DATABASE: mybooklibrary
     ports:
       - "3306:3306"
