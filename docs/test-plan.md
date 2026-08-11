@@ -14,16 +14,16 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 
 | 対象 | 手法 | テストファイル |
 |---|---|---|
-| `src/auth.ts`（アカウントロック処理） | 単体（ホワイトボックス） | `src/__tests__/lib/auth.test.ts` |
-| `src/lib/session.ts`（認可ガード） | 単体（ホワイトボックス） | `src/__tests__/lib/session.test.ts` |
-| `app/api/books/search` | 結合（ブラックボックス） | `src/__tests__/api/books-search.test.ts` |
-| `app/api/admin/users`, `admin/users/[id]` | 結合（ブラックボックス） | `src/__tests__/api/admin-users.test.ts` |
-| `app/api/admin/inquiries`, `admin/stats` | 結合（ブラックボックス） | `src/__tests__/api/admin-inquiries-stats.test.ts` |
-| `app/api/auth/register`, `reset-password`, `remaining-attempts` | 結合（ブラックボックス） | `src/__tests__/api/auth.test.ts` |
-| `app/api/notifications`, `notifications/[id]/read`, `notifications/read-all` | 結合（ブラックボックス） | `src/__tests__/api/notifications.test.ts` |
-| `app/api/reading-status` | 結合（ブラックボックス） | `src/__tests__/api/reading.test.ts` |
-| `app/api/reviews`, `reviews/[id]/likes` | 結合（ブラックボックス） | `src/__tests__/api/reviews.test.ts` |
-| `src/lib/validations.ts`（Zodスキーマ） | 単体（ホワイトボックス） | `validations.test.ts` |
+| `src/auth.ts`（アカウントロック処理） | 単体（ホワイトボックス） | `src/__tests__/node/lib/auth.test.ts` |
+| `src/lib/session.ts`（認可ガード） | 単体（ホワイトボックス） | `src/__tests__/node/lib/session.test.ts` |
+| `app/api/books/search` | 結合（ブラックボックス） | `src/__tests__/node/api/books-search.test.ts` |
+| `app/api/admin/users`, `admin/users/[id]` | 結合（ブラックボックス） | `src/__tests__/node/api/admin-users.test.ts` |
+| `app/api/admin/inquiries`, `admin/stats` | 結合（ブラックボックス） | `src/__tests__/node/api/admin-inquiries-stats.test.ts` |
+| `app/api/auth/register`, `reset-password`, `remaining-attempts` | 結合（ブラックボックス） | `src/__tests__/node/api/auth.test.ts` |
+| `app/api/notifications`, `notifications/[id]/read`, `notifications/read-all` | 結合（ブラックボックス） | `src/__tests__/node/api/notifications.test.ts` |
+| `app/api/reading-status` | 結合（ブラックボックス） | `src/__tests__/node/api/reading.test.ts` |
+| `app/api/reviews`, `reviews/[id]/likes` | 結合（ブラックボックス） | `src/__tests__/node/api/reviews.test.ts` |
+| `src/lib/validations.ts`（Zodスキーマ） | 単体（ホワイトボックス） | `src/__tests__/node/lib/validations.test.ts` |
 
 ## 優先度B（未実施）
 
@@ -40,7 +40,11 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 
 | 対象 | 状態 | 備考 |
 |---|---|---|
-| `src/lib/normalizeAuthorName.ts` | 実施済み | `utils.test.ts` に全角/半角スペース除去の境界値ケースあり |
+| `src/lib/normalizeAuthorName.ts` | 実施済み | `node/lib/normalizeAuthorName.test.ts` に全角/半角スペース除去の境界値ケースあり |
+| `src/lib/utils.ts`（`cn()`） | 実施済み（Phase 1） | `node/lib/utils.test.ts`。Tailwindクラスの競合マージ、falsy値の除外を検証 |
+| `src/lib/validations.ts`（Zodスキーマ） | 実施済み（Phase 1で全スキーマに拡大） | `node/lib/validations.test.ts`。`SecretWordSchema` / `AuditLogQuerySchema` を追加、`ReadingStatusSchema` の `coverImageUrl` / `source` 分岐を追加 |
+| `src/lib/rateLimit.ts` | 実施済み | `node/lib/rateLimit.test.ts`。古いエントリの間引きは戻り値から観測不能なため対象外（[テスト依存関係マップ](test-dependency-map.md) 1-10 参照） |
+| `src/lib/adminLimits.ts` | 対象外（判断済み） | 単一定数で分岐が無いため専用テストを作らない。`api/admin-users.test.ts` で間接的に検証済み |
 | `src/lib/rakuten.ts`（`deduplicateByTitle` 等） | 未実施 | 純粋関数部分のみ切り出してテスト可能 |
 | `src/lib/ndl.ts` | 未実施 | 外部APIクライアント、モックが必要 |
 | `app/api/contact` | 未実施 | |

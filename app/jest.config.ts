@@ -66,13 +66,13 @@ const config: Config = {
     "!src/**/__mocks__/**",
     "!src/__tests__/**",
   ],
-  // ラチェット運用。実測値（Statements 13.4% / Branches 10.53%）の少し下を
-  // 初期値とし、以降の Phase で機能ごとにテストを追加するたびに引き上げる。
-  // 最初から高い値を目標にしない。
+  // ラチェット運用。Phase 1（純粋関数・バリデーション）完了時点の実測値
+  // （Statements 12.27% / Branches 9.74%）の少し下を新しい閾値とする。
+  // 一度上げた閾値は下げない。
   coverageThreshold: {
     global: {
-      statements: 11,
-      branches: 8,
+      statements: 12,
+      branches: 9,
     },
   },
 };
