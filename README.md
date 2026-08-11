@@ -57,6 +57,10 @@
 ## 開発環境の起動
 
 ```bash
+# 0. Docker Compose 用の環境変数を設定（初回のみ）
+cp .env.example .env
+# .env を編集して DB_MYSQL_ROOT_PASSWORD などを設定（推測されにくい値にする）
+
 # 1. MySQL を起動
 docker compose up -d
 
