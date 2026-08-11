@@ -12,6 +12,40 @@ defaults:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    # 実DB統合テスト用。db-test サービスのポートを 3307 で公開し、
+    # testDbGuard.ts の判定（ホスト localhost/127.0.0.1、ポート3307、
+    # DB名 mybooklibrary_test）とローカル開発時の docker-compose.yml の
+    # db-test サービスに揃える。認証情報はこのジョブの実行中しか存在しない
+    # 使い捨てのコンテナ用で、推測されにくい値にしている。
+    services:
+      db-test:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_9f3ab21c
+          MYSQL_DATABASE: mybooklibrary_test
+          MYSQL_USER: ci_test_user
+          MYSQL_PASSWORD: ci_test_pw_7d4e8a63
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # 実DB統合テスト・E2E共通の .env.test（testDbGuard.ts の判定に合わせる）。
+      # 外部APIキーはダミー値（docs/test-dependency-map.md の方針どおり、
+      # CIには実キーを置かない）。
+      CI_ENV_TEST_CONTENT: |
+        DATABASE_URL="mysql://ci_test_user:ci_test_pw_7d4e8a63@localhost:3307/mybooklibrary_test"
+        RAKUTEN_APP_ID=dummy
+        RAKUTEN_ACCESS_KEY=dummy
+        CALIL_API_KEY=dummy
+        AUTH_SECRET=dummy-ci-secret-not-for-production
+        CRON_SECRET=dummy
+
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -36,7 +70,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # node + jsdom project のみ（実DB統合テスト・E2Eは対象外。#446 で追加）。
+      # node + jsdom project のみ。
       - name: Test
         run: npm run test -- --coverage
 
@@ -46,4 +80,48 @@ jobs:
         with:
           name: coverage-report
           path: app/coverage
+          retention-days: 7
+
+      - name: Create .env.test
+        run: printf '%s' "$CI_ENV_TEST_CONTENT" > .env.test
+
+      # globalSetup が prisma migrate deploy を実行するため、
+      # db-test サービスの起動完了（health check）を待ってから走らせる。
+      - name: Integration test
+        run: npm run test:integration
+
+      - name: Get installed Playwright version
+        id: playwright-version
+        # package.json の devDependencies はセマンティックレンジ（例: ^1.62.1）で、
+        # package-lock.json が解決した実際のバージョンとは異なりうる。
+        # ブラウザ本体の互換性はインストール済みパッケージのバージョンに紐づくため、
+        # node_modules 側から実バージョンを読む。
+        run: echo "version=$(node -e "console.log(require('@playwright/test/package.json').version)")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # ブラウザ本体はキャッシュされるが、OS依存ライブラリはキャッシュされないため
+      # キャッシュヒット時も --with-deps 相当のシステム依存関係だけ入れ直す。
+      - name: Install Playwright OS dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: E2E test
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: app/playwright-report
           retention-days: 7
