@@ -9,6 +9,7 @@
  * （`playwright.config.ts` の `globalSetup` で db-test に対して呼び出す）。
  */
 import { PrismaClient } from "../src/generated/prisma";
+import { assertTestDatabaseUrl } from "../src/__tests__/helpers/testDbGuard";
 
 export const E2E_USER = {
   email: "e2e-test@example.com",
@@ -47,7 +48,8 @@ if (require.main === module) {
   // import実行（e2e/global-setup.ts経由）では呼び出し元が読み込み済みの
   // 環境変数を使う。
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require("dotenv").config({ path: ".env.test" });
+  require("dotenv").config({ path: ".env.test", override: true });
+  assertTestDatabaseUrl(process.env.DATABASE_URL);
   seedE2e()
     .then(() => console.log("E2E用シードデータの投入が完了しました"))
     .catch((e) => {
