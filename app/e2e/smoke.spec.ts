@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
+import { seedE2e } from "../prisma/seed.e2e";
+import { resetDb } from "../src/__tests__/helpers/dbTest";
 import { login, logout } from "./fixtures/auth";
+
+test.beforeEach(async () => {
+  await resetDb();
+  await seedE2e();
+});
 
 /**
  * Phase 0 のスモークテスト。ログイン→書籍検索→読書ステータス登録→
