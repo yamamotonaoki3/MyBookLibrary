@@ -49,6 +49,17 @@ export function createStubServer() {
       case "/check":
         return send(res, 200, "application/json; charset=utf-8", readFixture("calil-check.json"));
 
+      // 書影のスタブ（1x1 PNG）。フィクスチャの largeImageUrl はこのパスを指す。
+      // next/image がフェッチする際に実際の楽天CDNへ通信しないようにするため。
+      case "/stub/dummy.jpg": {
+        const png = Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+          "base64"
+        );
+        res.writeHead(200, { "Content-Type": "image/png" });
+        return res.end(png);
+      }
+
       default:
         return send(res, 404, "text/plain", `stub-server: unknown path ${url.pathname}`);
     }
@@ -70,6 +81,9 @@ export function stubEnv(port: number): Record<string, string> {
     NDL_API_BASE: `${base}/api/opensearch`,
     NDL_SRU_BASE: `${base}/api/sru`,
     CALIL_API_BASE: base,
+    // next.config.ts が next/image の remotePatterns に http://localhost:<port> を
+    // 追加するかどうかの判定に使う（本番・開発の設定は変えない）。
+    STUB_SERVER_PORT: String(port),
   };
 }
 

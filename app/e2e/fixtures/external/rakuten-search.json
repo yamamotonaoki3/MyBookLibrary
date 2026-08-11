@@ -27,7 +27,7 @@
       "affiliateUrl": "",
       "smallImageUrl": "",
       "mediumImageUrl": "",
-      "largeImageUrl": "https://thumbnail.image.rakuten.co.jp/stub/dummy.jpg",
+      "largeImageUrl": "http://localhost:3999/stub/dummy.jpg",
       "chirayomiUrl": "",
       "availability": "1",
       "limitedFlag": 0,

@@ -15,6 +15,7 @@
     "test:watch": "jest --selectProjects node jsdom --watch",
     "test:coverage": "jest --selectProjects node jsdom --coverage",
     "test:integration": "dotenv -e .env.test -- jest --selectProjects integration --runInBand",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm run test",
     "start": "next start",
@@ -46,6 +47,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
