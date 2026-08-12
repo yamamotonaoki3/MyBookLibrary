@@ -49,14 +49,14 @@ export default async function MyReviewsPage() {
               key={review.id}
               className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900"
             >
-              <div className="mb-2 flex items-center gap-2">
+              <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
                 <Link
                   href={`/books/${review.book.id}`}
                   className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
                 >
                   {review.book.title}
                 </Link>
-                <span className="ml-auto flex items-center gap-3 text-xs text-zinc-400 dark:text-zinc-500">
+                <span className="flex items-center gap-3 text-xs text-zinc-400 sm:ml-auto dark:text-zinc-500">
                   <span className="flex items-center gap-0.5 text-red-400 dark:text-red-400">
                     <span>♥</span>
                     <span>{review._count.likes}</span>
