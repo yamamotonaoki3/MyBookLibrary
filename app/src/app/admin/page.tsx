@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { useSession } from "next-auth/react";
 import {
   Settings,
@@ -163,6 +164,7 @@ export default function AdminPage() {
   const adminFetch = useAdminFetch();
 
   const [activeTab, setActiveTab] = useState<AdminTab>("management");
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -650,6 +652,19 @@ export default function AdminPage() {
     refreshEntries();
   }
 
+  function handleTabKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
+    event.preventDefault();
+    const currentIndex = ADMIN_TABS.findIndex(({ key }) => key === activeTab);
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const nextIndex = (currentIndex + direction + ADMIN_TABS.length) % ADMIN_TABS.length;
+    const nextTab = ADMIN_TABS[nextIndex].key;
+
+    setActiveTab(nextTab);
+    tabRefs.current[nextIndex]?.focus();
+  }
+
   return (
     <main className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <h1 className="mb-5 flex items-center gap-2 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
@@ -657,11 +672,23 @@ export default function AdminPage() {
         管理画面
       </h1>
 
-      <div className="mb-5 flex shrink-0 gap-1 overflow-x-auto border-b border-zinc-200 dark:border-zinc-700">
-        {ADMIN_TABS.map(({ key, label, icon: Icon }) => (
+      <div
+        role="tablist"
+        onKeyDown={handleTabKeyDown}
+        className="mb-5 flex shrink-0 gap-1 overflow-x-auto border-b border-zinc-200 dark:border-zinc-700"
+      >
+        {ADMIN_TABS.map(({ key, label, icon: Icon }, index) => (
           <button
             key={key}
+            ref={(element) => {
+              tabRefs.current[index] = element;
+            }}
             type="button"
+            role="tab"
+            id={`admin-tab-${key}`}
+            aria-controls={`admin-tabpanel-${key}`}
+            aria-selected={activeTab === key}
+            tabIndex={activeTab === key ? 0 : -1}
             onClick={() => setActiveTab(key)}
             className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors lg:px-4 ${
               activeTab === key
@@ -677,10 +704,22 @@ export default function AdminPage() {
 
       <div className="flex-1 overflow-y-auto">
 
-        {activeTab === "audit" && <AuditLogsView embedded />}
+        {activeTab === "audit" && (
+          <div
+            role="tabpanel"
+            id="admin-tabpanel-audit"
+            aria-labelledby="admin-tab-audit"
+          >
+            <AuditLogsView embedded />
+          </div>
+        )}
 
         {activeTab === "settings" && (
-          <>
+          <div
+            role="tabpanel"
+            id="admin-tabpanel-settings"
+            aria-labelledby="admin-tab-settings"
+          >
             {/* 近隣図書館 */}
             <Card className="mb-6">
               <CardHeader className="pb-3">
@@ -743,11 +782,15 @@ export default function AdminPage() {
                 </dl>
               </CardContent>
             </Card>
-          </>
+          </div>
         )}
 
         {activeTab === "management" && (
-        <>
+        <div
+          role="tabpanel"
+          id="admin-tabpanel-management"
+          aria-labelledby="admin-tab-management"
+        >
         {/* ユーザーロールの設定 */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
@@ -1665,7 +1708,7 @@ export default function AdminPage() {
             </CardContent>
           )}
         </Card>
-        </>
+        </div>
         )}
 
       </div>
