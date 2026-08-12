@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
@@ -20,12 +19,23 @@ import {
   ChevronDown,
   Mail,
   Library,
+  ScrollText,
+  UserCog,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LibrarySettings } from "@/app/settings/_components/LibrarySettings";
+import { AuditLogsView } from "./audit-logs/AuditLogsView";
 import { useAdminFetch } from "@/lib/adminFetch";
+
+type AdminTab = "settings" | "audit" | "management";
+
+const ADMIN_TABS: { key: AdminTab; label: string; icon: typeof Settings }[] = [
+  { key: "settings", label: "設定", icon: UserCog },
+  { key: "management", label: "管理", icon: Settings },
+  { key: "audit", label: "監査ログ", icon: ScrollText },
+];
 
 type SearchResult = {
   title: string;
@@ -152,6 +162,8 @@ export default function AdminPage() {
   const currentUserId = session?.user?.id ? Number(session.user.id) : null;
   const adminFetch = useAdminFetch();
 
+  const [activeTab, setActiveTab] = useState<AdminTab>("management");
+
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -225,8 +237,9 @@ export default function AdminPage() {
   const [deleteTargetUser, setDeleteTargetUser] = useState<UserRow | null>(null);
   const [changingRoleUserId, setChangingRoleUserId] = useState<number | null>(null);
   const [roleChangeTargetUser, setRoleChangeTargetUser] = useState<UserRow | null>(null);
+  const [selectedUserForDetail, setSelectedUserForDetail] = useState<UserRow | null>(null);
   const [awardsOpen, setAwardsOpen] = useState(false);
-  const [usersOpen, setUsersOpen] = useState(false);
+  const [selectedAwardEntryForDetail, setSelectedAwardEntryForDetail] = useState<AwardEntry | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [inquiriesOpen, setInquiriesOpen] = useState(false);
   const [updatingInquiryId, setUpdatingInquiryId] = useState<number | null>(null);
@@ -248,6 +261,7 @@ export default function AdminPage() {
   const [mergeTargetId, setMergeTargetId] = useState<string>("");
   const [merging, setMerging] = useState(false);
   const [mergeResult, setMergeResult] = useState<string | null>(null);
+  const [selectedManualBookForDetail, setSelectedManualBookForDetail] = useState<ManualBook | null>(null);
 
   const availableYears = useMemo(() => {
     const base = selectedAwardTab === "all" ? entries : entries.filter((e) => e.award.name === selectedAwardTab);
@@ -398,9 +412,17 @@ export default function AdminPage() {
     setEditingManualBookIsbn(book.isbn ?? "");
   }
 
+  function closeManualBookDetail() {
+    setSelectedManualBookForDetail(null);
+    setEditingManualBookId(null);
+    setEditingManualBookTitle("");
+    setEditingManualBookAuthor("");
+    setEditingManualBookIsbn("");
+  }
+
   async function saveManualBookEdit(id: number) {
     setManualBookSaving(true);
-    await adminFetch(`/api/admin/manual-books/${id}`, {
+    const res = await adminFetch(`/api/admin/manual-books/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -410,8 +432,16 @@ export default function AdminPage() {
       }),
     });
     setManualBookSaving(false);
+    if (!res.ok) return false;
     setEditingManualBookId(null);
     refreshManualBooks();
+    return true;
+  }
+
+  async function saveManualBookEditFromDetail() {
+    if (!selectedManualBookForDetail) return;
+    const saved = await saveManualBookEdit(selectedManualBookForDetail.id);
+    if (saved) closeManualBookDetail();
   }
 
   async function executeDeleteManualBook() {
@@ -625,15 +655,215 @@ export default function AdminPage() {
       <h1 className="mb-5 flex items-center gap-2 shrink-0 text-2xl font-bold tracking-tight lg:mb-6 lg:text-3xl">
         <Settings className="h-6 w-6 lg:h-7 lg:w-7" />
         管理画面
-        <Link
-          href="/admin/audit-logs"
-          className="ml-auto text-sm font-normal text-blue-600 hover:underline dark:text-blue-400"
-        >
-          監査ログを見る
-        </Link>
       </h1>
 
+      <div className="mb-5 flex shrink-0 gap-1 overflow-x-auto border-b border-zinc-200 dark:border-zinc-700">
+        {ADMIN_TABS.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveTab(key)}
+            className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors lg:px-4 ${
+              activeTab === key
+                ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100"
+                : "border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 overflow-y-auto">
+
+        {activeTab === "audit" && <AuditLogsView embedded />}
+
+        {activeTab === "settings" && (
+          <>
+            {/* 近隣図書館 */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                  <Library className="h-4 w-4" />近隣図書館の登録
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LibrarySettings />
+              </CardContent>
+            </Card>
+
+            {/* フォロー関係（プロトタイプ・ダミー表示） */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                  <Heart className="h-4 w-4" />フォロー関係
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-3 text-xs text-muted-foreground">※プロトタイプのダミー表示です。</p>
+                <ul className="flex flex-col gap-2">
+                  {["テスト太郎", "E2EUser A", "テスト花子"].map((name) => (
+                    <li
+                      key={name}
+                      className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    >
+                      <span className="text-zinc-800 dark:text-zinc-200">{name}</span>
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                        フォロー中
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* 自分のアカウント情報（プロトタイプ・ダミー表示） */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                  <Users className="h-4 w-4" />自分のアカウント情報
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-3 text-xs text-muted-foreground">※プロトタイプのダミー表示です。</p>
+                <dl className="flex flex-col gap-2 text-sm">
+                  <div className="flex justify-between border-b border-zinc-100 py-2 dark:border-zinc-800">
+                    <dt className="text-zinc-500 dark:text-zinc-400">名前</dt>
+                    <dd className="text-zinc-800 dark:text-zinc-200">{session?.user?.name ?? "テスト管理者"}</dd>
+                  </div>
+                  <div className="flex justify-between border-b border-zinc-100 py-2 dark:border-zinc-800">
+                    <dt className="text-zinc-500 dark:text-zinc-400">メールアドレス</dt>
+                    <dd className="text-zinc-800 dark:text-zinc-200">{session?.user?.email ?? "admin@example.com"}</dd>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <dt className="text-zinc-500 dark:text-zinc-400">ロール</dt>
+                    <dd className="text-zinc-800 dark:text-zinc-200">管理者</dd>
+                  </div>
+                </dl>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {activeTab === "management" && (
+        <>
+        {/* ユーザーロールの設定 */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+              <Trash2 className="h-4 w-4" />ユーザーロールの設定
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {users.length === 0 ? (
+              <p className="text-sm text-muted-foreground">ユーザーがいません。</p>
+            ) : (
+              <>
+                {/* PC幅: 表形式 */}
+                <div className="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 lg:block">
+                  <table className="w-full text-sm whitespace-nowrap">
+                    <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                      <tr>
+                        <th className="px-4 py-3 text-left">名前</th>
+                        <th className="px-4 py-3 text-left">メールアドレス</th>
+                        <th className="px-4 py-3 text-left">ロール</th>
+                        <th className="px-4 py-3 text-left">登録日</th>
+                        <th className="px-4 py-3 text-left">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
+                      {users.map((user) => {
+                        const isMyself = currentUserId === user.id;
+                        const isAdmin = user.role === "admin";
+                        const canDelete = !isMyself && !isAdmin;
+                        return (
+                          <tr key={user.id}>
+                            <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
+                              {user.name}
+                            </td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                              {user.email}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  isAdmin
+                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                                }`}
+                              >
+                                {isAdmin ? "管理者" : "ユーザー"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                              {new Date(user.createdAt).toLocaleDateString("ja-JP")}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-2">
+                                {!isMyself && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setRoleChangeTargetUser(user)}
+                                    disabled={changingRoleUserId === user.id}
+                                  >
+                                    {changingRoleUserId === user.id
+                                      ? "変更中..."
+                                      : isAdmin
+                                        ? "管理者権限を外す"
+                                        : "管理者にする"}
+                                  </Button>
+                                )}
+                                {canDelete && (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => setDeleteTargetUser(user)}
+                                    disabled={deletingUserId === user.id}
+                                  >
+                                    {deletingUserId === user.id ? "削除中..." : "削除"}
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* モバイル幅: カードリスト（タップで詳細モーダル） */}
+                <ul className="flex flex-col gap-2 lg:hidden">
+                  {users.map((user) => {
+                    const isAdmin = user.role === "admin";
+                    return (
+                      <li key={user.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUserForDetail(user)}
+                          className="flex w-full items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-white p-3 text-left text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                        >
+                          <span className="font-medium text-zinc-900 dark:text-zinc-50">{user.name}</span>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                              isAdmin
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                            }`}
+                          >
+                            {isAdmin ? "管理者" : "ユーザー"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* 統計カード */}
         <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -878,18 +1108,6 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        {/* 近隣図書館 */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              <Library className="h-4 w-4" />近隣図書館の登録
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LibrarySettings />
-          </CardContent>
-        </Card>
-
         {/* CSVインポート */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
@@ -1012,7 +1230,7 @@ export default function AdminPage() {
                     {filteredEntries.length}件
                   </span>
                 </div>
-              <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+              <div className="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 lg:block">
                 <table className="w-full text-sm whitespace-nowrap">
                   <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                     <tr>
@@ -1072,6 +1290,24 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* モバイル幅: カードリスト（タップで詳細モーダル） */}
+              <ul className="flex flex-col gap-2 lg:hidden">
+                {filteredEntries.map((entry) => (
+                  <li key={entry.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAwardEntryForDetail(entry)}
+                      className="flex w-full flex-col items-start gap-1 rounded-lg border border-zinc-200 bg-white p-3 text-left text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    >
+                      <span className="font-medium text-zinc-900 dark:text-zinc-50">{entry.book.title}</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {entry.award.name} ・ {entry.year}年
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
               </>
             )}
           </CardContent>}
@@ -1136,7 +1372,8 @@ export default function AdminPage() {
             {manualBooks.length === 0 ? (
               <p className="text-sm text-muted-foreground">手動登録された本はありません。</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+              <>
+              <div className="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 lg:block">
                 <table className="w-full text-sm whitespace-nowrap">
                   <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                     <tr>
@@ -1221,101 +1458,23 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </CardContent>}
-        </Card>
 
-        {/* ユーザー管理 */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle>
-              <button
-                onClick={() => setUsersOpen(!usersOpen)}
-                className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground"
-              >
-                <span className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />ユーザー管理
-                </span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${usersOpen ? "rotate-180" : ""}`} />
-              </button>
-            </CardTitle>
-          </CardHeader>
-          {usersOpen && <CardContent>
-            {users.length === 0 ? (
-              <p className="text-sm text-muted-foreground">ユーザーがいません。</p>
-            ) : (
-              <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-                <table className="w-full text-sm whitespace-nowrap">
-                  <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                    <tr>
-                      <th className="px-4 py-3 text-left">名前</th>
-                      <th className="px-4 py-3 text-left">メールアドレス</th>
-                      <th className="px-4 py-3 text-left">ロール</th>
-                      <th className="px-4 py-3 text-left">登録日</th>
-                      <th className="px-4 py-3 text-left">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
-                    {users.map((user) => {
-                      const isMyself = currentUserId === user.id;
-                      const isAdmin = user.role === "admin";
-                      const canDelete = !isMyself && !isAdmin;
-                      return (
-                        <tr key={user.id}>
-                          <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
-                            {user.name}
-                          </td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                            {user.email}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                isAdmin
-                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                              }`}
-                            >
-                              {isAdmin ? "管理者" : "ユーザー"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                            {new Date(user.createdAt).toLocaleDateString("ja-JP")}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-2">
-                              {!isMyself && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setRoleChangeTargetUser(user)}
-                                  disabled={changingRoleUserId === user.id}
-                                >
-                                  {changingRoleUserId === user.id
-                                    ? "変更中..."
-                                    : isAdmin
-                                      ? "管理者権限を外す"
-                                      : "管理者にする"}
-                                </Button>
-                              )}
-                              {canDelete && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => setDeleteTargetUser(user)}
-                                  disabled={deletingUserId === user.id}
-                                >
-                                  {deletingUserId === user.id ? "削除中..." : "削除"}
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {/* モバイル幅: カードリスト（タップで詳細モーダル） */}
+              <ul className="flex flex-col gap-2 lg:hidden">
+                {manualBooks.map((book) => (
+                  <li key={book.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedManualBookForDetail(book)}
+                      className="flex w-full flex-col items-start gap-1 rounded-lg border border-zinc-200 bg-white p-3 text-left text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    >
+                      <span className="font-medium text-zinc-900 dark:text-zinc-50">{book.title}</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">{book.author.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              </>
             )}
           </CardContent>}
         </Card>
@@ -1394,7 +1553,8 @@ export default function AdminPage() {
               {inquiries.length === 0 ? (
                 <p className="text-sm text-muted-foreground">お問い合わせはありません。</p>
               ) : (
-                <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <>
+                <div className="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 lg:block">
                   <table className="w-full text-sm whitespace-nowrap">
                     <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                       <tr>
@@ -1464,10 +1624,49 @@ export default function AdminPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* モバイル幅: カードリスト（タップで詳細モーダル） */}
+                <ul className="flex flex-col gap-2 lg:hidden">
+                  {inquiries.map((inquiry) => (
+                    <li key={inquiry.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInquiry(inquiry)}
+                        className="flex w-full flex-col items-start gap-1 rounded-lg border border-zinc-200 bg-white p-3 text-left text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                      >
+                        <div className="flex w-full items-center justify-between gap-2">
+                          <span className="font-medium text-zinc-900 dark:text-zinc-50 truncate">
+                            {inquiry.subject}
+                          </span>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              inquiry.status === "open"
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                                : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                            }`}
+                          >
+                            {inquiry.status === "open" ? "未対応" : "対応済み"}
+                          </span>
+                        </div>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {inquiry.name} ・{" "}
+                          {new Date(inquiry.createdAt).toLocaleDateString("ja-JP", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                          })}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                </>
               )}
             </CardContent>
           )}
         </Card>
+        </>
+        )}
 
       </div>
 
@@ -1532,6 +1731,245 @@ export default function AdminPage() {
         confirmLabel="削除する"
         onConfirm={executeDeleteInquiry}
       />
+
+      {/* ユーザーロール 詳細モーダル（モバイル用） */}
+      {selectedUserForDetail && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedUserForDetail(null); }}
+        >
+          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">ユーザー詳細</h2>
+              <button
+                onClick={() => setSelectedUserForDetail(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                ✕
+              </button>
+            </div>
+            {(() => {
+              const user = selectedUserForDetail;
+              const isMyself = currentUserId === user.id;
+              const isAdmin = user.role === "admin";
+              const canDelete = !isMyself && !isAdmin;
+              return (
+                <>
+                  <dl className="flex flex-col gap-3 text-sm">
+                    <div>
+                      <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">名前</dt>
+                      <dd className="text-zinc-800 dark:text-zinc-200">{user.name}</dd>
+                    </div>
+                    <div>
+                      <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">メールアドレス</dt>
+                      <dd className="text-zinc-800 dark:text-zinc-200">{user.email}</dd>
+                    </div>
+                    <div>
+                      <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">ロール</dt>
+                      <dd className="text-zinc-800 dark:text-zinc-200">{isAdmin ? "管理者" : "ユーザー"}</dd>
+                    </div>
+                    <div>
+                      <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">登録日</dt>
+                      <dd className="text-zinc-800 dark:text-zinc-200">
+                        {new Date(user.createdAt).toLocaleDateString("ja-JP")}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mt-6 flex flex-wrap justify-end gap-2">
+                    {!isMyself && (
+                      <Button
+                        variant="outline"
+                        onClick={() => { setRoleChangeTargetUser(user); setSelectedUserForDetail(null); }}
+                        disabled={changingRoleUserId === user.id}
+                      >
+                        {isAdmin ? "管理者権限を外す" : "管理者にする"}
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="destructive"
+                        onClick={() => { setDeleteTargetUser(user); setSelectedUserForDetail(null); }}
+                        disabled={deletingUserId === user.id}
+                      >
+                        削除
+                      </Button>
+                    )}
+                    <Button onClick={() => setSelectedUserForDetail(null)}>閉じる</Button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* 受賞登録 詳細モーダル（モバイル用） */}
+      {selectedAwardEntryForDetail && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) setSelectedAwardEntryForDetail(null); }}
+        >
+          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">受賞登録の詳細</h2>
+              <button
+                onClick={() => setSelectedAwardEntryForDetail(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                ✕
+              </button>
+            </div>
+            <dl className="flex flex-col gap-3 text-sm">
+              <div>
+                <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">タイトル</dt>
+                <dd className="text-zinc-800 dark:text-zinc-200">{selectedAwardEntryForDetail.book.title}</dd>
+              </div>
+              <div>
+                <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">著者</dt>
+                <dd className="text-zinc-800 dark:text-zinc-200">{selectedAwardEntryForDetail.book.author.name}</dd>
+              </div>
+              <div>
+                <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">文学賞</dt>
+                <dd className="text-zinc-800 dark:text-zinc-200">{selectedAwardEntryForDetail.award.name}</dd>
+              </div>
+              <div>
+                <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">年度</dt>
+                <dd className="text-zinc-800 dark:text-zinc-200">{selectedAwardEntryForDetail.year}年</dd>
+              </div>
+              <div>
+                <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">種別</dt>
+                <dd className="text-zinc-800 dark:text-zinc-200">
+                  {selectedAwardEntryForDetail.type === "winner" ? "受賞作" : "ノミネート"}
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { startEdit(selectedAwardEntryForDetail); setSelectedAwardEntryForDetail(null); }}
+              >
+                編集
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => { handleDelete(selectedAwardEntryForDetail.id); setSelectedAwardEntryForDetail(null); }}
+                disabled={deletingId === selectedAwardEntryForDetail.id}
+              >
+                削除
+              </Button>
+              <Button onClick={() => setSelectedAwardEntryForDetail(null)}>閉じる</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 手動登録本 詳細モーダル（モバイル用） */}
+      {selectedManualBookForDetail && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) closeManualBookDetail(); }}
+        >
+          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">手動登録本の詳細</h2>
+              <button
+                onClick={closeManualBookDetail}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                ✕
+              </button>
+            </div>
+            {editingManualBookId === selectedManualBookForDetail.id ? (
+              <>
+                <div className="flex flex-col gap-3 text-sm">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">タイトル</label>
+                    <input
+                      value={editingManualBookTitle}
+                      onChange={(e) => setEditingManualBookTitle(e.target.value)}
+                      className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">著者</label>
+                    <input
+                      value={editingManualBookAuthor}
+                      onChange={(e) => setEditingManualBookAuthor(e.target.value)}
+                      className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">ISBN</label>
+                    <input
+                      value={editingManualBookIsbn}
+                      onChange={(e) => setEditingManualBookIsbn(e.target.value)}
+                      className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                    />
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setEditingManualBookId(null)}>
+                    キャンセル
+                  </Button>
+                  <Button
+                    onClick={saveManualBookEditFromDetail}
+                    disabled={manualBookSaving}
+                  >
+                    {manualBookSaving ? "保存中..." : "保存"}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <dl className="flex flex-col gap-3 text-sm">
+                  <div>
+                    <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">タイトル</dt>
+                    <dd className="text-zinc-800 dark:text-zinc-200">{selectedManualBookForDetail.title}</dd>
+                  </div>
+                  <div>
+                    <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">著者</dt>
+                    <dd className="text-zinc-800 dark:text-zinc-200">{selectedManualBookForDetail.author.name}</dd>
+                  </div>
+                  <div>
+                    <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">ISBN</dt>
+                    <dd className="text-zinc-800 dark:text-zinc-200">{selectedManualBookForDetail.isbn ?? "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">登録者</dt>
+                    <dd className="text-zinc-800 dark:text-zinc-200">
+                      {selectedManualBookForDetail.createdByUser
+                        ? `${selectedManualBookForDetail.createdByUser.name}（${selectedManualBookForDetail.createdByUser.email}）`
+                        : "不明"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">利用状況</dt>
+                    <dd className="text-zinc-800 dark:text-zinc-200">
+                      読書{selectedManualBookForDetail._count.readingStatuses}／レビュー{selectedManualBookForDetail._count.reviews}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-6 flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => startManualBookEdit(selectedManualBookForDetail)}
+                  >
+                    編集
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => { setDeleteTargetManualBook(selectedManualBookForDetail); closeManualBookDetail(); }}
+                    disabled={deletingManualBookId === selectedManualBookForDetail.id}
+                  >
+                    削除
+                  </Button>
+                  <Button onClick={closeManualBookDetail}>閉じる</Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* お問い合わせ 詳細モーダル */}
       {selectedInquiry && (
@@ -1606,6 +2044,13 @@ export default function AdminPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="destructive"
+                onClick={() => { setDeleteTargetInquiry(selectedInquiry); setSelectedInquiry(null); }}
+                disabled={deletingInquiryId === selectedInquiry.id}
+              >
+                削除
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => handleToggleInquiryStatus(selectedInquiry)}
