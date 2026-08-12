@@ -45,22 +45,17 @@ export function AuthorCard({ author }: Props) {
   return (
     <>
       <div
-        role="button"
-        tabIndex={0}
         onClick={() => setDetailOpen(true)}
-        onKeyDown={(e) => {
-          if (e.target !== e.currentTarget) return;
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setDetailOpen(true);
-          }
-        }}
         className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/50"
       >
         <div className="flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate font-semibold text-blue-600 dark:text-blue-400">
+          <button
+            type="button"
+            onClick={() => setDetailOpen(true)}
+            className="min-w-0 truncate text-left font-semibold text-blue-600 hover:underline dark:text-blue-400"
+          >
             {author.authorName}
-          </span>
+          </button>
           <div className="flex shrink-0 items-center gap-1">
             <button
               onClick={handleNotifyToggle}
