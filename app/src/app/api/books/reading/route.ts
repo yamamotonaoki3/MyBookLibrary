@@ -16,6 +16,7 @@ export async function GET(request: Request) {
         ...(q ? { book: { title: { contains: q } } } : {}),
       },
       include: { book: { include: { author: { select: { name: true } } } } },
+      orderBy: { updatedAt: "desc" },
     }),
     prisma.review.findMany({
       where: { userId: userId },

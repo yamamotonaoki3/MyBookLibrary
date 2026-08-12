@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookSearchInput } from "@/app/_components/BookSearchInput";
 
@@ -13,6 +13,7 @@ type Book = {
 
 export function WriteReviewModal() {
   const router = useRouter();
+  const requestSequenceRef = useRef(0);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Book[]>([]);
@@ -35,26 +36,35 @@ export function WriteReviewModal() {
     setIsPublic(true);
     setError(null);
     setOpen(true);
+    fetchBooks("");
   }
 
   function closeModal() {
+    requestSequenceRef.current += 1;
     setOpen(false);
+  }
+
+  async function fetchBooks(q: string) {
+    const requestSequence = ++requestSequenceRef.current;
+    setLoading(true);
+    setSearched(false);
+    try {
+      const res = await fetch(`/api/books/reading?q=${encodeURIComponent(q)}`);
+      const data: Book[] = await res.json();
+      if (requestSequence === requestSequenceRef.current) {
+        setResults(data);
+      }
+    } finally {
+      if (requestSequence === requestSequenceRef.current) {
+        setLoading(false);
+        setSearched(true);
+      }
+    }
   }
 
   async function handleSearch() {
     if (!query.trim()) return;
-    setLoading(true);
-    setSearched(false);
-    try {
-      const res = await fetch(
-        `/api/books/reading?q=${encodeURIComponent(query.trim())}`
-      );
-      const data: Book[] = await res.json();
-      setResults(data);
-    } finally {
-      setLoading(false);
-      setSearched(true);
-    }
+    await fetchBooks(query.trim());
   }
 
   const bodyLength = body.trim().length;
