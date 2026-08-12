@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BookSearchInput } from "@/app/_components/BookSearchInput";
 
 type Book = {
   id: number;
@@ -109,23 +110,14 @@ export function WriteReviewModal() {
 
             {!selectedBook ? (
               <>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    placeholder="タイトルを入力"
-                    className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
-                  />
-                  <button
-                    onClick={handleSearch}
-                    disabled={loading || !query.trim()}
-                    className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                  >
-                    検索
-                  </button>
-                </div>
+                <BookSearchInput
+                  query={query}
+                  onQueryChange={setQuery}
+                  onSearch={handleSearch}
+                  loading={loading}
+                  disabled={!query.trim()}
+                  placeholder="タイトルを入力"
+                />
                 <p className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">
                   読書中・読了の本が候補に表示されます
                 </p>
