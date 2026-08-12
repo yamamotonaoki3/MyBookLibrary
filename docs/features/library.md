@@ -42,9 +42,10 @@
 
 | メソッド | パス | 説明 |
 | --- | --- | --- |
-| GET | `/api/settings/libraries` | 登録図書館一覧取得 |
-| POST | `/api/settings/libraries` | 図書館を登録（最大 5 件） |
-| DELETE | `/api/settings/libraries` | 図書館の登録解除 |
+| GET | `/api/user-libraries` | 登録図書館一覧取得 |
+| POST | `/api/user-libraries` | 図書館を登録（最大 5 件） |
+| DELETE | `/api/user-libraries` | 図書館の登録解除 |
+| GET | `/api/calil/libraries` | カーリル API で図書館を検索（地域・座標から候補を取得） |
 | GET | `/api/calil/check` | カーリル API で図書館在庫確認（`isbn` / `libraries` クエリ） |
 
 ## 関連ドキュメント
