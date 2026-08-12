@@ -84,7 +84,7 @@ async function FavoriteAuthorList() {
 export default function FavoriteAuthorsPage() {
   return (
     <main className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
-      <div className="mb-5 flex shrink-0 items-center justify-between lg:mb-6">
+      <div className="mb-5 flex flex-wrap shrink-0 items-center justify-between gap-2 lg:mb-6">
         <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
           お気に入り著者
         </h1>
