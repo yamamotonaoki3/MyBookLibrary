@@ -1,0 +1,253 @@
+import {
+  searchBooksNdl,
+  searchBookByIsbn,
+  getAuthorBookCountNdl,
+  searchAuthorsByName,
+} from "@/lib/ndl";
+import { mockFetchText, mockFetchNetworkError, restoreFetch } from "../../helpers/fetchMock";
+
+const sruXml = (records: string, numberOfRecords = 2) => `<?xml version="1.0"?>
+<searchRetrieveResponse>
+<numberOfRecords>${numberOfRecords}</numberOfRecords>
+<records>${records}</records>
+</searchRetrieveResponse>`;
+
+const sruRecord = (opts: {
+  title: string;
+  creator?: string;
+  publisher?: string;
+  date?: string;
+  identifier?: string;
+}) => `<record><recordData>
+<dc:title>${opts.title}</dc:title>
+${opts.creator !== undefined ? `<dc:creator>${opts.creator}</dc:creator>` : ""}
+${opts.publisher !== undefined ? `<dc:publisher>${opts.publisher}</dc:publisher>` : ""}
+${opts.date !== undefined ? `<dcterms:date>${opts.date}</dcterms:date>` : ""}
+${opts.identifier !== undefined ? `<dc:identifier>${opts.identifier}</dc:identifier>` : ""}
+</recordData></record>`;
+
+afterEach(() => {
+  restoreFetch();
+});
+
+describe("searchBooksNdl", () => {
+  it("SRUレスポンスをパースしてitemsとtotalPagesを返す", async () => {
+    const xml = sruXml(
+      sruRecord({
+        title: "こころ",
+        creator: "夏目 漱石",
+        publisher: "岩波書店",
+        date: "2000",
+        identifier: "ISBN 9784000000001",
+      }),
+      65
+    );
+    mockFetchText(xml);
+
+    const result = await searchBooksNdl({ type: "title", q: "こころ", page: 1 });
+
+    expect(result.items).toEqual([
+      {
+        title: "こころ",
+        author: "夏目 漱石",
+        isbn: "9784000000001",
+        publisherName: "岩波書店",
+        salesDate: "2000年",
+      },
+    ]);
+    expect(result.totalPages).toBe(3); // Math.ceil(65 / 30)
+  });
+
+  it("年月付きの日付は「YYYY年MM月」形式に整形する", async () => {
+    mockFetchText(sruXml(sruRecord({ title: "坊っちゃん", date: "1999.05" }), 1));
+
+    const result = await searchBooksNdl({ type: "title", q: "坊っちゃん", page: 1 });
+
+    expect(result.items[0].salesDate).toBe("1999年05月");
+  });
+
+  it("正規化後のタイトルが重複するレコードは最初の1件のみ残す", async () => {
+    const xml = sruXml(
+      sruRecord({ title: "こころ" }) + sruRecord({ title: "こころ　" }),
+      2
+    );
+    mockFetchText(xml);
+
+    const result = await searchBooksNdl({ type: "title", q: "こころ", page: 1 });
+
+    expect(result.items).toHaveLength(1);
+  });
+
+  it("titleタグが無いレコードは除外する", async () => {
+    const xml = sruXml(`<record><recordData><dc:creator>著者</dc:creator></recordData></record>`, 1);
+    mockFetchText(xml);
+
+    const result = await searchBooksNdl({ type: "title", q: "x", page: 1 });
+
+    expect(result.items).toEqual([]);
+  });
+
+  it.each([
+    ["title" as const, "こころ", 'title="こころ"'],
+    ["author" as const, "夏目漱石", 'creator="夏目漱石"'],
+  ])("type=%sのときクエリを%sの形式で組み立てる", async (type, q, expectedQuery) => {
+    const fetchFn = mockFetchText(sruXml("", 0));
+
+    await searchBooksNdl({ type, q, page: 1 });
+
+    const calledUrl = new URL(fetchFn.mock.calls[0][0] as string);
+    expect(calledUrl.searchParams.get("query")).toBe(expectedQuery);
+  });
+
+  it("type=keywordで複数語を指定するとtitleとcreatorのAND条件になる", async () => {
+    const fetchFn = mockFetchText(sruXml("", 0));
+
+    await searchBooksNdl({ type: "keyword", q: "こころ 夏目漱石", page: 1 });
+
+    const calledUrl = new URL(fetchFn.mock.calls[0][0] as string);
+    expect(calledUrl.searchParams.get("query")).toBe('title="こころ" AND creator="夏目漱石"');
+  });
+
+  it("2ページ目はstartRecordが31になる", async () => {
+    const fetchFn = mockFetchText(sruXml("", 0));
+
+    await searchBooksNdl({ type: "title", q: "x", page: 2 });
+
+    const calledUrl = new URL(fetchFn.mock.calls[0][0] as string);
+    expect(calledUrl.searchParams.get("startRecord")).toBe("31");
+  });
+
+  it("HTTPエラー時は空items・totalPages 0を返す", async () => {
+    mockFetchText("", { status: 500 });
+
+    const result = await searchBooksNdl({ type: "title", q: "x", page: 1 });
+
+    expect(result).toEqual({ items: [], totalPages: 0 });
+  });
+
+  it("通信エラー時は空items・totalPages 0を返す", async () => {
+    mockFetchNetworkError();
+
+    const result = await searchBooksNdl({ type: "title", q: "x", page: 1 });
+
+    expect(result).toEqual({ items: [], totalPages: 0 });
+  });
+});
+
+describe("searchBookByIsbn", () => {
+  const openSearchXml = (opts: {
+    title?: string;
+    creator?: string;
+    publisher?: string;
+    pubDate?: string;
+  }) => `<?xml version="1.0"?>
+<rss><channel><item>
+${opts.title !== undefined ? `<title>${opts.title}</title>` : ""}
+${opts.creator !== undefined ? `<dc:creator>${opts.creator}</dc:creator>` : ""}
+${opts.publisher !== undefined ? `<dc:publisher>${opts.publisher}</dc:publisher>` : ""}
+${opts.pubDate !== undefined ? `<pubDate>${opts.pubDate}</pubDate>` : ""}
+</item></channel></rss>`;
+
+  it("タイトルの「/ 著者名」サフィックスを除去する", async () => {
+    mockFetchText(
+      openSearchXml({
+        title: "こころ / 夏目 漱石 著",
+        creator: "夏目, 漱石, 1867-1916",
+        publisher: "岩波書店",
+        pubDate: "2000-01-01",
+      })
+    );
+
+    const result = await searchBookByIsbn("9784000000001");
+
+    expect(result).toEqual({
+      title: "こころ",
+      author: "夏目漱石",
+      publisher: "岩波書店",
+      pubdate: "2000-01-01",
+    });
+  });
+
+  it("生年を含まないdc:creatorはそのまま結合して使う", async () => {
+    mockFetchText(openSearchXml({ title: "坊っちゃん", creator: "夏目 漱石" }));
+
+    const result = await searchBookByIsbn("9784000000002");
+
+    expect(result?.author).toBe("夏目漱石");
+  });
+
+  it("titleタグが無ければnullを返す", async () => {
+    mockFetchText(openSearchXml({}));
+
+    const result = await searchBookByIsbn("9784000000003");
+
+    expect(result).toBeNull();
+  });
+
+  it("HTTPエラー時はnullを返す", async () => {
+    mockFetchText("", { status: 500 });
+
+    const result = await searchBookByIsbn("9784000000004");
+
+    expect(result).toBeNull();
+  });
+});
+
+describe("getAuthorBookCountNdl", () => {
+  it("numberOfRecordsを数値で返す", async () => {
+    mockFetchText(sruXml("", 12));
+
+    const result = await getAuthorBookCountNdl("夏目漱石");
+
+    expect(result).toBe(12);
+  });
+
+  it("HTTPエラー時は0を返す", async () => {
+    mockFetchText("", { status: 500 });
+
+    const result = await getAuthorBookCountNdl("夏目漱石");
+
+    expect(result).toBe(0);
+  });
+
+  it("通信エラー時は0を返す", async () => {
+    mockFetchNetworkError();
+
+    const result = await getAuthorBookCountNdl("夏目漱石");
+
+    expect(result).toBe(0);
+  });
+});
+
+describe("searchAuthorsByName", () => {
+  const openSearchAuthorsXml = (creators: string[]) => `<?xml version="1.0"?>
+<rss><channel>
+${creators.map((c) => `<item><dc:creator>${c}</dc:creator></item>`).join("\n")}
+</channel></rss>`;
+
+  it("生年付きの著者名を正規化して重複除去する", async () => {
+    mockFetchText(
+      openSearchAuthorsXml(["夏目, 漱石, 1867-1916", "夏目, 漱石, 1867-1916", "芥川, 龍之介, 1892-1927"])
+    );
+
+    const result = await searchAuthorsByName("夏目");
+
+    expect(result.sort()).toEqual(["夏目漱石", "芥川龍之介"].sort());
+  });
+
+  it("生年を含まない著者名はそのまま使う", async () => {
+    mockFetchText(openSearchAuthorsXml(["村上春樹"]));
+
+    const result = await searchAuthorsByName("村上");
+
+    expect(result).toEqual(["村上春樹"]);
+  });
+
+  it("HTTPエラー時は空配列を返す", async () => {
+    mockFetchText("", { status: 500 });
+
+    const result = await searchAuthorsByName("x");
+
+    expect(result).toEqual([]);
+  });
+});

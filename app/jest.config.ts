@@ -66,13 +66,13 @@ const config: Config = {
     "!src/**/__mocks__/**",
     "!src/__tests__/**",
   ],
-  // ラチェット運用。Phase 1（純粋関数・バリデーション）完了時点の実測値
-  // （Statements 12.27% / Branches 9.74%）の少し下を新しい閾値とする。
+  // ラチェット運用。Phase 2（外部APIクライアント）完了時点の実測値
+  // （Statements 18.31% / Branches 14.1%）の少し下を新しい閾値とする。
   // 一度上げた閾値は下げない。
   coverageThreshold: {
     global: {
-      statements: 12,
-      branches: 9,
+      statements: 18,
+      branches: 14,
     },
   },
 };

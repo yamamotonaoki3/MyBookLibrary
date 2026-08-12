@@ -36,10 +36,10 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| なぜ困難か | `global.fetch` で実エンドポイントを直叩きしており、ベースURLがハードコードされている。URL構築・レスポンス整形・エラー処理が1関数に混在している |
-| どうテストするか | `src/__tests__/helpers/fetchMock.ts` で fetch を差し替えて結合的に単体テストする。あわせて「URL構築」「レスポンス→ドメイン型変換」を純粋関数として切り出し、そこは完全な単体テストにする |
+| なぜ困難か | `global.fetch` で実エンドポイントを直叩きしており、ベースURLがハードコードされている（環境変数で差し替え可能）。URL構築・レスポンス整形・エラー処理が1関数に混在している |
+| どうテストするか | `src/__tests__/helpers/fetchMock.ts` で fetch を差し替えて結合的に単体テストする。カーリルのポーリング（`continue`打ち切り・20秒デッドライン）・楽天の429リトライ上限は `jest.useFakeTimers()` + `advanceTimersByTimeAsync` で実時間を消費せず検証する（[学び・手直しの記録](lessons-learned.md) 2026-08-12参照） |
 | 補足 | ベースURLの環境変数化は [#434](https://github.com/yamamotonaoki3/MyBookLibrary/issues/434)。E2E ではローカルスタブサーバーへ向ける |
-| 状態 | 未対応（Phase 2 で実施） |
+| 状態 | 対応済み（Phase 2 / [#454](https://github.com/yamamotonaoki3/MyBookLibrary/issues/454)）。テストファイル: `node/lib/rakuten.test.ts`, `node/lib/ndl.test.ts`, `node/lib/calil.test.ts` |
 
 ### 1-2. `src/proxy.ts`（middleware 相当）
 

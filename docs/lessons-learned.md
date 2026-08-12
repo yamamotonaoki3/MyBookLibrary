@@ -9,8 +9,21 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - 2026-08-08: ドキュメントの「事実」も実物で裏を取る（Next 16のproxyはNode.js runtimeが既定／ダミーAPIキーは実リクエストを飛ばしていない証明にならない）
 - 2026-08-11: 実DBへの安全ガードは全ての実行経路（Jest／Playwright／CLI）に個別に必要。1箇所直しても他の経路に穴が残る
 - 2026-08-11: `next dev`はENV変数を事前設定すれば`.env.local`より優先される／Next.js 16のSSRF対策とE2Eスタブの組み合わせ方
+- 2026-08-12: `jest.useFakeTimers()`（modern）は`Date.now()`も一緒にフェイクするため、`setTimeout`＋`Date.now()`デッドライン処理は`advanceTimersByTimeAsync`で実時間ゼロで検証できる
 
 ## 記録
+
+### 2026-08-12: `jest.useFakeTimers()`はDate.nowも一緒にフェイクする（setTimeout＋Date.nowのデッドライン検証）
+
+- **種別**: 実装中の手直し（Issue #454 Phase 2 外部APIクライアントのテスト実装中に確認）
+- **対象領域・関連ファイル**: テスト / `app/src/__tests__/node/lib/calil.test.ts`（対象: `app/src/lib/calil.ts` の `checkAvailability`）
+- **何が起きたか**: `checkAvailability` はカーリルAPIのポーリング処理で、`Date.now()`による20秒デッドラインと`setTimeout(..., 2000)`による2秒間隔待機を組み合わせている。この「`continue`が1のままでも20秒でポーリングを打ち切る」という外部API保護上重要な分岐を、実時間を20秒以上消費せずに検証する必要があった。`jest.useFakeTimers()`（Jest 30の既定であるmodern fake timers）は`setTimeout`だけでなく`Date.now()` / `Date`コンストラクタも同時にフェイクするため、`await jest.advanceTimersByTimeAsync(25000)`でタイマーを進めるだけで、`Date.now()`ベースのデッドライン判定も含めて実時間ゼロで最後まで到達させることができた。
+- **対応**: `mockFetchJson`で`continue: 1`を返し続けるレスポンスを用意し、`jest.useFakeTimers()` + `jest.advanceTimersByTimeAsync(25000)`でポーリングが無限ループにならず打ち切られること（fetch呼び出し回数が10〜14回程度に収まること）を検証するテストを追加した。
+- **次回の行動規則**:
+  - **`Date.now()`（または`new Date()`）と`setTimeout`/`setInterval`を組み合わせたタイムアウト・デッドライン処理をテストするときは、`jest.useFakeTimers()` + `jest.advanceTimersByTimeAsync()`を第一候補にする。** 個別に`Date.now`をモックする必要はない（Jest 30のmodern fake timersでは既に含まれる）。
+  - ループが「時間経過で打ち切られること」を検証するテストでは、呼び出し回数を厳密な固定値ではなく範囲（`toBeGreaterThanOrEqual` / `toBeLessThan`）で assert すると、タイマー丸め等の実装詳細差でテストが壊れにくい。
+- **状態**: 有効
+- **根拠**: Issue #454
 
 ### 2026-08-08: ドキュメントの「事実」も実物で裏を取る
 
