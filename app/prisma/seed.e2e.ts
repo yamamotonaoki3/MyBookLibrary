@@ -17,6 +17,12 @@ export const E2E_USER = {
   name: "E2Eテストユーザー",
 };
 
+export const E2E_ADMIN = {
+  email: "e2e-admin@example.com",
+  password: "E2EAdminPass123!",
+  name: "E2E管理者ユーザー",
+};
+
 /**
  * E2E用シードを投入する。呼び出し元（CLI実行／`e2e/global-setup.ts`からの
  * import 実行のいずれか）が事前に `DATABASE_URL` をE2E用DBへ設定し、
@@ -36,6 +42,18 @@ export async function seedE2e(): Promise<void> {
         email: E2E_USER.email,
         password: passwordHash,
         role: "user",
+      },
+    });
+
+    const adminPasswordHash = await bcrypt.hash(E2E_ADMIN.password, 12);
+    await prisma.user.upsert({
+      where: { email: E2E_ADMIN.email },
+      update: { password: adminPasswordHash },
+      create: {
+        name: E2E_ADMIN.name,
+        email: E2E_ADMIN.email,
+        password: adminPasswordHash,
+        role: "admin",
       },
     });
   } finally {

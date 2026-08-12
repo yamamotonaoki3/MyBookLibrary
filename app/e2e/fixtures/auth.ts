@@ -9,14 +9,22 @@
  */
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
-import { E2E_USER } from "../../prisma/seed.e2e";
+import { E2E_USER, E2E_ADMIN } from "../../prisma/seed.e2e";
 
-export { E2E_USER };
+export { E2E_USER, E2E_ADMIN };
 
 export async function login(page: Page): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("メールアドレス").fill(E2E_USER.email);
   await page.getByLabel("パスワード", { exact: true }).fill(E2E_USER.password);
+  await page.getByRole("button", { name: "ログイン", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible();
+}
+
+export async function loginAsAdmin(page: Page): Promise<void> {
+  await page.goto("/login");
+  await page.getByLabel("メールアドレス").fill(E2E_ADMIN.email);
+  await page.getByLabel("パスワード", { exact: true }).fill(E2E_ADMIN.password);
   await page.getByRole("button", { name: "ログイン", exact: true }).click();
   await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible();
 }

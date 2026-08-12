@@ -657,11 +657,16 @@ export default function AdminPage() {
         管理画面
       </h1>
 
-      <div className="mb-5 flex shrink-0 gap-1 overflow-x-auto border-b border-zinc-200 dark:border-zinc-700">
+      <div
+        role="tablist"
+        className="mb-5 flex shrink-0 gap-1 overflow-x-auto border-b border-zinc-200 dark:border-zinc-700"
+      >
         {ADMIN_TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             type="button"
+            role="tab"
+            aria-selected={activeTab === key}
             onClick={() => setActiveTab(key)}
             className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors lg:px-4 ${
               activeTab === key
