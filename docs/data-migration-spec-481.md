@@ -55,14 +55,15 @@ Issue #482の棚卸し結果（`docs/schema-diff-482.md`）を前提に、本番
 
 - **本Issue（#481）作成時点でのAudit結果**: 本番`books`テーブルを`source`列でGROUP BYしたところ、374件全てが`source='rakuten'`であり、`manual`の書籍は0件だった（2026-08-13時点）。
 - **ただし、この結果は移行実施時点で再確認が必須**。#482監査以降も本番は稼働を続けており、手動登録本が新たに作成される可能性がある。
-- 移行実施時（dump取得の直前・直後）に`SELECT source, COUNT(*) FROM books GROUP BY source;`を再実行し、`manual`が0件でないことを確認する。
-- もし`manual`の書籍が存在する場合、`created_by_user_id`をNULLのまま放置してはならない。既存の`app/prisma/scripts/backfill-book-owner.ts`（「その本への最古の`ReadingStatus`のユーザーを登録者とみなす」ヒューリスティックで補完する、この課題向けに用意されたスクリプト）を移行後・`prisma migrate deploy`実行後に対象DBに対して実行し、所有者を補完する。これを怠ると、`app/src/app/api/books/[id]/route.ts`のPATCH/DELETE権限チェック（`createdByUserId`と一致するユーザーのみ許可）により、本来の登録者が自分の手動登録本を編集・削除できなくなる。
+- 移行実施時（dump取得と同じスナップショットのタイミング）に`SELECT source, COUNT(*) FROM books GROUP BY source;`を再実行し、`manual`の件数を確認する。**0件であれば以下のバックフィルは不要。1件以上あれば以下を実施する。**
+- `manual`の書籍が1件以上存在する場合、`created_by_user_id`をNULLのまま放置してはならない。既存の`app/prisma/scripts/backfill-book-owner.ts`（「その本への最古の`ReadingStatus`のユーザーを登録者とみなす」ヒューリスティックで補完する、この課題向けに用意されたスクリプト）を移行後・`prisma migrate deploy`実行後に対象DBに対して実行し、所有者を補完する。これを怠ると、`app/src/app/api/books/[id]/route.ts`のPATCH/DELETE権限チェック（`createdByUserId`と一致するユーザーのみ許可）により、本来の登録者が自分の手動登録本を編集・削除できなくなる。
+  - **既知の限界**: このスクリプトは対象書籍に`ReadingStatus`が1件も無い場合（`if (!earliestStatus) continue`）は何もせず、`created_by_user_id`はNULLのまま残る。これは、本アプリの仕様上「読書ステータスを`未読`に戻すと当該`ReadingStatus`行が削除される」ため、登録直後に未読へ戻された手動登録本などで起こりうる。スクリプト実行後、`SELECT id, title FROM books WHERE source = 'manual' AND created_by_user_id IS NULL;`で未補完件数を確認し、1件でも残っていれば、当該書籍を作成した管理者・ユーザーに個別確認のうえ`created_by_user_id`を手動で設定するか、所有者不明本として運用上扱う方針を#480実施前に決めておくこと。
 
 ## 4. UNIQUE制約違反候補の抽出と解消規則
 
 上記の通り、6件のmigrationは新規UNIQUE制約を既存データが入ったテーブルに追加するものを含まないため、**移行時にUNIQUE制約違反が発生するケースは無い**。
 
-念のため、移行済み12件のmigrationの範囲で既に存在するUNIQUE制約（`users.email`, `books.isbn`, `award_entries(book_id, award_id, year)`, `favorite_authors(user_id, author_id)`, `reading_statuses(user_id, book_id)`, `likes(user_id, review_id)`, `reports(user_id, review_id)`, `notifications(user_id, type, book_isbn)`, `user_libraries(user_id, systemid, libkey)`）は、dump restoreによってデータの複製・変更が一切発生しないため、本番で既に整合しているものはそのまま整合を保つ。**dump restore後の追加検証として、リストア直後に全UNIQUE制約カラムの重複有無をSELECT COUNT/GROUP BYで確認する手順を#480（移行リハーサル）で実施することを推奨する**（本Issueでは仕様の確定のみ）。
+念のため、移行済み12件のmigrationの範囲で既に存在するUNIQUE制約（`users.email`, `books.isbn`, `awards.name`, `award_entries(book_id, award_id, year)`, `favorite_authors(user_id, author_id)`, `reading_statuses(user_id, book_id)`, `likes(user_id, review_id)`, `reports(user_id, review_id)`, `notifications(user_id, type, book_isbn)`, `user_libraries(user_id, systemid, libkey)`, `accounts(provider, provider_account_id)`, `sessions.session_token`, `verification_tokens.token`, `verification_tokens(identifier, token)`）は、dump restoreによってデータの複製・変更が一切発生しないため、本番で既に整合しているものはそのまま整合を保つ。**dump restore後の追加検証として、リストア直後に全UNIQUE制約カラムの重複有無をSELECT COUNT/GROUP BYで確認する手順を#480（移行リハーサル）で実施することを推奨する**（本Issueでは仕様の確定のみ）。
 
 ## 5. 外部キーを考慮した投入順
 
@@ -81,6 +82,7 @@ ETL変換を行わずdump restoreをそのまま使うため、独自の投入�
 - **本番の件数・`AUTO_INCREMENT`次値は、実際の移行（dump取得）時点で改めて取得し、その値を期待値として照合すること。** Issue #482調査時点の値（例: `users`は17、`books`は376）はあくまで2026-08-13時点のスナップショットであり、移行実施日までの間に本番データは変化しうる（ユーザー登録・レビュー投稿等は本番運用中も続く）。古い値をハードコードした期待値と照合すると、正当な移行を誤って不合格にしたり、逆に移行後に増えたはずのレコードの欠落を見逃したりする。
 - **件数の取得には`information_schema.tables.TABLE_ROWS`ではなく、`COUNT(*)`による実測値を使うこと**（`docs/schema-diff-482.md`で述べた通り`TABLE_ROWS`はInnoDBの推定値であり、照合の基準にするには不正確）。
 - **件数取得は、dump取得と同じスナップショット（同一トランザクション、または短時間のメンテナンス停止中）で行うこと。** dumpとは別タイミング・別トランザクションで`COUNT(*)`を取得すると、その間に発生した書き込みの分だけ値がずれ、正しいdumpを誤って不合格判定する可能性がある。`mysqldump --single-transaction`を使う場合は、同じトランザクション開始時刻に整合する形で件数を記録する（例: dumpコマンドと同一セッション内、またはメンテナンス時間中でアプリを停止した状態での取得）。
+- **本番切替（#475）時の最終dumpは、必ず書き込みを凍結した状態（メンテナンスモードでアプリを停止する等）で取得すること。** `mysqldump --single-transaction`は取得したデータの一貫性（読み取りスナップショット）を保証するだけで、dump取得後に発生した新規書き込みを後から拾い上げる仕組み（CDCや差分再生）は本仕様には含まれていない。そのため、書き込みを止めないままdumpを取得すると、dump完了後から実際のトラフィック切替までの間に本番へ書き込まれたデータは新環境に反映されず消失する。#480のリハーサル（本番相当データを使うがトラフィックは実本番ではない）ではメンテナンス停止は必須ではないが、#475の本番切替では「dump取得開始 → 新環境への投入・検証 → トラフィック切替」の全期間、本番への書き込みを止めることを必須条件とする。
 
 ## 7. `users` / `accounts` / `sessions` / bcryptハッシュ / Google OAuth情報の扱い
 
@@ -120,5 +122,5 @@ ETL変換を行わずdump restoreをそのまま使うため、独自の投入�
 ## 次のIssueへの申し送り
 
 - **#479（Aiven検証DB構築）**: 作成するAiven MySQLインスタンスは、タイムゾーンUTC・文字コードutf8mb4をサーバーデフォルトとして設定すること。テーブル単位の照合順序（`utf8mb4_unicode_ci`）はdumpの`CREATE TABLE`文で指定されるため、サーバーデフォルトが異なっていても個々のテーブルには影響しない
-- **#478（移行・照合ツール）**: 本仕様書の結論（ETL不要、dump restore + `prisma migrate deploy`のみ）を前提にツールを設計してよい。照合ツールでは、本仕様書6章のAUTO_INCREMENT次値・テーブル別件数（`docs/schema-diff-482.md`記載）を期待値として使う
+- **#478（移行・照合ツール）**: 本仕様書の結論（ETL不要、dump restore + `prisma migrate deploy`のみ）を前提にツールを設計してよい。**照合ツールの期待値には`docs/schema-diff-482.md`記載の値（2026-08-13時点のスナップショット）を使ってはならない。** 6章で述べた通り、照合は必ずdump取得と同一スナップショットで`COUNT(*)`・`AUTO_INCREMENT`を都度取得し、その値を期待値として使うこと
 - **#480（移行リハーサル）**: 4章で触れたUNIQUE制約の重複有無の確認、6章のAUTO_INCREMENT次値の確認をリハーサル手順に含める
