@@ -147,10 +147,17 @@ RDS自体のスキーマがデプロイ済み12件から先に進んでいる形
      --with-decryption --query Parameter.Value --output text --region ap-northeast-1)
    ```
 3. 読み取り専用の確認には`/opt/app/app`にビルド済みの`prisma`CLI・`@prisma/client`を利用する。
-   - マイグレーション状況: `npx prisma migrate status`
-   - 実スキーマ取得: `npx prisma db pull --schema=/tmp/<一時ファイル>.prisma`（**必ず`/opt/app`配下やローカルリポジトリの`schema.prisma`ではなく`/tmp`配下の一時ファイルを指定する**）
-   - 任意のSELECT実行: 生成済み`@prisma/client`をimportする小さなNode.jsスクリプトを`/tmp`に作成し、`$queryRawUnsafe`で実行する（`prisma db execute`はSELECT結果を返さないため不向き）
-4. 調査完了後、`/tmp`に作成した一時ファイルは`rm -f`で必ず削除する。
+   - マイグレーション状況: `cd /opt/app/app && npx prisma migrate status`
+   - 実スキーマ取得: `db pull`はPrisma 6の仕様上、`--schema`に指定するファイルに有効な`datasource`定義が事前に存在しないと失敗する。そのため、まず`/tmp/<一時ファイル>.prisma`に以下の最小内容を作成してから実行する（**`/opt/app`配下やローカルリポジトリの`schema.prisma`は絶対に上書きしない**）。
+     ```prisma
+     datasource db {
+       provider = "mysql"
+       url      = env("DATABASE_URL")
+     }
+     ```
+     作成後、`npx --prefix /opt/app/app prisma db pull --schema=/tmp/<一時ファイル>.prisma`（カレントディレクトリを`/tmp`にした状態、または`--prefix`でPrisma CLIの場所のみ指定する形で実行する）。
+   - 任意のSELECT実行: `prisma db execute`はDDL/DML実行用でSELECT結果を返さないため使えない。代わりに`/tmp`に置いたNode.jsスクリプトから、ビルド済みPrisma Clientを**絶対パスで**import（例: `import { PrismaClient } from "/opt/app/app/src/generated/prisma/client.js";`）し、`$queryRawUnsafe`を実行する。`/tmp`を作業ディレクトリにした状態で相対import（`@prisma/client`等）を使うとモジュール解決に失敗するため、必ず絶対パスを使う。
+4. 調査完了後、`/tmp`に作成した一時ファイル（スキーマファイル・Node.jsスクリプト）は`rm -f`で必ず削除する。
 
 この手順により、RDSを一切公開せず、書き込み権限も必要とせず、本番の実態を安全に確認できることを確認した。
 
