@@ -35,7 +35,7 @@ Issue #482の棚卸し結果（`docs/schema-diff-482.md`）を前提に、本番
 | **変換** | 無し（型変更・列名変更を伴うmigrationは6件の中に存在しない） |
 | **退避・破棄** | 無し（本番の全データを移行対象とし、意図的に除外するテーブル・列は無い） |
 
-`_prisma_migrations`テーブル自体は移行先で`prisma migrate deploy`が18件分を新たに記録し直す形になるため、dumpに含める場合でも移行先の実行結果（18件適用済み）が正となる。
+**`_prisma_migrations`テーブルは、本番の12件分のレコードをdumpに含めてそのまま復元すること（必須）。** 空の状態で`prisma migrate deploy`を実行すると、Prismaは「スキーマは12件分すでに存在するが適用履歴が0件」という矛盾した状態を検知できず、`init`から順に適用しようとして`CREATE TABLE`の重複エラー等で失敗する。`_prisma_migrations`を12件分そのまま復元してから`prisma migrate deploy`を実行することで、Prismaは「12件は適用済み・6件が未適用」と正しく認識し、6件のみを適用する。（代替手段として、空の状態から`prisma migrate resolve --applied <migration名>`を12件分実行してベースライン化する方法もあるが、dump復元の方が確実で手数が少ない）
 
 ## 3. 新規必須列の補完値と根拠
 
@@ -60,7 +60,7 @@ Issue #482の棚卸し結果（`docs/schema-diff-482.md`）を前提に、本番
 ETL変換を行わずdump restoreをそのまま使うため、独自の投入順設計は不要。`mysqldump`（または同等ツール）による論理dumpは、デフォルトで以下を保証する。
 
 - テーブル作成順・データ投入順は、dumpファイル内の記述順（通常はスキーマ定義順）に従う
-- `mysqldump`は既定で外部キーチェックを一時的に無効化してデータを投入する（`SET FOREIGN_KEY_CHECKS=0`をdumpファイルに含める、または`--disable-keys`相当のオプションを使う）ため、投入順によるFK違反は発生しない
+- `mysqldump`は既定でdumpファイルの先頭に`SET FOREIGN_KEY_CHECKS=0`を出力し、外部キー制約チェックを一時的に無効化した状態でデータを投入する。**`--disable-keys`は非ユニークインデックスの再構築を遅延させるだけのオプションであり、InnoDBの外部キー制約チェックとは無関係のため、これをFK対策の代替として扱わないこと。** `accounts`が親テーブル`users`より先に投入される場合など、テーブル間の投入順が定義順と食い違うケースがあっても、`FOREIGN_KEY_CHECKS=0`が効いている限りFK違反エラーは発生しない
 - 全データ投入後に`prisma migrate deploy`で新規FK制約（`follows`, `audit_logs`, `notifications.actor_id`, `books.created_by_user_id`）を追加するため、この時点で違反があれば`migrate deploy`自体が失敗し検知できる（ただし3章の分析の通り、新規FK列は全て既存行でNULLになるため違反は発生しない）
 
 ## 6. 既存IDの維持・関連レコードの保持
@@ -69,7 +69,7 @@ ETL変換を行わずdump restoreをそのまま使うため、独自の投入�
 
 - 全テーブルの主キー値（`id`）はそのまま維持される（AUTO_INCREMENTの次値も`dump`に含まれるため、移行後の新規INSERTでID衝突は起きない）
 - 外部キーで参照される関連レコード（`books.author_id → authors.id`等）は、ID値がそのまま維持されるため、リレーションが失われることはない
-- Issue #482で確認した各テーブルの`AUTO_INCREMENT`次値（例: `users`は17、`books`は376）を移行後に照合し、期待通りの値になっていることを#480のリハーサルで確認する
+- **本番の件数・`AUTO_INCREMENT`次値は、実際の移行（dump取得）時点で改めて取得し、その値を期待値として照合すること。** Issue #482調査時点の値（例: `users`は17、`books`は376）はあくまで2026-08-13時点のスナップショットであり、移行実施日までの間に本番データは変化しうる（ユーザー登録・レビュー投稿等は本番運用中も続く）。古い値をハードコードした期待値と照合すると、正当な移行を誤って不合格にしたり、逆に移行後に増えたはずのレコードの欠落を見逃したりする。#480のリハーサル・本番切替時は、dump取得と同時に`information_schema.tables`から件数・AUTO_INCREMENT値を取得し、その場でのスナップショットを照合基準とする
 
 ## 7. `users` / `accounts` / `sessions` / bcryptハッシュ / Google OAuth情報の扱い
 
@@ -78,8 +78,8 @@ ETL変換を行わずdump restoreをそのまま使うため、独自の投入�
 | 対象 | 扱い |
 |---|---|
 | `users.password`（bcryptハッシュ） | そのままコピー。ハッシュの再計算・移行時のパスワードリセットは不要（bcryptハッシュはアルゴリズム・ソルトを含む自己完結形式のため、DB移行の影響を受けない） |
-| `accounts`（NextAuth、Google OAuthのトークン情報） | そのままコピー。`access_token`/`refresh_token`等は`@db.Text`のまま。Google側のクライアントID・シークレット自体はDBに保存されないため（SSM/環境変数側で管理）、移行後もVercel側で同じGoogle OAuthアプリの認証情報を設定すれば動作する（別途Issue #477 Vercel Preview環境構築で設定） |
-| `sessions` | そのままコピー。ただし本番の`sessions`件数は現時点で0件（Issue #482調査結果）のため、実質的に移行対象データはない。JWTベースでないDBセッション運用の場合、移行タイミングで既存セッションは失効する可能性があるが、影響を受けるアクティブセッションは無い |
+| `accounts`（NextAuth、Google OAuthのトークン情報） | そのままコピー。`access_token`/`refresh_token`等は`@db.Text`のまま。ただし**Google OAuthクライアントID・シークレットをVercel側の環境変数へ同じ値で設定するだけでは不十分**。Googleは認可リクエストごとに完全一致するコールバックURI（`https://<Vercelのホスト名>/api/auth/callback/google`）が許可リストに登録されていることを要求するため、**Google Cloud ConsoleのOAuthクライアント設定に、新しいVercelホスト名のコールバックURIを追加登録することを移行の必須手順とする**（未実施の場合、Googleログインが`redirect_uri_mismatch`エラーで失敗する）。この設定変更自体はGoogle Cloud Console側の作業であり、DBデータには影響しないが、#477（Vercel Preview環境構築）または#475（本番切替）の手順として明記すること |
+| `sessions` | そのままコピー（テーブル自体は空でよい）。**ただし`sessions`テーブルが0件なのは、アクティブなログインが無いことを意味しない**。`app/src/auth.config.ts:10`・`app/src/auth.ts:93`で`session: { strategy: "jwt" }`が指定されており、本アプリはDBセッションではなくブラウザ側のJWT Cookieでセッションを管理する（`sessions`テーブルはNextAuthのAdapter要件として存在するのみで実質未使用）。そのため、移行時にDB上のデータをいくら正しくコピーしても、**CloudFront（本番ホスト）からVercel（新ホスト）へドメインが変わる、または`AUTH_SECRET`が変わる場合、切替後は全ユーザーのブラウザ側JWT Cookieが無効になり再ログインが必要になる**。この扱い（切替時に全員再ログインを許容する／`AUTH_SECRET`をSSMの値からVercel側にそのまま引き継いでCookie継続を試みる）は#475（本番切替）で明示的に決定すること。少なくとも本仕様では「DBデータの移行だけでは既存ログイン状態は引き継がれない」ことを前提とする |
 | `verification_tokens` | そのままコピー（現時点で0件） |
 
 ## 8. 日付・Boolean・JSON・日本語・絵文字・改行の変換規則
