@@ -6,10 +6,13 @@
  *   cd app && npx dotenv -e .env.aiven-staging -- npx tsx prisma/scripts/verify-aiven-connection.ts
  */
 import { PrismaClient } from "@/generated/prisma";
+import { assertAivenDatabaseUrl } from "./aivenDbGuard";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  assertAivenDatabaseUrl(process.env.DATABASE_URL);
+
   let authorId: number | undefined;
   let bookId: number | undefined;
   let verificationError: unknown;

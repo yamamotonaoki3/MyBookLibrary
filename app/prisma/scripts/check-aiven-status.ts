@@ -5,10 +5,13 @@
  *   cd app && npx dotenv -e .env.aiven-staging -- npx tsx prisma/scripts/check-aiven-status.ts
  */
 import { PrismaClient } from "@/generated/prisma";
+import { assertAivenDatabaseUrl } from "./aivenDbGuard";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  assertAivenDatabaseUrl(process.env.DATABASE_URL);
+
   const tables = await prisma.$queryRawUnsafe<{ TABLE_NAME: string }[]>(
     `SELECT table_name AS TABLE_NAME FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name;`
   );
