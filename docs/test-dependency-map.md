@@ -16,7 +16,7 @@
 | `src/lib/*.ts` | 17 | 11 |
 | コンポーネント・ページ（`.tsx`、計10,418行） | — | **0** |
 
-コンポーネントテストが0件なのは書いていないからだけではなく、`app/jest.config.ts` の `testMatch` が `**/__tests__/**/*.test.ts` で **`.tsx` を拾わない**ため。書いても実行されず、エラーにもならない。この解消は [#431](https://github.com/yamamotonaoki3/MyBookLibrary/issues/431) で行う。
+`app/jest.config.ts` には `jsdom` project（`testMatch: src/__tests__/ui/**/*.test.ts?(x)`）が既に定義されており、`.tsx` のコンポーネントテストも実行可能（[#431](https://github.com/yamamotonaoki3/MyBookLibrary/issues/431) は対応済み）。コンポーネントテストが0件なのは、まだ1件も書かれていないため。
 
 ## 凡例
 
@@ -128,7 +128,7 @@
 | 項目 | 内容 |
 | --- | --- |
 | なぜ困難か | クエリパラメータ（`eventType`/`actorUserId`/`from`/`to`/ページング）の組み合わせが多く、`AuditLogQuerySchema` 自体は単体テスト済みだが、Route Handler としての結合テストと、一覧表示・フィルタ操作・詳細モーダルを含むページ側の検証は別に必要 |
-| どうテストするか | API は Prisma モックで結合テストする（クエリ変換の正しさ・権限チェック・ページング）。ページ（`AuditLogsView.tsx`）はコンポーネントテストの対象だが、[#431](https://github.com/yamamotonaoki3/MyBookLibrary/issues/431) で `.tsx` のテスト実行が解消されるまで着手できない |
+| どうテストするか | API は Prisma モックで結合テストする（クエリ変換の正しさ・権限チェック・ページング）。ページ（`AuditLogsView.tsx`）は `jsdom` project（`src/__tests__/ui/**`）でコンポーネントテストとして着手できる（実行環境自体は整備済み。1-5の巨大コンポーネント分割方針とは独立に進められる） |
 | 状態 | 未対応。`AuditLogQuerySchema` のみ `node/lib/validations.test.ts` でカバー済み |
 
 ### 1-10. `lib/rateLimit.ts`
