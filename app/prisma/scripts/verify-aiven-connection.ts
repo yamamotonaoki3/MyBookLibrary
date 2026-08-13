@@ -10,52 +10,85 @@ import { PrismaClient } from "@/generated/prisma";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("[1/5] CREATE: 著者・本を作成");
-  const author = await prisma.author.create({
-    data: { name: "Aiven検証用_著者" },
-  });
-  const book = await prisma.book.create({
-    data: {
-      authorId: author.id,
-      title: "Aiven検証用_書籍",
-      publishedAt: new Date("2026-01-01"),
-      source: "manual",
-    },
-  });
-  console.log(`  author.id=${author.id}, book.id=${book.id}`);
+  let authorId: number | undefined;
+  let bookId: number | undefined;
+  let verificationError: unknown;
+  let verificationFailed = false;
+  const cleanupErrors: unknown[] = [];
 
-  console.log("[2/5] READ: 作成した本を取得");
-  const found = await prisma.book.findUniqueOrThrow({ where: { id: book.id } });
-  if (found.title !== "Aiven検証用_書籍") throw new Error("READ検証に失敗しました");
-
-  console.log("[3/5] UPDATE: 本のタイトルを更新");
-  const updated = await prisma.book.update({
-    where: { id: book.id },
-    data: { title: "Aiven検証用_書籍(更新後)" },
-  });
-  if (updated.title !== "Aiven検証用_書籍(更新後)") throw new Error("UPDATE検証に失敗しました");
-
-  console.log("[4/5] TRANSACTION: トランザクション内で更新しロールバックされることを確認");
   try {
-    await prisma.$transaction(async (tx) => {
-      await tx.book.update({
-        where: { id: book.id },
-        data: { title: "Aiven検証用_書籍(ロールバックされるはず)" },
-      });
-      throw new Error("INTENTIONAL_ROLLBACK");
+    console.log("[1/5] CREATE: 著者・本を作成");
+    const author = await prisma.author.create({
+      data: { name: "Aiven検証用_著者" },
     });
-  } catch (e) {
-    if (!(e instanceof Error) || e.message !== "INTENTIONAL_ROLLBACK") throw e;
-  }
-  const afterRollback = await prisma.book.findUniqueOrThrow({ where: { id: book.id } });
-  if (afterRollback.title !== "Aiven検証用_書籍(更新後)") {
-    throw new Error("トランザクションのロールバックが機能していません");
-  }
-  console.log("  ロールバック確認OK（更新前の状態に戻っている）");
+    authorId = author.id;
 
-  console.log("[5/5] DELETE: 作成したデータを削除（後始末）");
-  await prisma.book.delete({ where: { id: book.id } });
-  await prisma.author.delete({ where: { id: author.id } });
+    const book = await prisma.book.create({
+      data: {
+        authorId,
+        title: "Aiven検証用_書籍",
+        publishedAt: new Date("2026-01-01"),
+        source: "manual",
+      },
+    });
+    bookId = book.id;
+    console.log(`  author.id=${authorId}, book.id=${bookId}`);
+
+    console.log("[2/5] READ: 作成した本を取得");
+    const found = await prisma.book.findUniqueOrThrow({ where: { id: bookId } });
+    if (found.title !== "Aiven検証用_書籍") throw new Error("READ検証に失敗しました");
+
+    console.log("[3/5] UPDATE: 本のタイトルを更新");
+    const updated = await prisma.book.update({
+      where: { id: bookId },
+      data: { title: "Aiven検証用_書籍(更新後)" },
+    });
+    if (updated.title !== "Aiven検証用_書籍(更新後)") throw new Error("UPDATE検証に失敗しました");
+
+    console.log("[4/5] TRANSACTION: トランザクション内で更新しロールバックされることを確認");
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.book.update({
+          where: { id: bookId },
+          data: { title: "Aiven検証用_書籍(ロールバックされるはず)" },
+        });
+        throw new Error("INTENTIONAL_ROLLBACK");
+      });
+    } catch (e) {
+      if (!(e instanceof Error) || e.message !== "INTENTIONAL_ROLLBACK") throw e;
+    }
+    const afterRollback = await prisma.book.findUniqueOrThrow({ where: { id: bookId } });
+    if (afterRollback.title !== "Aiven検証用_書籍(更新後)") {
+      throw new Error("トランザクションのロールバックが機能していません");
+    }
+    console.log("  ロールバック確認OK（更新前の状態に戻っている）");
+  } catch (e) {
+    verificationError = e;
+    verificationFailed = true;
+  } finally {
+    console.log("[5/5] DELETE: 作成したデータを削除（後始末）");
+
+    if (bookId !== undefined) {
+      try {
+        await prisma.book.delete({ where: { id: bookId } });
+      } catch (e) {
+        console.error("❌ 作成した本の削除に失敗しました:", e);
+        cleanupErrors.push(e);
+      }
+    }
+
+    if (authorId !== undefined) {
+      try {
+        await prisma.author.delete({ where: { id: authorId } });
+      } catch (e) {
+        console.error("❌ 作成した著者の削除に失敗しました:", e);
+        cleanupErrors.push(e);
+      }
+    }
+  }
+
+  if (verificationFailed) throw verificationError;
+  if (cleanupErrors.length > 0) throw new AggregateError(cleanupErrors, "後始末に失敗しました");
 
   const remaining = await prisma.book.count({ where: { title: { startsWith: "Aiven検証用_" } } });
   if (remaining !== 0) throw new Error("後始末に失敗した可能性があります");
