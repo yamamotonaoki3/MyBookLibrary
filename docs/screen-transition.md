@@ -46,7 +46,7 @@ flowchart TD
     NOTIFY --> |いいね通知| BOOKDETAIL
     NOTIFY --> |フォロー通知| USERPROFILE[ユーザー詳細\n/users/id]
 
-    SETTINGS -.->|モーダル：アカウント情報| ACCOUNTMODAL[[アカウント情報モーダル]]
+    SETTINGS -.->|モバイル幅のみ・モーダル：アカウント情報| ACCOUNTMODAL[[アカウント情報モーダル]]
     ACCOUNTMODAL -.-> SETTINGS
     SETTINGS --> LIBSETTINGS[近隣図書館の登録\n/settings#libraries]
     SETTINGS --> FOLLOWS[フォロー一覧\n/settings/follows]
@@ -90,7 +90,7 @@ flowchart TD
 | `/my-reviews` | 投稿した感想 | 必要 |
 | `/notifications` | 通知 | 必要 |
 | `/contact` | お問い合わせ | 必要 |
-| `/settings` | 設定（アカウント情報はモーダル表示） | 必要 |
+| `/settings` | 設定（アカウント情報はモバイル幅のみモーダル表示、PC幅は常時インライン表示） | 必要 |
 | `/settings/follows` | フォロー一覧・おすすめフォロー候補 | 必要 |
 | `/users/[id]` | ユーザー詳細（フォロー/フォロー解除。相互フォロー時のみ詳細閲覧可） | 必要 |
 
