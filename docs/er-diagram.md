@@ -12,7 +12,16 @@ erDiagram
         string role "user or admin"
         int loginFailCount "ログイン失敗回数"
         datetime lockedUntil "nullable ロック解除時刻"
+        string secretWordHash "nullable 合言葉ハッシュ"
+        int secretWordFailCount "合言葉照合の失敗回数"
+        datetime secretWordLockedUntil "nullable 合言葉ロック解除時刻"
         datetime createdAt
+    }
+
+    VerificationToken {
+        string identifier
+        string token "unique"
+        datetime expires
     }
 
     Author {
@@ -137,6 +146,25 @@ erDiagram
         datetime createdAt
     }
 
+    Follow {
+        int id PK
+        int followerId FK "フォローする側"
+        int followingId FK "フォローされる側"
+        datetime createdAt
+    }
+
+    AuditLog {
+        int id PK
+        string eventType "監査イベント種別"
+        int actorUserId FK "nullable 操作したユーザー"
+        string actorEmail "nullable"
+        string targetType "nullable 操作対象の種別"
+        int targetId "nullable 操作対象のID"
+        json detail "nullable 詳細情報"
+        string ipAddress "nullable"
+        datetime createdAt
+    }
+
     User ||--o{ UserLibrary : "近隣図書館登録"
     User ||--o{ ContactInquiry : "お問い合わせ"
     User ||--o{ FavoriteAuthor : "お気に入り登録"
@@ -155,6 +183,9 @@ erDiagram
     Book ||--o{ Review : "感想"
     Review ||--o{ Like : "いいね"
     Review ||--o{ Report : "通報"
+    User ||--o{ Follow : "フォローする（follower）"
+    User ||--o{ Follow : "フォローされる（following）"
+    User |o--o{ AuditLog : "操作履歴（actor、nullable）"
 ```
 
 ## エンティティ説明
@@ -176,3 +207,6 @@ erDiagram
 | Session | NextAuth.js のセッション管理（JWT 戦略のため通常は未使用） |
 | UserLibrary | ユーザーが登録した近隣図書館。`systemid` と `libkey` で一意識別。1ユーザー最大 5 件 |
 | ContactInquiry | お問い合わせ。未ログインユーザーからの送信も可（`userId` は nullable） |
+| Follow | ユーザー間のフォロー関係。`followerId`（フォローする側）と `followingId`（フォローされる側）の組み合わせで一意 |
+| AuditLog | 管理者操作・合言葉更新などの監査ログ。`eventType` でイベント種別、`detail` に付随情報を JSON で保持 |
+| VerificationToken | NextAuth.js のメール認証用トークン管理テーブル（現状未使用） |

@@ -21,7 +21,7 @@
 
 ### 3.1 認証・アカウント管理
 
-メール＋パスワード・Google OAuth によるログイン、パスワードリセット、ロール管理、アカウント削除を含む認証・アカウント管理機能。
+メール＋パスワード・Google OAuth によるログイン、合言葉によるパスワードリセット、ロール管理、アカウント削除を含む認証・アカウント管理機能。
 
 → 詳細は [認証・アカウント管理 機能定義書](./features/auth.md) を参照。
 
@@ -33,7 +33,7 @@
 
 ### 3.3 本の一覧・検索
 
-楽天ブックス API 連携の書籍検索・バーコードスキャン登録・マイ本一覧の絞り込み表示機能。
+楽天ブックス API 連携の書籍検索・バーコードスキャン登録・手動書籍登録・マイ本一覧の絞り込み表示機能。
 
 → 詳細は [本の一覧・検索 機能定義書](./features/book-search.md) を参照。
 
@@ -69,7 +69,7 @@
 
 ### 3.9 管理者機能
 
-受賞登録（賞タブ＋年度フィルター付き一覧）・CSV インポート・通報レビュー管理・ユーザー管理・統計確認など、管理者専用の操作機能（`admin` ロールのみ）。
+受賞登録（賞タブ＋年度フィルター付き一覧）・CSV インポート・手動登録書籍の管理／マージ・受賞データ CSV エクスポート・通報レビュー管理・ユーザー管理・お問い合わせ管理・監査ログ閲覧・統計確認など、管理者専用の操作機能（`admin` ロールのみ）。管理者パネルは「設定・管理・監査ログ」の3タブ構成。
 
 → 詳細は [管理者機能 機能定義書](./features/admin.md) を参照。
 
@@ -93,19 +93,21 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 
 → 詳細は [近隣図書館の在庫確認 機能定義書](./features/library.md) を参照。
 
+### 3.13 フォロー機能
+
+ユーザー同士がフォロー・フォロー解除でき、フォロー中ユーザーの一覧を確認できる機能。同じ著者をお気に入り登録している他ユーザーを、共通著者数の多い順におすすめフォロー候補として提示する。
+
+→ 詳細は [フォロー機能 機能定義書](./features/follow.md) を参照。
+
+### 3.14 監査ログ
+
+管理者操作・合言葉更新などの重要イベントを記録し、管理者パネルの監査ログタブから閲覧できる機能。
+
+→ 詳細は [管理者機能 機能定義書](./features/admin.md) を参照。
+
 ---
 
-## 4. 将来実装予定機能
-
-### 4.1 著者ベースのおすすめ機能
-
-- 同じ著者をお気に入り登録している他ユーザーのデータを参照する
-- 「この著者を登録しているユーザーはこの著者も読んでいます」という形でおすすめを表示する
-- 協調フィルタリング的なアプローチ（著者単位）
-
----
-
-## 5. 非機能要件
+## 4. 非機能要件
 
 ### パフォーマンス
 
@@ -138,7 +140,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 
 ---
 
-## 6. 技術スタック
+## 5. 技術スタック
 
 | 役割 | 技術 |
 | --- | --- |
@@ -157,7 +159,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 
 ---
 
-## 7. 書籍データ取得方針
+## 6. 書籍データ取得方針
 
 | データ | 取得方法 |
 | --- | --- |
@@ -172,7 +174,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 
 ---
 
-## 8. 画面一覧
+## 7. 画面一覧
 
 ### 認証画面
 
@@ -180,7 +182,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | --- | --- | --- |
 | `/login` | ログイン画面 | メール+パスワード・Google OAuth でログイン |
 | `/register` | ユーザー登録画面 | 新規アカウント作成 |
-| `/forgot-password` | パスワードリセット画面 | メールアドレス確認→パスワード直接変更（2ステップ） |
+| `/forgot-password` | パスワードリセット画面 | メールアドレス確認→合言葉照合→パスワード再設定（3ステップ） |
 
 ### メイン画面
 
@@ -197,18 +199,21 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | `/favorite-authors/[authorId]` | 著者別書籍一覧 | 著者の全書籍・読書ステータス変更 |
 | `/my-reviews` | マイレビュー | 自分の投稿一覧・編集・削除 |
 | `/notifications` | 通知 | 新刊・いいね通知一覧・既読管理 |
-| `/settings` | 設定 | アカウント情報の確認・近隣図書館の登録・アカウント削除（一般ユーザーのみ） |
+| `/settings` | 設定 | アカウント情報の確認（モーダル）・近隣図書館の登録・フォロー一覧へのリンク・アカウント削除（一般ユーザーのみ） |
+| `/settings/follows` | フォロー一覧 | フォロー中・フォロワーの一覧確認、おすすめフォロー候補の表示 |
+| `/users/[id]` | ユーザー詳細 | 他ユーザーのプロフィール・投稿レビュー確認・フォロー／フォロー解除 |
 | `/contact` | お問い合わせ | カテゴリ・件名・本文の入力フォーム・送信 |
 
 ### 管理者画面
 
 | パス | 画面名 | 説明 |
 | --- | --- | --- |
-| `/admin` | 管理者パネル | 書籍登録（楽天/NDL）・近隣図書館の登録・受賞管理・CSV インポート・通報レビュー削除・統計 |
+| `/admin` | 管理者パネル | 「設定」「管理」「監査ログ」の3タブ構成：書籍登録（楽天/NDL）・手動登録書籍の管理／マージ・近隣図書館の登録・受賞管理・CSV インポート／エクスポート・通報レビュー削除・ユーザー管理・お問い合わせ管理・統計・監査ログ閲覧 |
+| `/admin/audit-logs` | 監査ログ | 管理者操作・合言葉更新などの監査ログ一覧（`/admin` の監査ログタブと同内容を単独ページとしても提供） |
 
 ---
 
-## 9. 認証フロー
+## 8. 認証フロー
 
 ### Credentials 認証
 
@@ -217,6 +222,13 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 3. 10 回失敗で `lockedUntil` を現在時刻 + 15 分に設定
 4. ロック中はログイン不可（残り試行回数を `/api/auth/remaining-attempts` で取得可能）
 5. パスワードリセット成功時に `loginFailCount` と `lockedUntil` をリセット
+
+### パスワードリセット（合言葉方式）
+
+1. メールアドレスを確認する（`step: "check"`）。合言葉が未設定の場合はエラーとし、設定を促す通知を送る
+2. 合言葉を照合する（`step: "verifySecretWord"`）。10 回失敗で `secretWordLockedUntil` を現在時刻 + 15 分に設定
+3. 合言葉を再検証したうえでパスワードを更新する（`step: "reset"`）
+4. リセット成功時に `loginFailCount`・`lockedUntil`・`secretWordFailCount`・`secretWordLockedUntil` をすべてリセット
 
 ### Google OAuth
 
@@ -231,14 +243,14 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 
 ---
 
-## 10. API エンドポイント一覧
+## 9. API エンドポイント一覧
 
 ### 認証
 
 | メソッド | パス | 説明 |
 | --- | --- | --- |
 | POST | `/api/auth/register` | ユーザー登録 |
-| POST | `/api/auth/reset-password` | パスワードリセット（step: check/reset） |
+| POST | `/api/auth/reset-password` | パスワードリセット（step: check/verifySecretWord/reset） |
 | GET | `/api/auth/remaining-attempts` | ログイン試行残回数確認 |
 
 ### ユーザー
@@ -246,6 +258,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | メソッド | パス | 説明 |
 | --- | --- | --- |
 | DELETE | `/api/user/delete` | 自分のアカウント削除（管理者は不可） |
+| POST | `/api/user/secret-word` | 合言葉の設定・変更（パスワードリセットの代替本人確認手段） |
 
 ### 書籍・読書ステータス
 
@@ -284,6 +297,15 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | PATCH | `/api/favorite-authors/[authorId]` | 新刊通知 ON/OFF 切り替え |
 | DELETE | `/api/favorite-authors/[authorId]` | お気に入りから削除 |
 | GET | `/api/favorite-authors/[authorId]/books` | 著者の書籍一覧 |
+| GET | `/api/favorite-authors/recommendations` | 著者ベースのおすすめ著者候補 |
+
+### フォロー
+
+| メソッド | パス | 説明 |
+| --- | --- | --- |
+| POST | `/api/follows` | ユーザーをフォロー |
+| DELETE | `/api/follows` | フォロー解除 |
+| GET | `/api/follows/recommendations` | おすすめフォロー候補の取得 |
 
 ### 文学賞
 
@@ -305,9 +327,10 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 
 | メソッド | パス | 説明 |
 | --- | --- | --- |
-| GET | `/api/settings/libraries` | 登録図書館一覧取得 |
-| POST | `/api/settings/libraries` | 図書館を登録（最大 5 件） |
-| DELETE | `/api/settings/libraries` | 図書館の登録解除 |
+| GET | `/api/user-libraries` | 登録図書館一覧取得 |
+| POST | `/api/user-libraries` | 図書館を登録（最大 5 件） |
+| DELETE | `/api/user-libraries` | 図書館の登録解除 |
+| GET | `/api/calil/libraries` | カーリル API で図書館を検索（地域・座標から候補を取得） |
 | GET | `/api/calil/check` | カーリル API で図書館在庫確認（`isbn` / `libraries` クエリ） |
 
 ### 管理者
@@ -328,6 +351,12 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | PATCH | `/api/admin/inquiries/[id]` | お問い合わせ更新（ステータス変更） |
 | DELETE | `/api/admin/inquiries/[id]` | お問い合わせ削除 |
 | GET | `/api/admin/ndl-search` | 国立国会図書館 SRU API で書籍検索（`q` クエリ） |
+| GET | `/api/admin/award-entries/export` | 受賞データ CSV エクスポート |
+| GET | `/api/admin/manual-books` | 手動登録書籍の一覧（手動登録は `POST /api/reading-status` で行う） |
+| PATCH | `/api/admin/manual-books/[id]` | 手動登録書籍の編集 |
+| DELETE | `/api/admin/manual-books/[id]` | 手動登録書籍の削除 |
+| POST | `/api/admin/manual-books/merge` | 重複書籍のマージ |
+| GET | `/api/admin/audit-logs` | 監査ログ一覧 |
 
 ### お問い合わせ
 
@@ -345,7 +374,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 
 ---
 
-## 11. 関連ドキュメント
+## 10. 関連ドキュメント
 
 | ドキュメント | 内容 |
 | --- | --- |
