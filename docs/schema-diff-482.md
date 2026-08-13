@@ -106,7 +106,7 @@ RDS自体のスキーマがデプロイ済み12件から先に進んでいる形
 
 ## 5. テーブル別件数・容量・採番状況
 
-`information_schema.tables`から取得（読み取り専用）。
+`information_schema.tables`から取得（読み取り専用）。件数は`TABLE_ROWS`（InnoDBの推定値）を初回取得したが、推定値であるため後日`COUNT(*)`で全17テーブルを再取得し、以下は実測値と一致することを確認済み。
 
 | テーブル | 件数 | データ容量 | インデックス容量 | AUTO_INCREMENT次値 |
 |---|---:|---:|---:|---:|
@@ -157,7 +157,7 @@ RDS自体のスキーマがデプロイ済み12件から先に進んでいる形
      ```
      作成後、`npx --prefix /opt/app/app prisma db pull --schema=/tmp/<一時ファイル>.prisma`（カレントディレクトリを`/tmp`にした状態、または`--prefix`でPrisma CLIの場所のみ指定する形で実行する）。
    - 任意のSELECT実行: `prisma db execute`はDDL/DML実行用でSELECT結果を返さないため使えない。代わりに`/tmp`に置いたNode.jsスクリプトから、ビルド済みPrisma Clientを**絶対パスで**import（例: `import { PrismaClient } from "/opt/app/app/src/generated/prisma/client.js";`）し、`$queryRawUnsafe`を実行する。`/tmp`を作業ディレクトリにした状態で相対import（`@prisma/client`等）を使うとモジュール解決に失敗するため、必ず絶対パスを使う。
-4. 調査完了後、`/tmp`に作成した一時ファイル（スキーマファイル・Node.jsスクリプト）は`rm -f`で必ず削除する。
+4. 調査完了後、`/tmp`に作成した一時ファイル（スキーマファイル・Node.jsスクリプト）は`rm -f`で必ず削除し、同一シェルで作業を続ける場合は`unset DATABASE_URL`で複合化済みの認証情報をシェル環境から確実に消しておく（同じセッションで別コマンドを実行した際に意図せず認証情報を引き継がないため）。
 
 この手順により、RDSを一切公開せずに本番の実態を確認できることを確認した。今回の調査ではSELECT/SHOW系のみを実行し、実際に書き込みは一切行っていない。
 
