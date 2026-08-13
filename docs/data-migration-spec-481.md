@@ -47,7 +47,16 @@ Issue #482の棚卸し結果（`docs/schema-diff-482.md`）を前提に、本番
 | `users.secret_word_fail_count` | 不可 | `0`（migration既定） | 失敗回数カウンタは0から開始するのが自然 |
 | `users.secret_word_locked_until` | 許容 | `NULL` | 未ロック状態として扱う |
 | `notifications.actor_id` | 許容 | `NULL` | 既存の通知はフォロー機能導入前に作成されたものであり、「行為者」の概念自体が存在しなかったため、システム通知（actor無し）として扱うのが実態と一致する |
-| `books.created_by_user_id` | 許容 | `NULL` | 既存の全書籍は楽天ブックスAPI／NDL経由の自動登録であり、手動登録者は存在しない（`books.source`列の実態が`rakuten`等であることと整合） |
+| `books.created_by_user_id` | 条件付き（下記参照） | `NULL`（自動登録の場合）／要バックフィル（手動登録の場合） | 下記参照 |
+
+### `books.created_by_user_id`の補完（手動登録本の扱い）
+
+`created_by_user_id`列は`books.source = 'manual'`（管理者・ユーザーによる手動登録本）の所有者を記録するために追加された。手動登録機能自体は、未反映の6件より前のmigration（`20260620052155_add_book_source`、本番デプロイ済み12件に含まれる）で導入済みのため、**本番稼働中に`source='manual'`の書籍が作成されている可能性がある**。
+
+- **本Issue（#481）作成時点でのAudit結果**: 本番`books`テーブルを`source`列でGROUP BYしたところ、374件全てが`source='rakuten'`であり、`manual`の書籍は0件だった（2026-08-13時点）。
+- **ただし、この結果は移行実施時点で再確認が必須**。#482監査以降も本番は稼働を続けており、手動登録本が新たに作成される可能性がある。
+- 移行実施時（dump取得の直前・直後）に`SELECT source, COUNT(*) FROM books GROUP BY source;`を再実行し、`manual`が0件でないことを確認する。
+- もし`manual`の書籍が存在する場合、`created_by_user_id`をNULLのまま放置してはならない。既存の`app/prisma/scripts/backfill-book-owner.ts`（「その本への最古の`ReadingStatus`のユーザーを登録者とみなす」ヒューリスティックで補完する、この課題向けに用意されたスクリプト）を移行後・`prisma migrate deploy`実行後に対象DBに対して実行し、所有者を補完する。これを怠ると、`app/src/app/api/books/[id]/route.ts`のPATCH/DELETE権限チェック（`createdByUserId`と一致するユーザーのみ許可）により、本来の登録者が自分の手動登録本を編集・削除できなくなる。
 
 ## 4. UNIQUE制約違反候補の抽出と解消規則
 
@@ -69,7 +78,9 @@ ETL変換を行わずdump restoreをそのまま使うため、独自の投入�
 
 - 全テーブルの主キー値（`id`）はそのまま維持される（AUTO_INCREMENTの次値も`dump`に含まれるため、移行後の新規INSERTでID衝突は起きない）
 - 外部キーで参照される関連レコード（`books.author_id → authors.id`等）は、ID値がそのまま維持されるため、リレーションが失われることはない
-- **本番の件数・`AUTO_INCREMENT`次値は、実際の移行（dump取得）時点で改めて取得し、その値を期待値として照合すること。** Issue #482調査時点の値（例: `users`は17、`books`は376）はあくまで2026-08-13時点のスナップショットであり、移行実施日までの間に本番データは変化しうる（ユーザー登録・レビュー投稿等は本番運用中も続く）。古い値をハードコードした期待値と照合すると、正当な移行を誤って不合格にしたり、逆に移行後に増えたはずのレコードの欠落を見逃したりする。#480のリハーサル・本番切替時は、dump取得と同時に`information_schema.tables`から件数・AUTO_INCREMENT値を取得し、その場でのスナップショットを照合基準とする
+- **本番の件数・`AUTO_INCREMENT`次値は、実際の移行（dump取得）時点で改めて取得し、その値を期待値として照合すること。** Issue #482調査時点の値（例: `users`は17、`books`は376）はあくまで2026-08-13時点のスナップショットであり、移行実施日までの間に本番データは変化しうる（ユーザー登録・レビュー投稿等は本番運用中も続く）。古い値をハードコードした期待値と照合すると、正当な移行を誤って不合格にしたり、逆に移行後に増えたはずのレコードの欠落を見逃したりする。
+- **件数の取得には`information_schema.tables.TABLE_ROWS`ではなく、`COUNT(*)`による実測値を使うこと**（`docs/schema-diff-482.md`で述べた通り`TABLE_ROWS`はInnoDBの推定値であり、照合の基準にするには不正確）。
+- **件数取得は、dump取得と同じスナップショット（同一トランザクション、または短時間のメンテナンス停止中）で行うこと。** dumpとは別タイミング・別トランザクションで`COUNT(*)`を取得すると、その間に発生した書き込みの分だけ値がずれ、正しいdumpを誤って不合格判定する可能性がある。`mysqldump --single-transaction`を使う場合は、同じトランザクション開始時刻に整合する形で件数を記録する（例: dumpコマンドと同一セッション内、またはメンテナンス時間中でアプリを停止した状態での取得）。
 
 ## 7. `users` / `accounts` / `sessions` / bcryptハッシュ / Google OAuth情報の扱い
 
@@ -79,7 +90,7 @@ ETL変換を行わずdump restoreをそのまま使うため、独自の投入�
 |---|---|
 | `users.password`（bcryptハッシュ） | そのままコピー。ハッシュの再計算・移行時のパスワードリセットは不要（bcryptハッシュはアルゴリズム・ソルトを含む自己完結形式のため、DB移行の影響を受けない） |
 | `accounts`（NextAuth、Google OAuthのトークン情報） | そのままコピー。`access_token`/`refresh_token`等は`@db.Text`のまま。ただし**Google OAuthクライアントID・シークレットをVercel側の環境変数へ同じ値で設定するだけでは不十分**。Googleは認可リクエストごとに完全一致するコールバックURI（`https://<Vercelのホスト名>/api/auth/callback/google`）が許可リストに登録されていることを要求するため、**Google Cloud ConsoleのOAuthクライアント設定に、新しいVercelホスト名のコールバックURIを追加登録することを移行の必須手順とする**（未実施の場合、Googleログインが`redirect_uri_mismatch`エラーで失敗する）。この設定変更自体はGoogle Cloud Console側の作業であり、DBデータには影響しないが、#477（Vercel Preview環境構築）または#475（本番切替）の手順として明記すること |
-| `sessions` | そのままコピー（テーブル自体は空でよい）。**ただし`sessions`テーブルが0件なのは、アクティブなログインが無いことを意味しない**。`app/src/auth.config.ts:10`・`app/src/auth.ts:93`で`session: { strategy: "jwt" }`が指定されており、本アプリはDBセッションではなくブラウザ側のJWT Cookieでセッションを管理する（`sessions`テーブルはNextAuthのAdapter要件として存在するのみで実質未使用）。そのため、移行時にDB上のデータをいくら正しくコピーしても、**CloudFront（本番ホスト）からVercel（新ホスト）へドメインが変わる、または`AUTH_SECRET`が変わる場合、切替後は全ユーザーのブラウザ側JWT Cookieが無効になり再ログインが必要になる**。この扱い（切替時に全員再ログインを許容する／`AUTH_SECRET`をSSMの値からVercel側にそのまま引き継いでCookie継続を試みる）は#475（本番切替）で明示的に決定すること。少なくとも本仕様では「DBデータの移行だけでは既存ログイン状態は引き継がれない」ことを前提とする |
+| `sessions` | そのままコピー（テーブル自体は空でよい）。**ただし`sessions`テーブルが0件なのは、アクティブなログインが無いことを意味しない**。`app/src/auth.config.ts:10`・`app/src/auth.ts:93`で`session: { strategy: "jwt" }`が指定されており、本アプリはDBセッションではなくブラウザ側のJWT Cookieでセッションを管理する（`sessions`テーブルはNextAuthのAdapter要件として存在するのみで実質未使用）。**公開ホスト名がCloudFrontのドメインからVercelのドメインへ変わる本移行では、`AUTH_SECRET`を維持するかどうかに関わらず、ブラウザはホストが変わった時点で旧ドメイン用のCookieを新ドメインへ送信しない（Cookieはホストスコープのため）。したがって、切替後は全ユーザーが再ログイン必須になることを前提とする。** `AUTH_SECRET`の引き継ぎは「ホスト名を変えない場合にセッション継続に必要」という条件付きの話であり、本移行のようにホスト自体が変わるケースではセッション継続の代替手段にはならない。この前提は#475（本番切替）の手順・利用者への告知に反映すること |
 | `verification_tokens` | そのままコピー（現時点で0件） |
 
 ## 8. 日付・Boolean・JSON・日本語・絵文字・改行の変換規則
@@ -98,7 +109,7 @@ ETL変換を行わずdump restoreをそのまま使うため、独自の投入�
 
 現時点で、意図的に除外するテーブル・列・データは無い。本番の全データ（ユーザー・書籍・レビュー・通知・お気に入り著者・図書館登録・問い合わせ等）を移行対象とする。
 
-`_prisma_migrations`テーブルは移行先で`prisma migrate deploy`実行時に作り直されるため、dumpに含めるかどうかは移行手順（#478）側の判断に委ねるが、含めても実害はない（`migrate deploy`は適用済みmigrationをスキップするのみ）。
+`_prisma_migrations`テーブルは、2章で述べた通り**dumpに必ず含め、12件のレコードをそのまま復元すること**。これを省略すると`prisma migrate deploy`が失敗する（詳細は2章）。移行手順（#478）側で「dumpに含めるかどうかを選べる」余地はない。
 
 ## 受け入れ基準チェック
 
