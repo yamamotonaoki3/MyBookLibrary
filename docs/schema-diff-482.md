@@ -27,14 +27,16 @@
 | 項目 | 値 |
 |---|---|
 | バージョン | MySQL 8.4.8 |
-| character_set_server | utf8mb4 |
-| character_set_database | utf8mb4 |
-| collation_server | utf8mb4_0900_ai_ci |
-| collation_database | utf8mb4_0900_ai_ci |
+| character_set_server（サーバーデフォルト） | utf8mb4 |
+| character_set_database（DBデフォルト） | utf8mb4 |
+| collation_server（サーバーデフォルト） | utf8mb4_0900_ai_ci |
+| collation_database（DBデフォルト） | utf8mb4_0900_ai_ci |
 | global time_zone | UTC |
 | session time_zone | UTC |
 
-現行`app/prisma/schema.prisma`・migrationファイルに文字コード/照合順序の明示指定はなく、MySQL/Prismaのデフォルトに依存している。本番の実値（utf8mb4 / utf8mb4_0900_ai_ci / UTC）はAiven Free（MySQL 8系）でも標準的にサポートされる設定であり、移行時に特別な変換は不要と判断できる。
+**テーブル単位の実際の照合順序はサーバー/DBデフォルトと異なる**。`app/prisma/migrations/20260602144024_init/migration.sql`をはじめ各`CREATE TABLE`文が`DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`を明示指定しているため、`information_schema.tables`の`TABLE_COLLATION`を個別に確認したところ、**本番の全17テーブルが`utf8mb4_unicode_ci`**であることを確認した（サーバーデフォルトの`utf8mb4_0900_ai_ci`ではない）。
+
+`utf8mb4_unicode_ci`はMySQL 8系でも組み込みでサポートされる照合順序であり、Aiven Free（MySQL 8系）への移行時も特別な変換なしでそのまま利用できる見込みだが、**移行先でテーブル作成時に明示的に`utf8mb4_unicode_ci`を指定する必要がある**（サーバーデフォルトに任せると`utf8mb4_0900_ai_ci`になり、既存データの照合順序と食い違う）。移行方式決定時にこの点を明記すること。
 
 ## 3. `_prisma_migrations` 突合結果
 
@@ -94,7 +96,7 @@ RDS自体のスキーマがデプロイ済み12件から先に進んでいる形
 | 対象テーブル | 分類 | 内容 |
 |---|---|---|
 | `users` | 列追加（未反映） | `secret_word_hash`, `secret_word_fail_count`, `secret_word_locked_until` が本番に存在しない（migration #13） |
-| `notifications` | 列追加（未反映） | `actor_id`（Userへの自己参照FK、`onDelete: SetNull`）が本番に存在しない（migration #15） |
+| `notifications` | 列追加（未反映） | `actor_id`列自体はmigration #14（`add_follow`）で追加され、Userへの外部キー制約（`onDelete: SetNull`）はmigration #15（`add_notification_actor_relation`）で追加される。本番はこの2件とも未適用のため、列・FKいずれも存在しない |
 | `books` | 列追加（未反映） | `created_by_user_id`（Userへの手動登録者FK、`onDelete: SetNull`）が本番に存在しない（migration #16） |
 | `favorite_authors` | インデックス追加（未反映） | `favorite_authors_author_id_idx`（`author_id`単体インデックス、おすすめ機能のGROUP BY高速化用）が本番に存在しない。FKの自動インデックス（`favorite_authors_author_id_fkey`）のみ存在（migration #17） |
 | （新規テーブル）`follows` | テーブル追加（未反映） | `follower_id` / `following_id` の複合ユニーク制約、Userへの2方向自己参照FK（`onDelete: Cascade`）を持つフォロー機能テーブルが本番に存在しない（migration #14） |
