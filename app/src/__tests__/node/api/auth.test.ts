@@ -56,6 +56,40 @@ describe("POST /api/auth/register", () => {
     );
     expect(res.status).toBe(400);
   });
+
+  it("3-4: secretWord を指定すると secretWordHash 付きで作成される", async () => {
+    prismaMock.user.findUnique.mockResolvedValue(null);
+    prismaMock.user.create.mockResolvedValue(makeUser());
+
+    const res = await POST(
+      jsonRequest("/api/auth/register", {
+        body: { ...validBody, secretWord: "ひみつ" },
+      })
+    );
+    expect(res.status).toBe(201);
+    expect(prismaMock.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ secretWordHash: "hashed_password" }),
+    });
+  });
+
+  it("3-5: secretWord 未指定のとき secretWordHash を渡さない", async () => {
+    prismaMock.user.findUnique.mockResolvedValue(null);
+    prismaMock.user.create.mockResolvedValue(makeUser());
+
+    const res = await POST(jsonRequest("/api/auth/register", { body: validBody }));
+    expect(res.status).toBe(201);
+    const createArgs = prismaMock.user.create.mock.calls[0][0];
+    expect(createArgs.data).not.toHaveProperty("secretWordHash");
+  });
+
+  it("3-6: secretWord が1文字は400を返す", async () => {
+    const res = await POST(
+      jsonRequest("/api/auth/register", {
+        body: { ...validBody, secretWord: "あ" },
+      })
+    );
+    expect(res.status).toBe(400);
+  });
 });
 
 // ─── /api/auth/reset-password ─────────────────────────────────────────────────

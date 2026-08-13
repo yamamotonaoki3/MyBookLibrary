@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { name, email, password } = parsed.data;
+  const { name, email, password, secretWord } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -24,7 +24,15 @@ export async function POST(req: NextRequest) {
   }
 
   const hashed = await bcrypt.hash(password, 12);
-  await prisma.user.create({ data: { name, email, password: hashed } });
+  const secretWordHash = secretWord ? await bcrypt.hash(secretWord, 12) : undefined;
+  await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashed,
+      ...(secretWordHash ? { secretWordHash } : {}),
+    },
+  });
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

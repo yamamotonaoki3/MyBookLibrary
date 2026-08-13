@@ -200,6 +200,55 @@ describe("RegisterSchema", () => {
       expect(result.error.issues[0].message).toBe("パスワードが一致しません");
     }
   });
+
+  describe("secretWord（任意項目）", () => {
+    it("未指定でも合格する", () => {
+      const result = RegisterSchema.safeParse(valid);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.secretWord).toBeUndefined();
+      }
+    });
+
+    it("空文字でも合格する", () => {
+      const result = RegisterSchema.safeParse({ ...valid, secretWord: "" });
+      expect(result.success).toBe(true);
+    });
+
+    it("1文字は失敗する", () => {
+      const result = RegisterSchema.safeParse({ ...valid, secretWord: "あ" });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe("秘密の言葉は2文字以上で入力してください");
+      }
+    });
+
+    it("2文字は合格する", () => {
+      const result = RegisterSchema.safeParse({ ...valid, secretWord: "あい" });
+      expect(result.success).toBe(true);
+    });
+
+    it("50文字は合格する", () => {
+      const result = RegisterSchema.safeParse({ ...valid, secretWord: "あ".repeat(50) });
+      expect(result.success).toBe(true);
+    });
+
+    it("51文字は失敗する", () => {
+      const result = RegisterSchema.safeParse({ ...valid, secretWord: "あ".repeat(51) });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe("秘密の言葉は50文字以内で入力してください");
+      }
+    });
+
+    it("前後の空白はトリムされてから文字数チェックされる", () => {
+      const result = RegisterSchema.safeParse({ ...valid, secretWord: "  " });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.secretWord).toBe("");
+      }
+    });
+  });
 });
 
 // ─── LoginSchema ─────────────────────────────────────────────────────────────
