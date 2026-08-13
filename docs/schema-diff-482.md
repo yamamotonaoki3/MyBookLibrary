@@ -159,7 +159,9 @@ RDS自体のスキーマがデプロイ済み12件から先に進んでいる形
    - 任意のSELECT実行: `prisma db execute`はDDL/DML実行用でSELECT結果を返さないため使えない。代わりに`/tmp`に置いたNode.jsスクリプトから、ビルド済みPrisma Clientを**絶対パスで**import（例: `import { PrismaClient } from "/opt/app/app/src/generated/prisma/client.js";`）し、`$queryRawUnsafe`を実行する。`/tmp`を作業ディレクトリにした状態で相対import（`@prisma/client`等）を使うとモジュール解決に失敗するため、必ず絶対パスを使う。
 4. 調査完了後、`/tmp`に作成した一時ファイル（スキーマファイル・Node.jsスクリプト）は`rm -f`で必ず削除する。
 
-この手順により、RDSを一切公開せず、書き込み権限も必要とせず、本番の実態を安全に確認できることを確認した。
+この手順により、RDSを一切公開せずに本番の実態を確認できることを確認した。今回の調査ではSELECT/SHOW系のみを実行し、実際に書き込みは一切行っていない。
+
+**既知の制約（今回未解消）**: 上記手順で使う`DATABASE_URL`は、アプリ運用に使われている本番SSMパラメータ（`/mybooklibrary/DATABASE_URL`）そのものであり、そのMySQLアカウントは通常のアプリ動作のためINSERT/UPDATE/DELETE権限を持つ。したがって本手順の「読み取り専用」は、**権限によって強制されたものではなく、実行するSQL文を操作者がSELECT/SHOWに限定するという運用上の規律に依存している**。今後、頻繁にこの種の調査を行う場合は、`GRANT SELECT`のみを付与した監査専用のMySQLユーザーを別途作成し、そちらを使う運用に切り替えることを推奨する（本Issueの範囲では、RDSへの書き込みを伴うユーザー作成は行っていない）。
 
 ## 受け入れ基準チェック
 
