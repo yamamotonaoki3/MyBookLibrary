@@ -7,8 +7,8 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 | 優先度 | 状態 |
 |---|---|
 | A（認証・session・books検索・admin系） | 実施済み（Issue [#378](https://github.com/yamamotonaoki3/MyBookLibrary/issues/378)） |
-| B（favorite-authors・reviews周辺・awards・calil・user/delete） | 未実施 |
-| C（純粋関数・contact・cron） | 一部実施済み（normalizeAuthorName） |
+| B（favorite-authors・reviews周辺・awards・calil・user/delete・follows・監査ログ・手動書籍管理） | 未実施 |
+| C（純粋関数・contact・cron） | 一部実施済み（normalizeAuthorName、SecretWordSchema/AuditLogQuerySchema） |
 
 ## 優先度A（実施済み）
 
@@ -34,7 +34,12 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 | `app/api/awards`, `awards/[id]/books`, `awards/progress` | 受賞歴に紐づく本の一覧、進捗計算ロジック |
 | `app/api/user-libraries`, `calil/check`, `calil/libraries` | 外部API（カーリル）モック時の正常系・タイムアウト/エラー系 |
 | `app/api/user/delete` | 退会時の関連データ削除（カスケード）の確認 |
-| `app/api/admin/award-entries`, `admin/award-entries/[id]`, `admin/reported-reviews`, `admin/reviews/[id]`, `admin/ndl-search`, `admin/import-csv` | 権限チェック・CRUD正常系/異常系 |
+| `app/api/admin/award-entries`, `admin/award-entries/[id]`, `admin/reported-reviews`, `admin/reviews/[id]`, `admin/ndl-search`, `admin/import-csv`, `admin/award-entries/export` | 権限チェック・CRUD正常系/異常系 |
+| `app/api/follows`, `follows/recommendations` | フォロー/解除の正常系、自分自身のフォロー・重複フォローの異常系、おすすめ候補の算出（共通お気に入り著者数） |
+| `app/api/admin/audit-logs` | 権限チェック、`AuditLogQuerySchema` のフィルタ（eventType/actorUserId/期間）・ページングの正常系/異常系 |
+| `app/api/admin/manual-books`, `admin/manual-books/[id]`, `admin/manual-books/merge` | 権限チェック、手動登録本の一覧・編集・削除、マージ時の関連データ（読書ステータス・レビュー・受賞登録）の付け替え |
+| `app/api/user/secret-word` | 現在のパスワード確認、合言葉の設定・変更の正常系/異常系 |
+| `/users/[id]` ページ（Server Component） | 相互フォロー時のみ詳細情報を表示する分岐 |
 
 ## 優先度C（低リスク・純粋関数、一部実施済み）
 
@@ -48,6 +53,8 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 | `src/lib/rakuten.ts` | 実施済み（Phase 2） | `node/lib/rakuten.test.ts`。429リトライ上限（3回で打ち切り）、`deduplicateByTitle`の形式優先度・出版日タイブレーク、`getAuthorBookCount`のNDLフォールバックを検証 |
 | `src/lib/ndl.ts` | 実施済み（Phase 2） | `node/lib/ndl.test.ts`。SRU/OpenSearchのXMLパース分岐、`type`別クエリ組み立て、ページング、著者名の生年サフィックス処理を検証 |
 | `src/lib/calil.ts` | 実施済み（Phase 2） | `node/lib/calil.test.ts`。ポーリング継続・打ち切り条件（`continue=0`／20秒デッドライン）を`jest.useFakeTimers()`で検証、`mergeResults`のsystemid+libkey単位のマージ優先度を確認 |
+| `src/lib/userRecommendations.ts`（フォロー候補の算出） | 実施済み | `node/lib/userRecommendations.test.ts` |
+| `src/lib/recommendations.ts`（著者ベースのおすすめ） | 実施済み | `node/lib/recommendations.test.ts` |
 | `app/api/contact` | 未実施 | |
 | `app/api/cron/check-new-books` | 未実施 | Bearerトークン認証の検証を含む |
 

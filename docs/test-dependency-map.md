@@ -8,12 +8,12 @@
 
 対象範囲と進捗は [test-plan.md](test-plan.md) が正本。このファイルは「テストの書きにくさ」という切り口で補完する。
 
-## 現状サマリ（2026-08-08 時点）
+## 現状サマリ（2026-08-13 時点）
 
 | 区分 | 総数 | テストあり |
 | --- | --- | --- |
-| API Routes（`src/app/api/**/route.ts`） | 51 | 約12 |
-| `src/lib/*.ts` | 17 | 7 |
+| API Routes（`src/app/api/**/route.ts`） | 51 | 約14（follows・監査ログ・手動書籍管理・users/[id] は未対応） |
+| `src/lib/*.ts` | 17 | 11 |
 | コンポーネント・ページ（`.tsx`、計10,418行） | — | **0** |
 
 コンポーネントテストが0件なのは書いていないからだけではなく、`app/jest.config.ts` の `testMatch` が `**/__tests__/**/*.test.ts` で **`.tsx` を拾わない**ため。書いても実行されず、エラーにもならない。この解消は [#431](https://github.com/yamamotonaoki3/MyBookLibrary/issues/431) で行う。
@@ -59,6 +59,7 @@
 | どうテストするか | 既に `src/__tests__/lib/auth.test.ts` が `authorizeCredentials` を export させて単体テストしている。この方式を踏襲する |
 | 改善案 | さらに難しくなるようなら、`authorize` の中身を `lib/authenticateUser.ts` として切り出し、設定側を薄いアダプタにする |
 | 状態 | `src/__tests__/lib/auth.test.ts` で `authorizeCredentials` を8ケース（未入力、ユーザー不存在、パスワード未設定、ロック中、ロック期限切れ、パスワード不一致の閾値未満／到達、正常系のカウンタリセット）網羅済み。未対応は `jwt` / `session` コールバック |
+| 補足 | `api/auth/reset-password` の合言葉（秘密の言葉）照合ロックは、`secretWordFailCount`/`secretWordLockedUntil` を使った同じ「N回失敗でロック」パターンをパスワード認証ロックとは別カラムで実装している。テストする際はこのロジック共通性を踏まえ、`authorizeCredentials` のロック関連ケースと同じ観点（閾値未満／到達、ロック期限切れ後のカウンタリセット）で `app/api/auth/reset-password` の結合テストを設計する |
 
 ### 1-4. 全 API Route の Prisma 直依存
 
@@ -66,7 +67,7 @@
 | --- | --- |
 | なぜ困難か | **カスケード削除・複合ユニーク制約（`P2002`）・トランザクションのロールバックは、モックでは原理的に検証できない。** 「モックが `P2002` を投げるか」はテスト側の取り決めにすぎず、実際のスキーマがその制約を持っているかは何も保証しない |
 | どうテストするか | 通常は `src/lib/__mocks__/prisma.ts`（`jest.mock("@/lib/prisma")` の1行で使える）で結合テストする |
-| モックの限界を補う | 制約系のみ実DBで担保する（[#433](https://github.com/yamamotonaoki3/MyBookLibrary/issues/433)）。対象は `api/user/delete` のカスケード、`api/favorite-authors` の重複登録、`api/reviews/[id]/report` の重複通報、`api/reading-status` の upsert の4件に絞る |
+| モックの限界を補う | 制約系のみ実DBで担保する（[#433](https://github.com/yamamotonaoki3/MyBookLibrary/issues/433)）。対象は `api/user/delete` のカスケード、`api/favorite-authors` の重複登録、`api/reviews/[id]/report` の重複通報、`api/reading-status` の upsert、`api/admin/manual-books/merge` の統合元書籍に紐づく読書ステータス・レビュー・受賞登録の付け替え（統合先で複合ユニーク制約に抵触するケースを含む）の5件に絞る |
 | 状態 | モック側は対応済み（[#430](https://github.com/yamamotonaoki3/MyBookLibrary/issues/430)）／実DB側は未対応 |
 
 `$transaction` のコールバックにはルートと同一のモックが渡るため、トランザクション内の呼び出しも `prismaMock.user.deleteMany` のように検証できる。
@@ -75,7 +76,7 @@
 
 | ファイル | 行数 |
 | --- | --- |
-| `src/app/admin/page.tsx` | 1,726 |
+| `src/app/admin/page.tsx` | 2,214（3タブ化・手動書籍管理・監査ログ表示を追加し増加） |
 | `src/app/books/search/page.tsx` | 547 |
 | `src/app/page.tsx` | 380 |
 | `src/app/_components/Sidebar.tsx` | 311 |
@@ -121,6 +122,14 @@
 | どうテストするか | 呼び出し元では `jest.mock` して「呼ばれたか＋イベント種別＋対象ID」を検証する。`recordAuditEvent` 自体は Prisma モックで単体テストする |
 | 必ず入れるケース | **DB書き込みが失敗しても呼び出し元の本処理を巻き込まない**こと。これは実装のコメントで明示されている設計意図なので、テストで固定する |
 | 状態 | 部分的に対応済み。`src/__tests__/api/admin-users.test.ts` で管理者昇格時の監査ログ作成を検証済み。`recordAuditEvent` 自体の単体テスト、他の呼び出し元、DB書き込み失敗時の継続動作は未対応（Phase 12 で実施） |
+
+### 1-9-1. `app/api/admin/audit-logs`（監査ログ閲覧API）と `/admin/audit-logs` ページ
+
+| 項目 | 内容 |
+| --- | --- |
+| なぜ困難か | クエリパラメータ（`eventType`/`actorUserId`/`from`/`to`/ページング）の組み合わせが多く、`AuditLogQuerySchema` 自体は単体テスト済みだが、Route Handler としての結合テストと、一覧表示・フィルタ操作・詳細モーダルを含むページ側の検証は別に必要 |
+| どうテストするか | API は Prisma モックで結合テストする（クエリ変換の正しさ・権限チェック・ページング）。ページ（`AuditLogsView.tsx`）はコンポーネントテストの対象だが、[#431](https://github.com/yamamotonaoki3/MyBookLibrary/issues/431) で `.tsx` のテスト実行が解消されるまで着手できない |
+| 状態 | 未対応。`AuditLogQuerySchema` のみ `node/lib/validations.test.ts` でカバー済み |
 
 ### 1-10. `lib/rateLimit.ts`
 
