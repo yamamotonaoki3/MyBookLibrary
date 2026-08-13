@@ -27,6 +27,7 @@ export function RegisterForm() {
       email: form.get("email"),
       password: form.get("password"),
       confirmPassword: form.get("confirmPassword"),
+      secretWord: form.get("secretWord"),
     };
 
     try {
@@ -145,6 +146,30 @@ export function RegisterForm() {
         </div>
         {errors.confirmPassword && (
           <p className="text-xs text-red-600">{errors.confirmPassword[0]}</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium" htmlFor="secretWord">
+          秘密の合言葉（任意）
+          <span className="ml-1 text-xs font-normal text-muted-foreground">
+            (2〜50文字)
+          </span>
+        </label>
+        <p className="text-xs text-muted-foreground">
+          パスワードを忘れた際の本人確認に使用します。未設定の場合は、設定画面から後で登録できます。
+        </p>
+        <input
+          id="secretWord"
+          name="secretWord"
+          type="text"
+          autoComplete="off"
+          minLength={2}
+          maxLength={50}
+          className={inputClass}
+        />
+        {errors.secretWord && (
+          <p className="text-xs text-red-600">{errors.secretWord[0]}</p>
         )}
       </div>
 

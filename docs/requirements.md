@@ -21,7 +21,7 @@
 
 ### 3.1 認証・アカウント管理
 
-メール＋パスワード・Google OAuth によるログイン、合言葉によるパスワードリセット、ロール管理、アカウント削除を含む認証・アカウント管理機能。
+メール＋パスワード・Google OAuth によるログイン、新規登録時の合言葉任意設定、合言葉によるパスワードリセット、ロール管理、アカウント削除を含む認証・アカウント管理機能。
 
 → 詳細は [認証・アカウント管理 機能定義書](./features/auth.md) を参照。
 
@@ -181,7 +181,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | パス | 画面名 | 説明 |
 | --- | --- | --- |
 | `/login` | ログイン画面 | メール+パスワード・Google OAuth でログイン |
-| `/register` | ユーザー登録画面 | 新規アカウント作成 |
+| `/register` | ユーザー登録画面 | 新規アカウント作成（合言葉の任意設定を含む） |
 | `/forgot-password` | パスワードリセット画面 | メールアドレス確認→合言葉照合→パスワード再設定（3ステップ） |
 
 ### メイン画面
@@ -249,7 +249,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 
 | メソッド | パス | 説明 |
 | --- | --- | --- |
-| POST | `/api/auth/register` | ユーザー登録 |
+| POST | `/api/auth/register` | ユーザー登録（合言葉は任意） |
 | POST | `/api/auth/reset-password` | パスワードリセット（step: check/verifySecretWord/reset） |
 | GET | `/api/auth/remaining-attempts` | ログイン試行残回数確認 |
 

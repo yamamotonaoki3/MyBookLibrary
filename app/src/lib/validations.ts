@@ -84,6 +84,14 @@ export const RegisterSchema = z
       .min(8, "パスワードは8文字以上で入力してください")
       .max(100, "パスワードは100文字以内で入力してください"),
     confirmPassword: z.string(),
+    secretWord: z
+      .string()
+      .trim()
+      .max(50, "秘密の言葉は50文字以内で入力してください")
+      .refine((v) => v === "" || v.length >= 2, {
+        message: "秘密の言葉は2文字以上で入力してください",
+      })
+      .optional(),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: "パスワードが一致しません",
