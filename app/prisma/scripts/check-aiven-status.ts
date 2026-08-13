@@ -2,7 +2,7 @@
  * Issue #479: Aiven MySQL Free の状態確認（テーブル一覧・接続数）。
  * 読み取り専用。
  *
- *   cd app && npx dotenv -e .env.aiven-staging -- npx tsx prisma/scripts/check-aiven-status.ts
+ *   cd app && npx dotenv -e .env.aiven-staging -o -- npx tsx prisma/scripts/check-aiven-status.ts
  */
 import { PrismaClient } from "@/generated/prisma";
 import { assertAivenDatabaseUrl } from "./aivenDbGuard";
@@ -10,7 +10,7 @@ import { assertAivenDatabaseUrl } from "./aivenDbGuard";
 const prisma = new PrismaClient();
 
 async function main() {
-  assertAivenDatabaseUrl(process.env.DATABASE_URL);
+  assertAivenDatabaseUrl(process.env.DATABASE_URL, process.env.AIVEN_STAGING_HOST);
 
   const tables = await prisma.$queryRawUnsafe<{ TABLE_NAME: string }[]>(
     `SELECT table_name AS TABLE_NAME FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name;`

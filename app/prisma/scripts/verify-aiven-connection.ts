@@ -3,7 +3,7 @@
  * CRUD・トランザクションが正常に動くかを、この検証専用DB上でのみ確認する。
  * 使用後は自分で作成したデータを全て削除する（このスクリプト自身が後始末する）。
  *
- *   cd app && npx dotenv -e .env.aiven-staging -- npx tsx prisma/scripts/verify-aiven-connection.ts
+ *   cd app && npx dotenv -e .env.aiven-staging -o -- npx tsx prisma/scripts/verify-aiven-connection.ts
  */
 import { PrismaClient } from "@/generated/prisma";
 import { assertAivenDatabaseUrl } from "./aivenDbGuard";
@@ -11,7 +11,7 @@ import { assertAivenDatabaseUrl } from "./aivenDbGuard";
 const prisma = new PrismaClient();
 
 async function main() {
-  assertAivenDatabaseUrl(process.env.DATABASE_URL);
+  assertAivenDatabaseUrl(process.env.DATABASE_URL, process.env.AIVEN_STAGING_HOST);
 
   let authorId: number | undefined;
   let bookId: number | undefined;
