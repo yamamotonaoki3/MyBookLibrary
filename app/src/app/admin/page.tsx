@@ -240,6 +240,9 @@ export default function AdminPage() {
   const [changingRoleUserId, setChangingRoleUserId] = useState<number | null>(null);
   const [roleChangeTargetUser, setRoleChangeTargetUser] = useState<UserRow | null>(null);
   const [selectedUserForDetail, setSelectedUserForDetail] = useState<UserRow | null>(null);
+  const [usersOpen, setUsersOpen] = useState(false);
+  const [reportedReviewsOpen, setReportedReviewsOpen] = useState(false);
+  const [csvImportModalOpen, setCsvImportModalOpen] = useState(false);
   const [awardsOpen, setAwardsOpen] = useState(false);
   const [selectedAwardEntryForDetail, setSelectedAwardEntryForDetail] = useState<AwardEntry | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -568,6 +571,13 @@ export default function AdminPage() {
     setRegistering(false);
   }
 
+  function closeCsvImportModal() {
+    setCsvImportModalOpen(false);
+    setCsvFile(null);
+    setImportResult(null);
+    setExportError(null);
+  }
+
   async function handleImport() {
     if (!csvFile) return;
     setImporting(true);
@@ -791,123 +801,6 @@ export default function AdminPage() {
           id="admin-tabpanel-management"
           aria-labelledby="admin-tab-management"
         >
-        {/* ユーザーロールの設定 */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              <Trash2 className="h-4 w-4" />ユーザーロールの設定
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {users.length === 0 ? (
-              <p className="text-sm text-muted-foreground">ユーザーがいません。</p>
-            ) : (
-              <>
-                {/* PC幅: 表形式 */}
-                <div className="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 lg:block">
-                  <table className="w-full text-sm whitespace-nowrap">
-                    <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                      <tr>
-                        <th className="px-4 py-3 text-left">名前</th>
-                        <th className="px-4 py-3 text-left">メールアドレス</th>
-                        <th className="px-4 py-3 text-left">ロール</th>
-                        <th className="px-4 py-3 text-left">登録日</th>
-                        <th className="px-4 py-3 text-left">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
-                      {users.map((user) => {
-                        const isMyself = currentUserId === user.id;
-                        const isAdmin = user.role === "admin";
-                        const canDelete = !isMyself && !isAdmin;
-                        return (
-                          <tr key={user.id}>
-                            <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
-                              {user.name}
-                            </td>
-                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                              {user.email}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                  isAdmin
-                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                                }`}
-                              >
-                                {isAdmin ? "管理者" : "ユーザー"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                              {new Date(user.createdAt).toLocaleDateString("ja-JP")}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-wrap gap-2">
-                                {!isMyself && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setRoleChangeTargetUser(user)}
-                                    disabled={changingRoleUserId === user.id}
-                                  >
-                                    {changingRoleUserId === user.id
-                                      ? "変更中..."
-                                      : isAdmin
-                                        ? "管理者権限を外す"
-                                        : "管理者にする"}
-                                  </Button>
-                                )}
-                                {canDelete && (
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    onClick={() => setDeleteTargetUser(user)}
-                                    disabled={deletingUserId === user.id}
-                                  >
-                                    {deletingUserId === user.id ? "削除中..." : "削除"}
-                                  </Button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* モバイル幅: カードリスト（タップで詳細モーダル） */}
-                <ul className="flex flex-col gap-2 lg:hidden">
-                  {users.map((user) => {
-                    const isAdmin = user.role === "admin";
-                    return (
-                      <li key={user.id}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedUserForDetail(user)}
-                          className="flex w-full items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-white p-3 text-left text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                        >
-                          <span className="font-medium text-zinc-900 dark:text-zinc-50">{user.name}</span>
-                          <span
-                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                              isAdmin
-                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                            }`}
-                          >
-                            {isAdmin ? "管理者" : "ユーザー"}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
         {/* 統計カード */}
         <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {STAT_CARDS.map(({ key, label, icon: Icon, gradient, shadow }) => (
@@ -1151,62 +1044,18 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        {/* CSVインポート */}
+        {/* CSVインポート（タイトルのみ、クリックでモーダル） */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              <Upload className="h-4 w-4" />CSVから一括インポート
-            </CardTitle>
+            <button
+              onClick={() => setCsvImportModalOpen(true)}
+              className="flex w-full items-center text-sm font-semibold uppercase tracking-widest text-muted-foreground"
+            >
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-4 w-4" />CSVから一括インポート
+              </CardTitle>
+            </button>
           </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-xs text-muted-foreground">
-              フォーマット（ヘッダー行任意）: title, author, isbn, coverImageUrl, publishedAt, awardId, year, type
-            </p>
-            <div className="flex items-center gap-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
-                className="text-sm text-zinc-600 dark:text-zinc-400"
-              />
-              <Button
-                onClick={handleImport}
-                disabled={!csvFile || importing}
-                size="sm"
-              >
-                {importing ? "インポート中..." : "インポート実行"}
-              </Button>
-              <Button
-                onClick={handleExport}
-                disabled={exporting}
-                variant="outline"
-                size="sm"
-              >
-                <Download className="mr-1 h-4 w-4" />
-                {exporting ? "エクスポート中..." : "CSVエクスポート"}
-              </Button>
-            </div>
-
-            {exportError && (
-              <p className="mt-3 text-sm text-red-600 dark:text-red-400">{exportError}</p>
-            )}
-
-            {importResult && (
-              <div className="mt-4 rounded-md bg-zinc-50 p-4 text-sm dark:bg-zinc-800">
-                <p className="font-medium text-green-600 dark:text-green-400">
-                  成功: {importResult.success} 件
-                </p>
-                {importResult.errors.length > 0 && (
-                  <ul className="mt-2 list-disc pl-4 text-red-600 dark:text-red-400">
-                    {importResult.errors.map((e, i) => (
-                      <li key={i}>{e}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </CardContent>
         </Card>
 
         {/* 受賞登録一覧 */}
@@ -1310,23 +1159,13 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => startEdit(entry)}
-                            >
-                              編集
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDelete(entry.id)}
-                              disabled={deletingId === entry.id}
-                            >
-                              {deletingId === entry.id ? "削除中..." : "削除"}
-                            </Button>
-                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelectedAwardEntryForDetail(entry)}
+                          >
+                            詳細
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -1431,71 +1270,20 @@ export default function AdminPage() {
                   <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
                     {manualBooks.map((book) => (
                       <tr key={book.id}>
-                        {editingManualBookId === book.id ? (
-                          <>
-                            <td className="px-4 py-3">
-                              <input
-                                value={editingManualBookTitle}
-                                onChange={(e) => setEditingManualBookTitle(e.target.value)}
-                                className="w-full rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-                              />
-                            </td>
-                            <td className="px-4 py-3">
-                              <input
-                                value={editingManualBookAuthor}
-                                onChange={(e) => setEditingManualBookAuthor(e.target.value)}
-                                className="w-full rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-                              />
-                            </td>
-                            <td className="px-4 py-3">
-                              <input
-                                value={editingManualBookIsbn}
-                                onChange={(e) => setEditingManualBookIsbn(e.target.value)}
-                                className="w-full rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-                              />
-                            </td>
-                            <td className="px-4 py-3 text-zinc-500" colSpan={2}>
-                              {book.createdByUser ? `${book.createdByUser.name}（${book.createdByUser.email}）` : "不明（管理者代理登録等）"}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex gap-2">
-                                <Button size="sm" onClick={() => saveManualBookEdit(book.id)} disabled={manualBookSaving}>
-                                  {manualBookSaving ? "保存中..." : "保存"}
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setEditingManualBookId(null)}>
-                                  キャンセル
-                                </Button>
-                              </div>
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-4 py-3 text-zinc-900 dark:text-zinc-50">{book.title}</td>
-                            <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{book.author.name}</td>
-                            <td className="px-4 py-3 text-zinc-500">{book.isbn ?? "-"}</td>
-                            <td className="px-4 py-3 text-zinc-500">
-                              {book.createdByUser ? `${book.createdByUser.name}（${book.createdByUser.email}）` : "不明"}
-                            </td>
-                            <td className="px-4 py-3 text-zinc-500">
-                              読書{book._count.readingStatuses}／レビュー{book._count.reviews}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => startManualBookEdit(book)}>
-                                  編集
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => setDeleteTargetManualBook(book)}
-                                  disabled={deletingManualBookId === book.id}
-                                >
-                                  {deletingManualBookId === book.id ? "削除中..." : "削除"}
-                                </Button>
-                              </div>
-                            </td>
-                          </>
-                        )}
+                        <td className="px-4 py-3 text-zinc-900 dark:text-zinc-50">{book.title}</td>
+                        <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{book.author.name}</td>
+                        <td className="px-4 py-3 text-zinc-500">{book.isbn ?? "-"}</td>
+                        <td className="px-4 py-3 text-zinc-500">
+                          {book.createdByUser ? `${book.createdByUser.name}（${book.createdByUser.email}）` : "不明"}
+                        </td>
+                        <td className="px-4 py-3 text-zinc-500">
+                          読書{book._count.readingStatuses}／レビュー{book._count.reviews}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button size="sm" variant="outline" onClick={() => setSelectedManualBookForDetail(book)}>
+                            詳細
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1522,14 +1310,126 @@ export default function AdminPage() {
           </CardContent>}
         </Card>
 
+        {/* ユーザーロールの設定 */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle>
+              <button
+                onClick={() => setUsersOpen(!usersOpen)}
+                className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />ユーザーロールの設定
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${usersOpen ? "rotate-180" : ""}`} />
+              </button>
+            </CardTitle>
+          </CardHeader>
+          {usersOpen && <CardContent>
+            {users.length === 0 ? (
+              <p className="text-sm text-muted-foreground">ユーザーがいません。</p>
+            ) : (
+              <>
+                {/* PC幅: 表形式 */}
+                <div className="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 lg:block">
+                  <table className="w-full text-sm whitespace-nowrap">
+                    <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                      <tr>
+                        <th className="px-4 py-3 text-left">名前</th>
+                        <th className="px-4 py-3 text-left">メールアドレス</th>
+                        <th className="px-4 py-3 text-left">ロール</th>
+                        <th className="px-4 py-3 text-left">登録日</th>
+                        <th className="px-4 py-3 text-left">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
+                      {users.map((user) => {
+                        const isAdmin = user.role === "admin";
+                        return (
+                          <tr key={user.id}>
+                            <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
+                              {user.name}
+                            </td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                              {user.email}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  isAdmin
+                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                                }`}
+                              >
+                                {isAdmin ? "管理者" : "ユーザー"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                              {new Date(user.createdAt).toLocaleDateString("ja-JP")}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedUserForDetail(user)}
+                              >
+                                詳細
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* モバイル幅: カードリスト（タップで詳細モーダル） */}
+                <ul className="flex flex-col gap-2 lg:hidden">
+                  {users.map((user) => {
+                    const isAdmin = user.role === "admin";
+                    return (
+                      <li key={user.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUserForDetail(user)}
+                          className="flex w-full items-center justify-between gap-2 rounded-lg border border-zinc-200 bg-white p-3 text-left text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                        >
+                          <span className="font-medium text-zinc-900 dark:text-zinc-50">{user.name}</span>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                              isAdmin
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                            }`}
+                          >
+                            {isAdmin ? "管理者" : "ユーザー"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </CardContent>}
+        </Card>
+
         {/* 通報されたレビュー */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              <AlertTriangle className="h-4 w-4" />通報されたレビュー
+            <CardTitle>
+              <button
+                onClick={() => setReportedReviewsOpen(!reportedReviewsOpen)}
+                className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />通報されたレビュー
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${reportedReviewsOpen ? "rotate-180" : ""}`} />
+              </button>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          {reportedReviewsOpen && <CardContent>
             {reportedReviews.length === 0 ? (
               <p className="text-sm text-muted-foreground">通報されたレビューはありません。</p>
             ) : (
@@ -1567,7 +1467,7 @@ export default function AdminPage() {
                 ))}
               </ul>
             )}
-          </CardContent>
+          </CardContent>}
         </Card>
 
         {/* お問い合わせ一覧 */}
@@ -1644,23 +1544,13 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setSelectedInquiry(inquiry)}
-                              >
-                                詳細
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => setDeleteTargetInquiry(inquiry)}
-                                disabled={deletingInquiryId === inquiry.id}
-                              >
-                                削除
-                              </Button>
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelectedInquiry(inquiry)}
+                            >
+                              詳細
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -1842,6 +1732,75 @@ export default function AdminPage() {
                 </>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* CSVから一括インポート モーダル */}
+      {csvImportModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) closeCsvImportModal(); }}
+        >
+          <div className="mx-4 flex max-h-[85vh] w-full max-w-md flex-col rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">CSVから一括インポート</h2>
+              <button
+                onClick={closeCsvImportModal}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mb-4 text-xs text-muted-foreground">
+              フォーマット（ヘッダー行任意）: title, author, isbn, coverImageUrl, publishedAt, awardId, year, type
+            </p>
+            <div className="flex flex-col gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
+                className="text-sm text-zinc-600 dark:text-zinc-400"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={handleImport}
+                  disabled={!csvFile || importing}
+                  size="sm"
+                >
+                  {importing ? "インポート中..." : "インポート実行"}
+                </Button>
+                <Button
+                  onClick={handleExport}
+                  disabled={exporting}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="mr-1 h-4 w-4" />
+                  {exporting ? "エクスポート中..." : "CSVエクスポート"}
+                </Button>
+              </div>
+            </div>
+
+            {exportError && (
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">{exportError}</p>
+            )}
+
+            {importResult && (
+              <div className="mt-4 rounded-md bg-zinc-50 p-4 text-sm dark:bg-zinc-800">
+                <p className="font-medium text-green-600 dark:text-green-400">
+                  成功: {importResult.success} 件
+                </p>
+                {importResult.errors.length > 0 && (
+                  <ul className="mt-2 list-disc pl-4 text-red-600 dark:text-red-400">
+                    {importResult.errors.map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
