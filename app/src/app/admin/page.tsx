@@ -1415,7 +1415,7 @@ export default function AdminPage() {
         </Card>
 
         {/* 通報されたレビュー */}
-        <Card>
+        <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle>
               <button
