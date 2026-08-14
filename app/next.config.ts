@@ -28,6 +28,14 @@ const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
   turbopack: {},
+  // outputFileTracingIncludes: standalone出力は静的解析（output file tracing）で
+  // 実際に使うファイルだけをサーバーバンドルへ含める。certs/aiven-ca.pemへの参照は
+  // DATABASE_URLという環境変数文字列の中にのみ存在し、コード上で直接importされない
+  // ため、この設定が無いとトレーシングで検出されずバンドルから漏れ、Vercel等の
+  // Gitベースのデプロイ先でTLS証明書ファイルが見つからずDB接続が失敗する。
+  outputFileTracingIncludes: {
+    "/**": ["./certs/**"],
+  },
   images: {
     remotePatterns: [
       {

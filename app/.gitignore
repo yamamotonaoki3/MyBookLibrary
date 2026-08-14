@@ -25,6 +25,9 @@
 # misc
 .DS_Store
 *.pem
+# AivenのCA証明書は秘密鍵ではなく公開証明書（サーバー検証専用）であり、
+# Vercel等のGitベースのデプロイ先に確実に配置するためコミット対象とする。
+!certs/aiven-ca.pem
 
 # debug
 npm-debug.log*
