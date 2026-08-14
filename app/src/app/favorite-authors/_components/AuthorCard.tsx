@@ -49,10 +49,17 @@ export function AuthorCard({ author }: Props) {
         className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700/50"
       >
         <div className="flex items-center justify-between gap-2">
+          <Link
+            href={`/favorite-authors/${author.authorId}`}
+            onClick={(e) => e.stopPropagation()}
+            className="hidden min-w-0 truncate text-left font-semibold text-blue-600 hover:underline lg:block dark:text-blue-400"
+          >
+            {author.authorName}
+          </Link>
           <button
             type="button"
             onClick={() => setDetailOpen(true)}
-            className="min-w-0 truncate text-left font-semibold text-blue-600 hover:underline dark:text-blue-400"
+            className="min-w-0 truncate text-left font-semibold text-blue-600 hover:underline lg:hidden dark:text-blue-400"
           >
             {author.authorName}
           </button>
@@ -72,6 +79,27 @@ export function AuthorCard({ author }: Props) {
             </button>
           </div>
         </div>
+
+        <dl className="mt-3 hidden grid-cols-3 gap-2 text-center lg:grid">
+          <div className="rounded-md bg-zinc-50 py-3 dark:bg-zinc-800">
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">登録作品</dt>
+            <dd className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              {author.bookCount}冊
+            </dd>
+          </div>
+          <div className="rounded-md bg-zinc-50 py-3 dark:bg-zinc-800">
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">読書中</dt>
+            <dd className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              {author.readingCount}冊
+            </dd>
+          </div>
+          <div className="rounded-md bg-zinc-50 py-3 dark:bg-zinc-800">
+            <dt className="text-xs text-zinc-500 dark:text-zinc-400">読了</dt>
+            <dd className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              {author.readCount}冊
+            </dd>
+          </div>
+        </dl>
       </div>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
