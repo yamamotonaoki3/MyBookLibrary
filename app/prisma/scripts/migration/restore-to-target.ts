@@ -51,6 +51,14 @@ function parseArgs(argv: string[]): CliOptions {
       skipReset = true;
     } else if (arg === "--stop-before-migrate") {
       stopBeforeMigrate = true;
+    } else {
+      // 本スクリプトはDB全体のDROPを伴う破壊的操作を行う。オプションの打ち間違い
+      // （例: --dryrun, --skip-rest）を静かに無視してしまうと、意図せず初期化が
+      // 実行されてしまう危険があるため、未知の引数は即座にエラーで止める。
+      throw new Error(
+        `不明な引数です: ${arg}` +
+          "（有効な引数: --dump <path>, --dry-run, --skip-reset, --stop-before-migrate）"
+      );
     }
   }
 
@@ -77,7 +85,10 @@ function buildMysqlArgs(databaseUrl: string): { args: string[]; password: string
 
   const sslAccept = url.searchParams.get("sslaccept");
   if (sslAccept === "strict") {
-    args.push("--ssl-mode=VERIFY_CA");
+    // VERIFY_CAは証明書チェーンの検証のみで、接続先ホスト名が証明書の対象と
+    // 一致するかまでは確認しない。dump-production.shのソース接続と同様に、
+    // ホスト名まで検証するVERIFY_IDENTITYを使う（中間者・DNS詐称対策）。
+    args.push("--ssl-mode=VERIFY_IDENTITY");
   } else if (sslAccept === "accept_invalid_certs") {
     args.push("--ssl-mode=REQUIRED");
   }
