@@ -25,12 +25,14 @@ function main(): void {
   console.log(`SHA-256: ${checksum}`);
 
   try {
-    // Windows/Unix双方で「書き込み不可」を意味する権限（0o444）へ変更する。
-    // 権限変更に失敗しても致命的ではないため、警告に留める。
-    chmodSync(dumpPath, 0o444);
-    console.log(`dumpファイルを読み取り専用化しました: ${dumpPath}`);
+    // dumpにはパスワードハッシュ・OAuthトークン等の機密情報が含まれる。
+    // Unix系のマルチユーザー環境では、通常の作成時権限(0o644)のままだと
+    // 他のローカルユーザーからも読み取れてしまうため、所有者のみ読み取り可能な
+    // 0o400（読み取り専用かつ他ユーザーはアクセス不可）へ変更する。
+    chmodSync(dumpPath, 0o400);
+    console.log(`dumpファイルを所有者のみ読み取り可能にしました（0o400）: ${dumpPath}`);
   } catch (err) {
-    console.warn(`⚠ dumpファイルの読み取り専用化に失敗しました（続行します）: ${String(err)}`);
+    console.warn(`⚠ dumpファイルの権限変更に失敗しました（続行します）: ${String(err)}`);
   }
 }
 

@@ -3,8 +3,11 @@
 #
 # 使い方:
 #   cd app
-#   set -a; source .env.migration-source; set +a
-#   ./prisma/scripts/migration/dump-production.sh ./prisma/scripts/migration/dumps
+#   npx dotenv -e .env.migration-source -o -- ./prisma/scripts/migration/dump-production.sh ./prisma/scripts/migration/dumps
+#
+# 注意: `set -a; source .env.migration-source; set +a` のようにシェルの`source`で
+# 読み込んではいけない。パスワードに`$`やバッククォート等のシェル特殊文字が含まれる場合、
+# 値がシェルコードとして展開・実行されてしまう危険がある。
 #
 # 必須環境変数（.env.migration-source等、gitignore対象のファイルから読み込む。
 # このスクリプト自身には接続情報を一切ハードコードしない）:
@@ -15,6 +18,12 @@
 #   --single-transaction   : 読み取り一貫性を保証（既定で有効）
 #   --default-character-set=utf8mb4 : 文字コードを明示（既定で有効）
 set -euo pipefail
+
+# dumpにはパスワードハッシュ・OAuthトークン等の機密情報が含まれる。マルチユーザー環境で
+# 他のローカルユーザーから読み取られないよう、作成するファイルの権限を所有者のみに絞る
+# （既定のumaskのままだと0644で作成され、dump-checksum.tsが権限を絞るまでの間、
+# 他ユーザーから読める状態になってしまう）。
+umask 077
 
 OUTPUT_DIR="${1:?出力先ディレクトリを指定してください（例: ./prisma/scripts/migration/dumps）}"
 
