@@ -9,6 +9,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "next build --webpack",
     "test": "jest --selectProjects node jsdom",
