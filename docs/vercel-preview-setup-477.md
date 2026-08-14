@@ -54,7 +54,9 @@ Development / Preview / Productionそれぞれの環境変数をVercelダッシ�
 | `CALIL_API_BASE`（任意） | 同上 | 未設定 | 未設定 | 未設定 |
 | `CRON_SECRET` | Cronエンドポイント認証（16文字以上必須） | 任意のダミー値 | Preview専用の値 | 本番専用の値 |
 
-**AivenのCA証明書（TLS検証用）について**: `#479`の接続文字列（`sslaccept=strict&sslcert=../certs/aiven-ca.pem`）は、Prisma実行時に`app/certs/aiven-ca.pem`というファイルの存在を前提とする。このファイルは元々`.gitignore`の`*.pem`ルールで除外されていたが、**秘密鍵ではなく公開のCA証明書（サーバー検証専用、機密情報ではない）であるため、Vercel等のGitベースのデプロイ先へ確実に配置できるよう、今回のPRで`app/.gitignore`に例外を追加してリポジトリへコミットした**（`app/certs/aiven-ca.pem`）。これにより、環境変数として`DATABASE_URL`を登録するだけで、証明書ファイル自体は通常のソースコードと同様にデプロイに同梱される。証明書ファイルを個別にVercelへアップロードする作業は不要。
+**AivenのCA証明書（TLS検証用）について**: `#479`の接続文字列（`sslaccept=strict&sslcert=../certs/aiven-ca.pem`）は、Prisma実行時に`app/certs/aiven-ca.pem`というファイルの存在を前提とする。このファイルは元々`.gitignore`の`*.pem`ルールで除外されていたが、**秘密鍵ではなく公開のCA証明書（サーバー検証専用、機密情報ではない）であるため、Vercel等のGitベースのデプロイ先へ確実に配置できるよう、今回のPRで`app/.gitignore`に例外を追加してリポジトリへコミットした**（`app/certs/aiven-ca.pem`）。
+
+ただし、コミットするだけでは不十分だった。`next.config.ts`の`output: "standalone"`はサーバーバンドルを静的解析（output file tracing）で絞り込むため、コード上でimportされずDATABASE_URLという環境変数文字列の中にしか現れない`certs/aiven-ca.pem`への参照はトレーシングで検出されず、そのままではデプロイ後のサーバーバンドルから証明書ファイルが漏れてしまう。そのため`next.config.ts`に`outputFileTracingIncludes`を追加し、`certs/`配下を強制的にバンドルへ含めるよう設定済み。証明書ファイルを個別にVercelへアップロードする作業は不要。
 
 ## Vercel CronのUTC/JST・Hobbyプランの制約
 
