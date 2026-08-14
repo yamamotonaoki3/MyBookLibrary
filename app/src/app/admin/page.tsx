@@ -589,13 +589,18 @@ export default function AdminPage() {
     if (!csvFile) return;
     setImporting(true);
     setImportResult(null);
-    const formData = new FormData();
-    formData.append("file", csvFile);
-    const res = await adminFetch("/api/admin/import-csv", { method: "POST", body: formData });
-    const data = await res.json();
-    setImportResult(data);
-    setImporting(false);
-    refreshEntries();
+    try {
+      const formData = new FormData();
+      formData.append("file", csvFile);
+      const res = await adminFetch("/api/admin/import-csv", { method: "POST", body: formData });
+      const data = await res.json();
+      setImportResult(data);
+      refreshEntries();
+    } catch {
+      setImportResult({ success: 0, errors: ["インポートに失敗しました。"] });
+    } finally {
+      setImporting(false);
+    }
   }
 
   async function handleExport() {
