@@ -22,3 +22,7 @@ crash.*.log
 
 # Generated deployment artifacts
 *.zip
+
+# 本番/移行元DBのdumpファイル・進捗ログ（Issue #478 移行・照合ツール）
+app/prisma/scripts/migration/dumps/
+app/prisma/scripts/migration/*.progress.json
