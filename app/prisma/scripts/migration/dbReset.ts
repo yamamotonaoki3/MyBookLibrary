@@ -26,14 +26,19 @@ export async function resetTargetDatabase(prisma: PrismaClient): Promise<string[
     return [];
   }
 
-  await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS=0");
-  try {
-    for (const tableName of tableNames) {
-      await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS \`${tableName}\``);
-    }
-  } finally {
-    await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS=1");
-  }
+  // `SET FOREIGN_KEY_CHECKS`はセッション（コネクション）単位の設定であるため、
+  // これとDROP TABLE群を$executeRawUnsafeの単発呼び出しで別々に発行すると、
+  // Prismaのコネクションプールにより異なるセッションで実行されてしまう可能性がある。
+  // その場合、外部キー制約が有効なままDROPが実行され、参照先テーブルの
+  // DROP順序次第で処理が失敗し、DBが「一部だけ初期化された」中途半端な状態で
+  // 止まってしまう。$transaction（配列形式）で1つのコネクションに固定して実行する。
+  await prisma.$transaction([
+    prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS=0"),
+    ...tableNames.map((tableName) =>
+      prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS \`${tableName}\``)
+    ),
+    prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS=1"),
+  ]);
 
   return tableNames;
 }
