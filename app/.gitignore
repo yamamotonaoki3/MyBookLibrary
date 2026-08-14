@@ -61,3 +61,8 @@ next-env.d.ts
 /scripts/build-akutagawa-*.mjs
 /scripts/enrich-akutagawa-isbn.mjs
 /data/akutagawa/
+
+# 直木賞データ取り込み用の作業ファイル（コミット予定なし）
+/scripts/build-naoki-*.mjs
+/scripts/fix-csv-award-ids.mjs
+/data/naoki/
