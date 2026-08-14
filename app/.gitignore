@@ -69,4 +69,5 @@ next-env.d.ts
 
 # 本屋大賞データ取り込み用の作業ファイル（コミット予定なし）
 /scripts/download-honya-history.mjs
+/scripts/build-honya-*.mjs
 /data/honya/
