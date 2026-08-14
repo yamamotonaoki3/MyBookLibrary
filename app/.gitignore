@@ -66,3 +66,7 @@ next-env.d.ts
 /scripts/build-naoki-*.mjs
 /scripts/fix-csv-award-ids.mjs
 /data/naoki/
+
+# 本屋大賞データ取り込み用の作業ファイル（コミット予定なし）
+/scripts/download-honya-history.mjs
+/data/honya/
