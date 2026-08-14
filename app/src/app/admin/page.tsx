@@ -2034,7 +2034,7 @@ export default function AdminPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedInquiry(null); }}
         >
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200 mx-4">
+          <div className="mx-4 flex max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">お問い合わせ詳細</h2>
               <button
