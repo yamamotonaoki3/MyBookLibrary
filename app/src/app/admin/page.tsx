@@ -578,6 +578,7 @@ export default function AdminPage() {
   }
 
   function closeCsvImportModal() {
+    if (importing || exporting) return;
     setCsvImportModalOpen(false);
     setCsvFile(null);
     setImportResult(null);
@@ -1926,7 +1927,7 @@ export default function AdminPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
           onClick={(e) => { if (e.target === e.currentTarget) closeManualBookDetail(); }}
         >
-          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
+          <div className="mx-4 flex max-h-[85vh] w-full max-w-md flex-col overflow-y-auto rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">手動登録本の詳細</h2>
               <button
