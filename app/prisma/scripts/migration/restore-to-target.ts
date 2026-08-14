@@ -7,7 +7,7 @@
  *
  * 使い方:
  *   cd app
- *   npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/migration/restore-to-target.ts \
+ *   npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/migration/restore-to-target.ts \
  *     --dump ./prisma/scripts/migration/dumps/dump_xxx.sql \
  *     [--dry-run] [--skip-reset] [--stop-before-migrate]
  *

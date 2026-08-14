@@ -25,6 +25,7 @@ import {
   parseApprovedEntries,
   type ManualBookWithStatuses,
 } from "@/lib/migration/backfillBookOwner";
+import { assertMigrationTargetDatabaseUrl } from "./migration/migrationGuard";
 
 const prisma = new PrismaClient();
 
@@ -161,6 +162,11 @@ async function runApplyFrom(approvedFilePath: string): Promise<void> {
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
+
+  // restore-to-target.ts / verify-migration.ts と同様、誤って本番DBへ接続・
+  // 書き込みしないことを、DBへアクセスする前に必ず確認する
+  // （--apply-from時はcreatedByUserIdへの書き込みを伴うため特に重要）。
+  assertMigrationTargetDatabaseUrl();
 
   if (options.mode === "dry-run") {
     await runDryRun(options.outPath);

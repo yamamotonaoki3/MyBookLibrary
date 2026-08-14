@@ -3,7 +3,7 @@
  *
  * 使い方:
  *   cd app
- *   npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/migration/verify-migration.ts \
+ *   npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/migration/verify-migration.ts \
  *     --dump ./prisma/scripts/migration/dumps/dump_xxx.sql \
  *     --phase restored|migrated \
  *     [--source-live]   # 本番切替(#475)時のみ。移行元への直接照会を三者比較に加える

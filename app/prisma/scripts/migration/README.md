@@ -27,7 +27,7 @@ cp .env.migration-target.example .env.migration-target   # restore/verify先の�
 
 ```bash
 cd app
-npx dotenv -e .env.migration-source -o -- ./prisma/scripts/migration/dump-production.sh ./prisma/scripts/migration/dumps
+npx dotenv -e .env.migration-source -o --no-expand -- ./prisma/scripts/migration/dump-production.sh ./prisma/scripts/migration/dumps
 ```
 
 （`set -a; source .env.migration-source; set +a` のようにシェルの`source`で読み込むと、パスワードに`$`やバッククォート等のシェル特殊文字が含まれる場合、値がシェルコードとして展開・実行されてしまう危険がある。上記の`dotenv-cli`経由の読み込みは、値を展開せずそのまま子プロセスの環境変数として渡すため安全。）
@@ -46,11 +46,11 @@ npx tsx prisma/scripts/migration/dump-checksum.ts ./prisma/scripts/migration/dum
 
 ```bash
 # まず --dry-run で実行計画を確認する（DBへの書き込みは一切行わない）
-npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/migration/restore-to-target.ts \
+npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/migration/restore-to-target.ts \
   --dump ./prisma/scripts/migration/dumps/dump_xxx.sql --stop-before-migrate --dry-run
 
 # 内容を確認したら、migrate deploy前で停止するオプションを付けて本実行
-npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/migration/restore-to-target.ts \
+npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/migration/restore-to-target.ts \
   --dump ./prisma/scripts/migration/dumps/dump_xxx.sql --stop-before-migrate
 ```
 
@@ -72,14 +72,14 @@ npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/migration/resto
 
 ```bash
 # restore直後（migrate deploy前）の確認
-npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/migration/verify-migration.ts \
+npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/migration/verify-migration.ts \
   --dump ./prisma/scripts/migration/dumps/dump_xxx.sql --phase restored
 
 # restoredフェーズの照合が全件PASSしたら、未適用migrationを適用
-npx dotenv -e .env.migration-target -o -- npx prisma migrate deploy
+npx dotenv -e .env.migration-target -o --no-expand -- npx prisma migrate deploy
 
 # migrate deploy後の確認
-npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/migration/verify-migration.ts \
+npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/migration/verify-migration.ts \
   --dump ./prisma/scripts/migration/dumps/dump_xxx.sql --phase migrated
 ```
 
@@ -93,7 +93,7 @@ npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/migration/verif
 書き込み凍結中の移行元DBへの直接照会を三者比較に加える。`.env.migration-source`の`SOURCE_DATABASE_URL`を設定したうえで指定する。リハーサル（#480）では指定しない（書き込みを止めないため、別セッションのCOUNT(*)をdumpと同一スナップショットとして扱えない）。
 
 ```bash
-npx dotenv -e .env.migration-target -e .env.migration-source -o -- npx tsx prisma/scripts/migration/verify-migration.ts \
+npx dotenv -e .env.migration-target -e .env.migration-source -o --no-expand -- npx tsx prisma/scripts/migration/verify-migration.ts \
   --dump ./prisma/scripts/migration/dumps/dump_xxx.sql --phase migrated --source-live
 ```
 
@@ -103,7 +103,7 @@ npx dotenv -e .env.migration-target -e .env.migration-source -o -- npx tsx prism
 
 ```bash
 # 1. dry-run: 対応表を出力する（DBは更新しない）
-npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/backfill-book-owner.ts \
+npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/backfill-book-owner.ts \
   --dry-run --out ./candidates.json
 
 # 2. candidates.json を人手で1件ずつ確認する。
@@ -112,7 +112,7 @@ npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/backfill-book-o
 #      [{ "bookId": 12, "userId": 5 }, ...]
 
 # 3. 承認済みファイルの内容だけを本更新する
-npx dotenv -e .env.migration-target -o -- npx tsx prisma/scripts/backfill-book-owner.ts \
+npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/backfill-book-owner.ts \
   --apply-from ./approved.json
 ```
 

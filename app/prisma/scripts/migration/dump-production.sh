@@ -3,7 +3,7 @@
 #
 # 使い方:
 #   cd app
-#   npx dotenv -e .env.migration-source -o -- ./prisma/scripts/migration/dump-production.sh ./prisma/scripts/migration/dumps
+#   npx dotenv -e .env.migration-source -o --no-expand -- ./prisma/scripts/migration/dump-production.sh ./prisma/scripts/migration/dumps
 #
 # 注意: `set -a; source .env.migration-source; set +a` のようにシェルの`source`で
 # 読み込んではいけない。パスワードに`$`やバッククォート等のシェル特殊文字が含まれる場合、
