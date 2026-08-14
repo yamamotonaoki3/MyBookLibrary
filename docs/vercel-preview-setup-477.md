@@ -54,6 +54,8 @@ Development / Preview / Productionそれぞれの環境変数をVercelダッシ�
 | `CALIL_API_BASE`（任意） | 同上 | 未設定 | 未設定 | 未設定 |
 | `CRON_SECRET` | Cronエンドポイント認証（16文字以上必須） | 任意のダミー値 | Preview専用の値 | 本番専用の値 |
 
+**AivenのCA証明書（TLS検証用）について**: `#479`の接続文字列（`sslaccept=strict&sslcert=../certs/aiven-ca.pem`）は、Prisma実行時に`app/certs/aiven-ca.pem`というファイルの存在を前提とする。このファイルは元々`.gitignore`の`*.pem`ルールで除外されていたが、**秘密鍵ではなく公開のCA証明書（サーバー検証専用、機密情報ではない）であるため、Vercel等のGitベースのデプロイ先へ確実に配置できるよう、今回のPRで`app/.gitignore`に例外を追加してリポジトリへコミットした**（`app/certs/aiven-ca.pem`）。これにより、環境変数として`DATABASE_URL`を登録するだけで、証明書ファイル自体は通常のソースコードと同様にデプロイに同梱される。証明書ファイルを個別にVercelへアップロードする作業は不要。
+
 ## Vercel CronのUTC/JST・Hobbyプランの制約
 
 現在の`schedule: "0 0 * * *"`はUTC 0:00（= JST 9:00）を指定している。
@@ -62,10 +64,10 @@ Vercel公式ドキュメントで確認した Hobbyプランの制約は以下�
 
 - **実行頻度**: Hobbyプランは1日1回までのcronしか設定できない（それより高頻度な指定はデプロイ時にエラーになる）。
 - **実行時刻の幅**: 指定した時刻ちょうどには実行されない。例えば`0 1 * * *`（毎日1:00）と指定した場合、実際には1:00〜1:59の間のどこかで実行される（負荷分散のため）。したがって、今回の`0 0 * * *`は「UTC 0:00〜0:59（JST 9:00〜9:59）の間のどこか」で実行される前提で運用する。
-- **実行時間制限**: **Hobbyプランのcron実行は10秒でタイムアウトする**。
+- **実行時間制限**: cronから呼び出される関数（`check-new-books`）の実行時間上限は、**Fluid Computeを有効化しているかどうかで変わる**。Fluid Computeを無効のまま（従来のデフォルト）だとHobbyプランは10秒でタイムアウトするが、本ドキュメントの手動作業チェックリストではFluid Computeの有効化を前提としており、その場合は関数ごとのFluid Compute実行時間上限（`maxDuration`設定、または該当プランの既定値）が適用される。**したがって「10秒」を絶対の上限として扱わず、Fluid Compute有効化後の実際の上限をVercelの公式ドキュメント・ダッシュボードで確認したうえで判断すること。**
 - **配信の信頼性**: ベストエフォートであり、まれにネットワークエラー等で実行されないことがある。
 
-**既存の`check-new-books`ルートに関する注意点**: 現在の実装（`app/src/app/api/cron/check-new-books/route.ts`）は、`notify: true`のお気に入り著者登録を1件ずつループし、それぞれ楽天ブックスAPIへ逐次アクセスする設計になっている（並列化すると楽天APIの429エラーになるため意図的に逐次）。**お気に入り著者の登録件数が増えると、10秒のタイムアウトを超える可能性がある。** 現在の運用規模（小規模・家族/知人向け）では問題にならない可能性が高いが、Preview環境で実際に動作確認する際に実行時間を計測し、必要であれば処理件数の分割やタイムアウト対策を別Issueとして検討することを推奨する。
+**既存の`check-new-books`ルートに関する注意点**: 現在の実装（`app/src/app/api/cron/check-new-books/route.ts`）は、`notify: true`のお気に入り著者登録を1件ずつループし、それぞれ楽天ブックスAPIへ逐次アクセスする設計になっている（並列化すると楽天APIの429エラーになるため意図的に逐次）。**お気に入り著者の登録件数が増えると、実行時間上限を超える可能性がある。** 現在の運用規模（小規模・家族/知人向け）では問題にならない可能性が高いが、Preview環境で実際に動作確認する際に実行時間を計測し、必要であれば処理件数の分割や`maxDuration`の明示設定を別Issueとして検討することを推奨する。
 
 ## `next/image`のremotePatterns方針
 
@@ -118,7 +120,8 @@ https://<本番ドメイン>/api/auth/callback/google
 - [ ] VercelプロジェクトのPreview Deployment用固定ドメインを設定する（OAuth callback登録の前提）
 - [ ] Fluid Computeを有効化する
 - [ ] デプロイ後、Aivenダッシュボードの接続数メトリクスでPrisma Clientの接続数が1に保たれることを実測で確認する
-- [ ] Vercel Cronが実際に1日1回実行されることと、実行時刻のずれ幅（UTC 0:00〜0:59の範囲内か）を実測で記録する
-- [ ] `check-new-books`のCron実行時間が10秒以内に収まっているか確認する（Vercelダッシュボードの Function Logs で確認可能）
+- [ ] **Vercelのcron（`vercel.json`のschedule）はProductionデプロイに対してのみ発火し、Previewデプロイでは実行されない。** そのため以下2項目は、Preview URLではなく本番用（またはcron検証専用の）Productionデプロイで確認すること。
+  - [ ] Vercel Cronが実際に1日1回実行されることと、実行時刻のずれ幅（UTC 0:00〜0:59の範囲内か）を実測で記録する
+  - [ ] `check-new-books`の実行時間が、Fluid Compute有効化後の実行時間上限内に収まっているか確認する（Vercelダッシュボードの Function Logs で確認可能）
 - [ ] Previewデプロイが成功し、パスワード認証・Googleログイン・主要画面・APIが動作することを確認する（Issue #477の受け入れ基準）
 - [ ] PreviewからAWS本番DBへ接続しないこと（DATABASE_URLがAiven検証DBを指していること）を確認する（Issue #477の受け入れ基準）
