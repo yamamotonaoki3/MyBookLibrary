@@ -243,6 +243,11 @@ export default function AdminPage() {
   const [usersOpen, setUsersOpen] = useState(false);
   const [reportedReviewsOpen, setReportedReviewsOpen] = useState(false);
   const [csvImportModalOpen, setCsvImportModalOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [registerFormOpen, setRegisterFormOpen] = useState(false);
+  const [nearbyLibrariesOpen, setNearbyLibrariesOpen] = useState(false);
+  const [followsOpen, setFollowsOpen] = useState(false);
+  const [accountInfoOpen, setAccountInfoOpen] = useState(false);
   const [awardsOpen, setAwardsOpen] = useState(false);
   const [selectedAwardEntryForDetail, setSelectedAwardEntryForDetail] = useState<AwardEntry | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -541,6 +546,7 @@ export default function AdminPage() {
     }));
     setResults([]);
     setRegisterResult(null);
+    setRegisterFormOpen(true);
   }
 
   async function handleRegister(e: React.FormEvent) {
@@ -733,11 +739,22 @@ export default function AdminPage() {
             {/* 近隣図書館 */}
             <Card className="mb-6">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-                  <Library className="h-4 w-4" />近隣図書館の登録
+                <CardTitle>
+                  <span className="hidden items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:flex">
+                    <Library className="h-4 w-4" />近隣図書館の登録
+                  </span>
+                  <button
+                    onClick={() => setNearbyLibrariesOpen(!nearbyLibrariesOpen)}
+                    className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:hidden"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Library className="h-4 w-4" />近隣図書館の登録
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${nearbyLibrariesOpen ? "rotate-180" : ""}`} />
+                  </button>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className={`${nearbyLibrariesOpen ? "" : "hidden"} lg:block`}>
                 <LibrarySettings />
               </CardContent>
             </Card>
@@ -745,11 +762,22 @@ export default function AdminPage() {
             {/* フォロー関係（プロトタイプ・ダミー表示） */}
             <Card className="mb-6">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-                  <Heart className="h-4 w-4" />フォロー関係
+                <CardTitle>
+                  <span className="hidden items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:flex">
+                    <Heart className="h-4 w-4" />フォロー関係
+                  </span>
+                  <button
+                    onClick={() => setFollowsOpen(!followsOpen)}
+                    className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:hidden"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Heart className="h-4 w-4" />フォロー関係
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${followsOpen ? "rotate-180" : ""}`} />
+                  </button>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className={`${followsOpen ? "" : "hidden"} lg:block`}>
                 <p className="mb-3 text-xs text-muted-foreground">※プロトタイプのダミー表示です。</p>
                 <ul className="flex flex-col gap-2">
                   {["テスト太郎", "E2EUser A", "テスト花子"].map((name) => (
@@ -770,11 +798,22 @@ export default function AdminPage() {
             {/* 自分のアカウント情報（プロトタイプ・ダミー表示） */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-                  <Users className="h-4 w-4" />自分のアカウント情報
+                <CardTitle>
+                  <span className="hidden items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:flex">
+                    <Users className="h-4 w-4" />自分のアカウント情報
+                  </span>
+                  <button
+                    onClick={() => setAccountInfoOpen(!accountInfoOpen)}
+                    className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:hidden"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />自分のアカウント情報
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${accountInfoOpen ? "rotate-180" : ""}`} />
+                  </button>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className={`${accountInfoOpen ? "" : "hidden"} lg:block`}>
                 <p className="mb-3 text-xs text-muted-foreground">※プロトタイプのダミー表示です。</p>
                 <dl className="flex flex-col gap-2 text-sm">
                   <div className="flex justify-between border-b border-zinc-100 py-2 dark:border-zinc-800">
@@ -822,11 +861,19 @@ export default function AdminPage() {
         {/* 楽天API検索 */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              <Search className="h-4 w-4" />書籍キーワードで検索
+            <CardTitle>
+              <button
+                onClick={() => setSearchOpen(!searchOpen)}
+                className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <Search className="h-4 w-4" />書籍キーワードで検索
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${searchOpen ? "rotate-180" : ""}`} />
+              </button>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          {searchOpen && <CardContent>
             {/* 検索モード切り替え */}
             <div className="mb-3 flex flex-wrap gap-1">
               <button
@@ -911,17 +958,25 @@ export default function AdminPage() {
                 ))}
               </ul>
             )}
-          </CardContent>
+          </CardContent>}
         </Card>
 
         {/* 登録フォーム */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              <BookOpen className="h-4 w-4" />登録情報の確認・入力
+            <CardTitle>
+              <button
+                onClick={() => setRegisterFormOpen(!registerFormOpen)}
+                className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground"
+              >
+                <span className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />受賞作品登録
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${registerFormOpen ? "rotate-180" : ""}`} />
+              </button>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          {registerFormOpen && <CardContent>
             <form onSubmit={handleRegister} className="flex flex-col gap-4">
               <div>
                 <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">
@@ -1041,7 +1096,7 @@ export default function AdminPage() {
                 </Button>
               </div>
             </form>
-          </CardContent>
+          </CardContent>}
         </Card>
 
         {/* CSVインポート（タイトルのみ、クリックでモーダル） */}
