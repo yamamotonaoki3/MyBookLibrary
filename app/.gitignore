@@ -56,3 +56,8 @@ next-env.d.ts
 /public/workbox-*.js.map
 /public/worker-*.js
 /public/fallback-*.js
+
+# 芥川賞データ取り込み用の作業ファイル（コミット予定なし）
+/scripts/build-akutagawa-*.mjs
+/scripts/enrich-akutagawa-isbn.mjs
+/data/akutagawa/
