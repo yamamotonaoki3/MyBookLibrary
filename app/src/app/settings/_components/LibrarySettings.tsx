@@ -206,6 +206,17 @@ export function LibrarySettings() {
               ))}
             </ul>
           )}
+
+          {searchResults.length > 0 && (
+            <a
+              href="https://calil.jp/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-[10px] text-zinc-400 hover:underline dark:text-zinc-500"
+            >
+              図書館情報提供：カーリル
+            </a>
+          )}
         </div>
       )}
     </div>
