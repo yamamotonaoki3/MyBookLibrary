@@ -27,6 +27,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { LibrarySettings } from "@/app/settings/_components/LibrarySettings";
+import { FollowsTabs } from "@/app/settings/_components/FollowsTabs";
+import type { UserItem } from "@/lib/followsListData";
+import type { RecommendedUser } from "@/lib/userRecommendations";
 import { AuditLogsView } from "./audit-logs/AuditLogsView";
 import { useAdminFetch } from "@/lib/adminFetch";
 
@@ -247,7 +250,12 @@ export default function AdminPage() {
   const [registerFormOpen, setRegisterFormOpen] = useState(false);
   const [nearbyLibrariesOpen, setNearbyLibrariesOpen] = useState(false);
   const [followsOpen, setFollowsOpen] = useState(false);
-  const [follows, setFollows] = useState<{ id: number; name: string }[]>([]);
+  const [followsData, setFollowsData] = useState<{ following: UserItem[]; followers: UserItem[] }>({
+    following: [],
+    followers: [],
+  });
+  const [followRecommendations, setFollowRecommendations] = useState<RecommendedUser[]>([]);
+  const [followsRefreshKey, setFollowsRefreshKey] = useState(0);
   const [accountInfoOpen, setAccountInfoOpen] = useState(false);
   const [awardsOpen, setAwardsOpen] = useState(false);
   const [selectedAwardEntryForDetail, setSelectedAwardEntryForDetail] = useState<AwardEntry | null>(null);
@@ -312,8 +320,14 @@ export default function AdminPage() {
   useEffect(() => {
     adminFetch("/api/admin/follows")
       .then((res) => res.json())
-      .then((data: { id: number; name: string }[]) => setFollows(data));
-  }, [adminFetch]);
+      .then((data: { following: UserItem[]; followers: UserItem[] }) => setFollowsData(data));
+  }, [followsRefreshKey, adminFetch]);
+
+  useEffect(() => {
+    adminFetch("/api/admin/follows/recommendations")
+      .then((res) => res.json())
+      .then((data: RecommendedUser[]) => setFollowRecommendations(data));
+  }, [followsRefreshKey, adminFetch]);
 
   async function executeDeleteUser() {
     if (!deleteTargetUser) return;
@@ -749,81 +763,19 @@ export default function AdminPage() {
             id="admin-tabpanel-settings"
             aria-labelledby="admin-tab-settings"
           >
-            {/* 近隣図書館 */}
+            {/* アカウント情報 */}
             <Card className="mb-6">
               <CardHeader className="pb-3">
                 <CardTitle>
                   <span className="hidden items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:flex">
-                    <Library className="h-4 w-4" />近隣図書館の登録
-                  </span>
-                  <button
-                    onClick={() => setNearbyLibrariesOpen(!nearbyLibrariesOpen)}
-                    className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:hidden"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Library className="h-4 w-4" />近隣図書館の登録
-                    </span>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${nearbyLibrariesOpen ? "rotate-180" : ""}`} />
-                  </button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className={`${nearbyLibrariesOpen ? "" : "hidden"} lg:block`}>
-                <LibrarySettings />
-              </CardContent>
-            </Card>
-
-            {/* フォロー関係 */}
-            <Card className="mb-6">
-              <CardHeader className="pb-3">
-                <CardTitle>
-                  <span className="hidden items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:flex">
-                    <Heart className="h-4 w-4" />フォロー関係
-                  </span>
-                  <button
-                    onClick={() => setFollowsOpen(!followsOpen)}
-                    className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:hidden"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Heart className="h-4 w-4" />フォロー関係
-                    </span>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${followsOpen ? "rotate-180" : ""}`} />
-                  </button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className={`${followsOpen ? "" : "hidden"} lg:block`}>
-                {follows.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">フォロー中のユーザーはいません。</p>
-                ) : (
-                  <ul className="flex flex-col gap-2">
-                    {follows.map((user) => (
-                      <li
-                        key={user.id}
-                        className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                      >
-                        <span className="text-zinc-800 dark:text-zinc-200">{user.name}</span>
-                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                          フォロー中
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* 自分のアカウント情報 */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle>
-                  <span className="hidden items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:flex">
-                    <Users className="h-4 w-4" />自分のアカウント情報
+                    <Users className="h-4 w-4" />アカウント情報
                   </span>
                   <button
                     onClick={() => setAccountInfoOpen(!accountInfoOpen)}
                     className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:hidden"
                   >
                     <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />自分のアカウント情報
+                      <Users className="h-4 w-4" />アカウント情報
                     </span>
                     <ChevronDown className={`h-4 w-4 transition-transform ${accountInfoOpen ? "rotate-180" : ""}`} />
                   </button>
@@ -846,6 +798,57 @@ export default function AdminPage() {
                     </dd>
                   </div>
                 </dl>
+              </CardContent>
+            </Card>
+
+            {/* フォロー */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle>
+                  <span className="hidden items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:flex">
+                    <Heart className="h-4 w-4" />フォロー
+                  </span>
+                  <button
+                    onClick={() => setFollowsOpen(!followsOpen)}
+                    className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:hidden"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Heart className="h-4 w-4" />フォロー
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${followsOpen ? "rotate-180" : ""}`} />
+                  </button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className={`${followsOpen ? "" : "hidden"} lg:block`}>
+                <FollowsTabs
+                  following={followsData.following}
+                  followers={followsData.followers}
+                  recommendations={followRecommendations}
+                  onFollowChange={() => setFollowsRefreshKey((k) => k + 1)}
+                />
+              </CardContent>
+            </Card>
+
+            {/* 近隣図書館の設定 */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle>
+                  <span className="hidden items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:flex">
+                    <Library className="h-4 w-4" />近隣図書館の設定
+                  </span>
+                  <button
+                    onClick={() => setNearbyLibrariesOpen(!nearbyLibrariesOpen)}
+                    className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:hidden"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Library className="h-4 w-4" />近隣図書館の設定
+                    </span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${nearbyLibrariesOpen ? "rotate-180" : ""}`} />
+                  </button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className={`${nearbyLibrariesOpen ? "" : "hidden"} lg:block`}>
+                <LibrarySettings />
               </CardContent>
             </Card>
           </div>
