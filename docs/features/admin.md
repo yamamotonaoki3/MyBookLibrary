@@ -86,9 +86,17 @@
 | DELETE | `/api/admin/manual-books/[id]` | 手動登録書籍の削除 |
 | POST | `/api/admin/manual-books/merge` | 重複書籍のマージ |
 | GET | `/api/admin/audit-logs` | 監査ログ一覧 |
+| POST | `/api/admin/users/[id]/reset-password` | ユーザーのパスワード強制リセット |
+| GET | `/api/admin/follows` | 管理者自身のフォロー中・フォロワー一覧取得 |
+| GET | `/api/admin/follows/recommendations` | 管理者向けおすすめフォロー候補の取得 |
+| POST | `/api/admin/book-enrichment/start` | 書籍情報補完ジョブの開始 |
+| GET | `/api/admin/book-enrichment/status` | 書籍情報補完ジョブの進捗取得 |
 
 ## 関連ドキュメント
 
 - [API 仕様書](../api-spec.md) — CSV フォーマット仕様・エラーコード
 - [ER 図](../er-diagram.md) — 各テーブル構成
 - [受賞作品機能定義書](./awards.md) — 受賞データの表示
+- [書籍情報補完処理 機能定義書](./book-enrichment.md) — 補完処理の詳細
+- [認証・アカウント管理 機能定義書](./auth.md) — パスワード強制リセットの詳細
+- [フォロー機能 機能定義書](./follow.md) — フォロー機能の詳細

@@ -21,7 +21,7 @@
 
 ### 3.1 認証・アカウント管理
 
-メール＋パスワード・Google OAuth によるログイン、新規登録時の合言葉任意設定、合言葉によるパスワードリセット、ロール管理、アカウント削除を含む認証・アカウント管理機能。
+メール＋パスワード・Google OAuth によるログイン、新規登録時の合言葉任意設定、合言葉によるパスワードリセット、ログイン中のパスワード変更、ロール管理、管理者による強制パスワードリセット（`mustChangePassword`）、アカウント削除を含む認証・アカウント管理機能。
 
 → 詳細は [認証・アカウント管理 機能定義書](./features/auth.md) を参照。
 
@@ -104,6 +104,12 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 管理者操作・合言葉更新などの重要イベントを記録し、管理者パネルの監査ログタブから閲覧できる機能。
 
 → 詳細は [管理者機能 機能定義書](./features/admin.md) を参照。
+
+### 3.15 書籍情報補完処理
+
+ISBN・カバー画像・出版日が欠けている登録済みの本について、外部API（楽天ブックス・NDL）から情報を再取得して補完するバッチ処理。管理者パネルから起動でき、進捗状況を確認できる。
+
+→ 詳細は [書籍情報補完処理 機能定義書](./features/book-enrichment.md) を参照。
 
 ---
 
@@ -200,9 +206,11 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | `/my-reviews` | マイレビュー | 自分の投稿一覧・編集・削除 |
 | `/notifications` | 通知 | 新刊・いいね通知一覧・既読管理 |
 | `/settings` | 設定 | アカウント情報の確認（モーダル）・近隣図書館の登録・フォロー一覧へのリンク・アカウント削除（一般ユーザーのみ） |
+| `/settings/change-password` | パスワード変更 | 現在のパスワードを確認したうえで新しいパスワードに変更する画面（管理者による強制リセット後の再設定にも使用） |
 | `/settings/follows` | フォロー一覧 | フォロー中・フォロワーの一覧確認、おすすめフォロー候補の表示 |
 | `/users/[id]` | ユーザー詳細 | 他ユーザーのプロフィール・投稿レビュー確認・フォロー／フォロー解除 |
 | `/contact` | お問い合わせ | カテゴリ・件名・本文の入力フォーム・送信 |
+| `/about` | このアプリについて | アプリの概要説明ページ |
 
 ### 管理者画面
 
@@ -259,6 +267,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | --- | --- | --- |
 | DELETE | `/api/user/delete` | 自分のアカウント削除（管理者は不可） |
 | POST | `/api/user/secret-word` | 合言葉の設定・変更（パスワードリセットの代替本人確認手段） |
+| POST | `/api/user/change-password` | ログイン中のパスワード変更（現在のパスワードでの本人確認が必要） |
 
 ### 書籍・読書ステータス
 
@@ -298,6 +307,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | DELETE | `/api/favorite-authors/[authorId]` | お気に入りから削除 |
 | GET | `/api/favorite-authors/[authorId]/books` | 著者の書籍一覧 |
 | GET | `/api/favorite-authors/recommendations` | 著者ベースのおすすめ著者候補 |
+| GET | `/api/users/[id]/favorite-authors` | 指定ユーザーのお気に入り著者・読書中の本一覧（ユーザー詳細画面用） |
 
 ### フォロー
 
@@ -306,6 +316,8 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | POST | `/api/follows` | ユーザーをフォロー |
 | DELETE | `/api/follows` | フォロー解除 |
 | GET | `/api/follows/recommendations` | おすすめフォロー候補の取得 |
+| GET | `/api/admin/follows` | 管理者自身のフォロー中・フォロワー一覧取得 |
+| GET | `/api/admin/follows/recommendations` | 管理者向けおすすめフォロー候補の取得 |
 
 ### 文学賞
 
@@ -347,6 +359,7 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | DELETE | `/api/admin/reviews/[id]` | 通報レビュー削除 |
 | GET | `/api/admin/users` | ユーザー一覧 |
 | DELETE | `/api/admin/users/[id]` | ユーザー削除 |
+| POST | `/api/admin/users/[id]/reset-password` | ユーザーのパスワードを一時パスワードで強制リセット（`mustChangePassword`を立てる） |
 | GET | `/api/admin/inquiries` | お問い合わせ一覧 |
 | PATCH | `/api/admin/inquiries/[id]` | お問い合わせ更新（ステータス変更） |
 | DELETE | `/api/admin/inquiries/[id]` | お問い合わせ削除 |
@@ -357,6 +370,14 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 | DELETE | `/api/admin/manual-books/[id]` | 手動登録書籍の削除 |
 | POST | `/api/admin/manual-books/merge` | 重複書籍のマージ |
 | GET | `/api/admin/audit-logs` | 監査ログ一覧 |
+
+### 書籍情報補完処理
+
+| メソッド | パス | 説明 |
+| --- | --- | --- |
+| POST | `/api/admin/book-enrichment/start` | 補完対象（ISBN・カバー画像・出版日のいずれかが欠けている本）の一括補完ジョブを開始 |
+| GET | `/api/admin/book-enrichment/status` | 実行中・直近のジョブの進捗と失敗項目を取得 |
+| GET | `/api/admin/book-enrichment/tick` | 進捗停止中のジョブを再開（Bearer 認証必須、Cron等からの定期呼び出し用） |
 
 ### お問い合わせ
 

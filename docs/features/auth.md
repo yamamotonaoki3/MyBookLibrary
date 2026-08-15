@@ -16,6 +16,8 @@
 - 新規登録画面で合言葉（秘密の言葉）を任意で設定できる（2〜50文字）。未設定のまま登録した場合は、設定画面から後で設定できる
 - Google アカウントでログイン（OAuth）できる
 - パスワードを忘れた場合、メールアドレス確認 → 合言葉（秘密の言葉）照合 → パスワード再設定の3ステップで、メール送信なしにパスワードを再設定できる
+- ログイン中のユーザーは `/settings/change-password` から現在のパスワードを確認したうえで新しいパスワードに変更できる（一時パスワードと同一の値には変更できない）
+- 管理者はユーザー管理画面から対象ユーザーのパスワードを一時パスワードで強制リセットできる。リセット後は `mustChangePassword` フラグが立ち、本人はパスワード変更を完了するまで通常操作ができない（本人には一時パスワードを知らせる通知が送られる）
 - 設定画面（`/settings`）から合言葉を設定・変更できる（現在のパスワードでの本人確認が必要）。合言葉が未設定のユーザーがパスワードリセットを試みると、設定を促す通知が送られる
 - 合言葉の照合を 10 回失敗するとロック（15 分間）される。ロックはパスワード側の `loginFailCount`／`lockedUntil` とは別に、合言葉専用の `secretWordFailCount`／`secretWordLockedUntil` で管理する
 - ログイン失敗を 10 回繰り返すとアカウントが 15 分間ロックされる
@@ -63,6 +65,7 @@
 | `/register` | ユーザー登録画面 |
 | `/forgot-password` | パスワードリセット画面 |
 | `/settings` | 設定画面（アカウント情報確認・合言葉設定・削除） |
+| `/settings/change-password` | パスワード変更画面 |
 
 ## 関連 API エンドポイント
 
@@ -72,6 +75,8 @@
 | POST | `/api/auth/reset-password` | パスワードリセット（step: check/verifySecretWord/reset） |
 | GET | `/api/auth/remaining-attempts` | ログイン試行残回数確認 |
 | POST | `/api/user/secret-word` | 合言葉の設定・変更（現在のパスワードでの本人確認が必要） |
+| POST | `/api/user/change-password` | ログイン中のパスワード変更 |
+| POST | `/api/admin/users/[id]/reset-password` | 管理者によるパスワード強制リセット |
 | DELETE | `/api/user/delete` | 自分のアカウント削除（管理者は不可） |
 
 ## 関連ドキュメント
