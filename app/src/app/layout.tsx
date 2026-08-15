@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     title: "MyBookLibrary",
   },
   icons: {
+    icon: "/icon.png",
     apple: "/icons/apple-touch-icon.png",
   },
 };

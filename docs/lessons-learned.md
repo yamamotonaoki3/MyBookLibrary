@@ -13,8 +13,23 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - 2026-08-13: 楽観的UI更新（API応答を待たずに見た目を先に変える実装）を検証するE2E/結合テストは、UIの見た目だけでなくAPI成功・DB永続化まで確認しないと、バックエンドの退行を見逃す
 - 2026-08-15: Notificationの`bookIsbn`を「アクター横断で異なる通知を区別するキー」に使うと一意制約で衝突する／複合ユニークキーはPrismaの仕様上null値を直接指定できない／DBレベルの直列化にSELECT...FOR UPDATEを使うと存在しない行へのロックがInnoDBギャップロックのデッドロックを招くことがある
 - 2026-08-15: アクセス制御（閲覧範囲）の変更は、それに依存する「情報漏洩」系のレビュー指摘の深刻度を変える。閲覧制限を撤廃した後は、旧仕様を前提にした指摘が残っていないか見直す
+- 2026-08-15: Next.js 16 (Turbopack) のfaviconはPNG格納形式のICOをBMPデコーダしか対応せず処理失敗する／`metadata.icons`を明示指定するとfile convention（`icon.png`）の自動注入が働かなくなる
 
 ## 記録
+
+### 2026-08-15: Next.js 16のfavicon実装は自作ICOのBMPデコード非対応と`metadata.icons`の上書きに注意
+
+- **種別**: 手直し（Issue #525 アプリアイコンをファビコンとして使用する対応中）
+- **対象領域・関連ファイル**: フロントエンド / `app/src/app/icon.png`、`app/src/app/layout.tsx`
+- **何が起きたか**:
+  1. アプリアイコン（`public/icon-source.png`）から16x16/32x32/48x48のPNGを生成し、PNGバイナリをそのままICOコンテナに格納する形式（Windows Vista以降対応の一般的な方式）で`favicon.ico`を自作したところ、Next.js 16.2.6 (Turbopack)のビルド時画像処理が `Processing image failed / The decoder for Bmp does not support the format features Unknown bitmap header type` というエラーで失敗した。Turbopackの内蔵デコーダはICO内のBMP形式のみ対応しており、PNG格納形式のICOはサポート外だった。
+  2. 対策として`favicon.ico`をやめ、Next.jsのfile convention `app/icon.png`（単純なPNGファイル）に切り替えたところビルドエラーは解消したが、`.next`キャッシュ削除・devサーバー再起動を行ってもHTMLに`<link rel="icon">`が出力されなかった。原因は`app/src/app/layout.tsx`の`metadata.icons`で`apple: "..."`のみを明示指定していたこと。Next.jsは`metadata.icons`が明示されると、file convention（`icon.png`等）による自動注入が働かなくなる。
+- **対応**: `favicon.ico`ではなく`app/icon.png`を配置し、`layout.tsx`の`metadata.icons`に`icon: "/icon.png"`を`apple`と併記することで、両方のアイコンがHTMLに正しく出力されるようにした。
+- **次回の行動規則**:
+  - **Next.js 16 (Turbopack) でfaviconを自作ICOとして用意する場合、PNG格納形式のICOはビルド時にデコードエラーになる。** favicon用に複数サイズを1ファイルにまとめたい誘惑があっても、`.ico`を自作するのではなく、Next.jsのfile convention（`app/icon.png`、`app/icon.svg`等）を使う方が安全。
+  - **`layout.tsx`（または各セグメントのlayout/page）の`metadata.icons`に何か1つでもキー（`apple`等）を明示すると、file conventionによるicon自動検出が働かなくなる。** `icon.png`等のfile conventionを使うファビコン・アプリアイコンを追加/変更したら、`metadata.icons`にコンフリクトする明示指定が無いか、またはその明示指定に新しいアイコンのキーが漏れていないか必ず確認する。
+- **状態**: 有効
+- **根拠**: Issue #525
 
 ### 2026-08-15: 閲覧制限の仕様変更は、依存するセキュリティ系レビュー指摘の重み付けも変える
 
