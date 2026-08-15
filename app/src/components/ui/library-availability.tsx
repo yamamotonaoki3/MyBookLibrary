@@ -110,6 +110,14 @@ export function LibraryAvailability({ isbn, title }: Props) {
             )}
           </div>
         ))}
+        <a
+          href="https://calil.jp/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-zinc-400 hover:underline dark:text-zinc-500"
+        >
+          蔵書情報提供：カーリル
+        </a>
       </div>
     );
   }

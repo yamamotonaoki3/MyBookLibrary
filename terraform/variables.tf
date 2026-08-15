@@ -71,6 +71,12 @@ variable "cron_secret" {
   sensitive   = true
 }
 
+variable "enrichment_tick_secret" {
+  type        = string
+  description = "書籍データ補完ジョブ watchdog（tick）用シークレットトークン"
+  sensitive   = true
+}
+
 variable "seed_admin_email" {
   type        = string
   description = "管理者アカウントのメールアドレス"

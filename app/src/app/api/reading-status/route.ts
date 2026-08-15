@@ -4,6 +4,7 @@ import { ReadingStatusSchema } from "@/lib/validations";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { getMutualFollowerIds } from "@/lib/mutualFollows";
 import { logger } from "@/lib/logger";
+import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 
 async function notifyMutualFollowersOfWantToRead(
   userId: number,
@@ -39,16 +40,6 @@ async function notifyMutualFollowersOfWantToRead(
   }
 }
 
-
-function parseSalesDate(salesDate: string): Date {
-  const match = salesDate.match(/(\d{4})年(\d{2})月(?:(\d{2})日)?/);
-  if (!match) return new Date();
-  const year = parseInt(match[1]);
-  const month = parseInt(match[2]) - 1;
-  const day = match[3] ? parseInt(match[3]) : 1;
-  // DATE列にUTC日付として保存されるため、ローカルタイムゾーンだと1日ずれる
-  return new Date(Date.UTC(year, month, day));
-}
 
 export async function POST(request: Request) {
   try {
@@ -94,7 +85,7 @@ export async function POST(request: Request) {
           authorId: authorRecord.id,
           isbn: isbn || null,
           coverImageUrl: coverImageUrl ?? null,
-          publishedAt: publishedAt ? parseSalesDate(publishedAt) : new Date(),
+          publishedAt: publishedAt ? (parseSalesDateToUtcDate(publishedAt) ?? new Date()) : new Date(),
           source: source ?? "rakuten",
           createdByUserId: userId,
         },
