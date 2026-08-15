@@ -30,11 +30,33 @@ describe("getAuthenticatedUserId", () => {
 
   it("ログイン済み → 数値のuserIdを返す", async () => {
     signedIn({ id: 42 });
+    prismaMock.user.findUnique.mockResolvedValue({ mustChangePassword: false });
 
     const result = await getAuthenticatedUserId();
 
     expect(result.userId).toBe(42);
     expect(result.error).toBeNull();
+  });
+
+  it("mustChangePassword=true → 403エラー（MUST_CHANGE_PASSWORD）を返す", async () => {
+    signedIn({ id: 42 });
+    prismaMock.user.findUnique.mockResolvedValue({ mustChangePassword: true });
+
+    const result = await getAuthenticatedUserId();
+
+    expect(result.userId).toBeNull();
+    expect(result.error?.status).toBe(403);
+  });
+
+  it("mustChangePassword=true でも allowMustChangePassword:true なら通す", async () => {
+    signedIn({ id: 42 });
+    prismaMock.user.findUnique.mockResolvedValue({ mustChangePassword: true });
+
+    const result = await getAuthenticatedUserId({ allowMustChangePassword: true });
+
+    expect(result.userId).toBe(42);
+    expect(result.error).toBeNull();
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
   });
 });
 
@@ -64,7 +86,7 @@ describe("requireAdminSession", () => {
 
   it("管理者（JWT・DBともにrole=admin） → 数値のuserIdを返す", async () => {
     signedInAsAdmin({ id: 7 });
-    prismaMock.user.findUnique.mockResolvedValue({ role: "admin" });
+    prismaMock.user.findUnique.mockResolvedValue({ role: "admin", mustChangePassword: false });
 
     const result = await requireAdminSession();
 
@@ -72,8 +94,18 @@ describe("requireAdminSession", () => {
     expect(result.error).toBeNull();
     expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
       where: { id: 7 },
-      select: { role: true },
+      select: { role: true, mustChangePassword: true },
     });
+  });
+
+  it("管理者だがmustChangePassword=true → 403エラー（MUST_CHANGE_PASSWORD）を返す", async () => {
+    signedInAsAdmin({ id: 7 });
+    prismaMock.user.findUnique.mockResolvedValue({ role: "admin", mustChangePassword: true });
+
+    const result = await requireAdminSession();
+
+    expect(result.userId).toBeNull();
+    expect(result.error?.status).toBe(403);
   });
 
   it("JWTはadminのままだがDB上はuserに降格済み → 403エラーを返す", async () => {

@@ -21,6 +21,7 @@ model User {
   secretWordHash        String?          @map("secret_word_hash")
   secretWordFailCount   Int              @default(0) @map("secret_word_fail_count")
   secretWordLockedUntil DateTime?        @map("secret_word_locked_until")
+  mustChangePassword    Boolean          @default(false) @map("must_change_password")
   createdAt             DateTime         @default(now()) @map("created_at")
   favoriteAuthors       FavoriteAuthor[]
   readingStatuses       ReadingStatus[]

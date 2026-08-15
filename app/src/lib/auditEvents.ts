@@ -14,6 +14,7 @@ export const AUDIT_EVENT = {
   ADMIN_AWARD_ENTRY_DELETED: "admin_award_entry_deleted",
   ADMIN_CSV_IMPORTED: "admin_csv_imported",
   ADMIN_INQUIRY_DELETED: "admin_inquiry_deleted",
+  ADMIN_PASSWORD_RESET_FORCED: "admin_password_reset_forced",
 } as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT)[keyof typeof AUDIT_EVENT];
@@ -34,4 +35,5 @@ export const AUDIT_EVENT_LABEL: Record<AuditEventType, string> = {
   [AUDIT_EVENT.ADMIN_AWARD_ENTRY_DELETED]: "管理者: 受賞登録 削除",
   [AUDIT_EVENT.ADMIN_CSV_IMPORTED]: "管理者: CSVインポート",
   [AUDIT_EVENT.ADMIN_INQUIRY_DELETED]: "管理者: 問い合わせ削除",
+  [AUDIT_EVENT.ADMIN_PASSWORD_RESET_FORCED]: "管理者: パスワード強制リセット",
 };
