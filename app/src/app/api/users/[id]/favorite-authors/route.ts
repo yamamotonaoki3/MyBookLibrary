@@ -7,7 +7,7 @@ type Props = { params: Promise<{ id: string }> };
 const READING_STATUSES = ["want_to_read", "reading", "read"] as const;
 
 export async function GET(request: NextRequest, { params }: Props) {
-  const { userId: myUserId, error } = await getAuthenticatedUserId();
+  const { error } = await getAuthenticatedUserId();
   if (error) return error;
 
   const { id } = await params;
@@ -22,22 +22,6 @@ export async function GET(request: NextRequest, { params }: Props) {
   });
   if (!user) {
     return NextResponse.json({ error: "ユーザーが見つかりません。" }, { status: 404 });
-  }
-
-  const isSelf = targetUserId === myUserId;
-
-  const [iFollow, followsMe] = await Promise.all([
-    prisma.follow.findUnique({
-      where: { followerId_followingId: { followerId: myUserId, followingId: targetUserId } },
-    }),
-    prisma.follow.findUnique({
-      where: { followerId_followingId: { followerId: targetUserId, followingId: myUserId } },
-    }),
-  ]);
-  const isMutual = iFollow !== null && followsMe !== null;
-
-  if (!isSelf && !isMutual) {
-    return NextResponse.json({ error: "権限がありません" }, { status: 403 });
   }
 
   const [favoriteAuthors, readingStatuses] = await Promise.all([

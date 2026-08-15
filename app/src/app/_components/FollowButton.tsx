@@ -75,8 +75,8 @@ export default function FollowButton({
             </h2>
             <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
               {following
-                ? "フォローを解除すると、相互フォローで公開されていたお互いの情報は見られなくなります。"
-                : "相互フォローになると、あなたのお気に入り著者や読んでいる本が相手に分かるようになります。"}
+                ? "フォローを解除すると、相手が新しくお気に入り著者や読みたい本を追加した際の通知が届かなくなります。"
+                : "相互フォローになると、お互いが新しくお気に入り著者や読みたい本を追加したときに通知が届くようになります。"}
             </p>
             <div className="flex justify-end gap-2">
               <button

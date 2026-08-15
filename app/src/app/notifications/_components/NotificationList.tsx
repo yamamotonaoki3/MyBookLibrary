@@ -33,6 +33,8 @@ function NotificationIcon({ type }: { type: string }) {
   if (type === "review_deleted" || type === "report") return <span className="text-xl">⚠️</span>;
   if (type === "secret_word_required") return <span className="text-xl">🔒</span>;
   if (type === "follow") return <span className="text-xl">👤</span>;
+  if (type === "mutual_favorite_author") return <span className="text-xl">✍️</span>;
+  if (type === "mutual_want_to_read") return <span className="text-xl">📖</span>;
   return <span className="text-xl">📚</span>;
 }
 
@@ -62,6 +64,20 @@ function TypeBadge({ type }: { type: string }) {
     return (
       <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
         フォロー
+      </span>
+    );
+  }
+  if (type === "mutual_favorite_author") {
+    return (
+      <span className="rounded bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+        著者
+      </span>
+    );
+  }
+  if (type === "mutual_want_to_read") {
+    return (
+      <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+        読みたい本
       </span>
     );
   }
@@ -98,7 +114,12 @@ export function NotificationList({ initialNotifications, followingIds }: Props) 
       router.push(`/books/isbn/${notification.bookIsbn}`);
     } else if (notification.type === "secret_word_required") {
       router.push("/settings");
-    } else if (notification.type === "follow" && notification.actorId !== null) {
+    } else if (
+      (notification.type === "follow" ||
+        notification.type === "mutual_favorite_author" ||
+        notification.type === "mutual_want_to_read") &&
+      notification.actorId !== null
+    ) {
       router.push(`/users/${notification.actorId}`);
     }
   }
