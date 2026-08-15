@@ -2,12 +2,14 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Users, Heart, Library, KeyRound, Trash2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { AccountInfoCard } from "./_components/AccountInfoCard";
 import { DeleteAccountButton } from "./_components/DeleteAccountButton";
 import { LibrarySettings } from "./_components/LibrarySettings";
 import { SecretWordForm } from "./_components/SecretWordForm";
+import { SettingsAccordionSection } from "./_components/SettingsAccordionSection";
 
 export const metadata: Metadata = {
   title: "設定 | MyBookLibrary",
@@ -36,67 +38,57 @@ export default async function SettingsPage() {
     <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
       <h1 className="mb-6 text-2xl font-bold tracking-tight lg:text-3xl">設定</h1>
 
-      <div className="flex max-w-lg flex-col gap-6">
+      <div className="max-w-lg">
         {/* アカウント情報 */}
-        <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-            アカウント情報
-          </h2>
+        <SettingsAccordionSection icon={<Users className="h-4 w-4" />} title="アカウント情報">
           <AccountInfoCard
             name={session.user.name ?? null}
             email={session.user.email ?? null}
             isAdmin={isAdmin}
           />
-        </section>
+        </SettingsAccordionSection>
 
         {/* フォロー */}
-        <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-            フォロー
-          </h2>
+        <SettingsAccordionSection icon={<Heart className="h-4 w-4" />} title="フォロー">
           <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
             フォロー中 {followingCount}人 ／ フォロワー {followerCount}人
           </p>
           <Button render={<Link href="/settings/follows" />} nativeButton={false} size="sm">
             一覧表示
           </Button>
-        </section>
+        </SettingsAccordionSection>
 
         {/* 近隣図書館の設定 */}
-        <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-          <h2 className="mb-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-            近隣図書館の設定
-          </h2>
+        <SettingsAccordionSection icon={<Library className="h-4 w-4" />} title="近隣図書館の設定">
           <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
             登録した図書館の貸出状況を本一覧から確認できます。
           </p>
           <LibrarySettings />
-        </section>
+        </SettingsAccordionSection>
 
         {/* 秘密の言葉 */}
         {hasPasswordLogin && (
-          <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <h2 className="mb-1 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              秘密の言葉
-            </h2>
+          <SettingsAccordionSection icon={<KeyRound className="h-4 w-4" />} title="秘密の言葉">
             <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
               パスワードを忘れた際の本人確認に使用します。設定しない場合、パスワードリセットは行えません。
             </p>
             <SecretWordForm isSet={hasSecretWord} />
-          </section>
+          </SettingsAccordionSection>
         )}
 
         {/* アカウント削除 */}
         {!isAdmin && (
-          <section className="rounded-xl border border-red-200 bg-white p-5 dark:border-red-900 dark:bg-zinc-900">
-            <h2 className="mb-2 text-base font-semibold text-red-600 dark:text-red-400">
-              アカウント削除
-            </h2>
+          <SettingsAccordionSection
+            icon={<Trash2 className="h-4 w-4" />}
+            title="アカウント削除"
+            className="border border-red-200 dark:border-red-900"
+            titleClassName="text-red-600 dark:text-red-400"
+          >
             <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
               アカウントを削除すると、すべてのデータ（読書記録・感想・お気に入りなど）が完全に削除されます。この操作は取り消せません。
             </p>
             <DeleteAccountButton />
-          </section>
+          </SettingsAccordionSection>
         )}
       </div>
     </div>
