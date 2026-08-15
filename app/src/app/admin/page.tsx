@@ -247,6 +247,7 @@ export default function AdminPage() {
   const [registerFormOpen, setRegisterFormOpen] = useState(false);
   const [nearbyLibrariesOpen, setNearbyLibrariesOpen] = useState(false);
   const [followsOpen, setFollowsOpen] = useState(false);
+  const [follows, setFollows] = useState<{ id: number; name: string }[]>([]);
   const [accountInfoOpen, setAccountInfoOpen] = useState(false);
   const [awardsOpen, setAwardsOpen] = useState(false);
   const [selectedAwardEntryForDetail, setSelectedAwardEntryForDetail] = useState<AwardEntry | null>(null);
@@ -306,6 +307,12 @@ export default function AdminPage() {
     adminFetch("/api/admin/users")
       .then((res) => res.json())
       .then((data: UserRow[]) => setUsers(data));
+  }, [adminFetch]);
+
+  useEffect(() => {
+    adminFetch("/api/admin/follows")
+      .then((res) => res.json())
+      .then((data: { id: number; name: string }[]) => setFollows(data));
   }, [adminFetch]);
 
   async function executeDeleteUser() {
@@ -765,7 +772,7 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            {/* フォロー関係（プロトタイプ・ダミー表示） */}
+            {/* フォロー関係 */}
             <Card className="mb-6">
               <CardHeader className="pb-3">
                 <CardTitle>
@@ -784,24 +791,27 @@ export default function AdminPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className={`${followsOpen ? "" : "hidden"} lg:block`}>
-                <p className="mb-3 text-xs text-muted-foreground">※プロトタイプのダミー表示です。</p>
-                <ul className="flex flex-col gap-2">
-                  {["テスト太郎", "E2EUser A", "テスト花子"].map((name) => (
-                    <li
-                      key={name}
-                      className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                    >
-                      <span className="text-zinc-800 dark:text-zinc-200">{name}</span>
-                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                        フォロー中
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                {follows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">フォロー中のユーザーはいません。</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {follows.map((user) => (
+                      <li
+                        key={user.id}
+                        className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                      >
+                        <span className="text-zinc-800 dark:text-zinc-200">{user.name}</span>
+                        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                          フォロー中
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </CardContent>
             </Card>
 
-            {/* 自分のアカウント情報（プロトタイプ・ダミー表示） */}
+            {/* 自分のアカウント情報 */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle>
@@ -820,19 +830,20 @@ export default function AdminPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className={`${accountInfoOpen ? "" : "hidden"} lg:block`}>
-                <p className="mb-3 text-xs text-muted-foreground">※プロトタイプのダミー表示です。</p>
                 <dl className="flex flex-col gap-2 text-sm">
                   <div className="flex justify-between border-b border-zinc-100 py-2 dark:border-zinc-800">
                     <dt className="text-zinc-500 dark:text-zinc-400">名前</dt>
-                    <dd className="text-zinc-800 dark:text-zinc-200">{session?.user?.name ?? "テスト管理者"}</dd>
+                    <dd className="text-zinc-800 dark:text-zinc-200">{session?.user?.name}</dd>
                   </div>
                   <div className="flex justify-between border-b border-zinc-100 py-2 dark:border-zinc-800">
                     <dt className="text-zinc-500 dark:text-zinc-400">メールアドレス</dt>
-                    <dd className="text-zinc-800 dark:text-zinc-200">{session?.user?.email ?? "admin@example.com"}</dd>
+                    <dd className="text-zinc-800 dark:text-zinc-200">{session?.user?.email}</dd>
                   </div>
                   <div className="flex justify-between py-2">
                     <dt className="text-zinc-500 dark:text-zinc-400">ロール</dt>
-                    <dd className="text-zinc-800 dark:text-zinc-200">管理者</dd>
+                    <dd className="text-zinc-800 dark:text-zinc-200">
+                      {session?.user?.role === "admin" ? "管理者" : session?.user?.role}
+                    </dd>
                   </div>
                 </dl>
               </CardContent>
