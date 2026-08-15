@@ -18,6 +18,7 @@ import {
   Settings,
   UserCog,
   Mail,
+  Info,
 } from "lucide-react";
 
 const MAIN_LINKS = [
@@ -29,6 +30,7 @@ const MAIN_LINKS = [
 const ACCOUNT_LINKS = [
   { href: "/favorite-authors", label: "お気に入り著者", icon: Heart },
   { href: "/books/search", label: "本を探す", icon: Search },
+  { href: "/about", label: "このアプリについて", icon: Info },
 ];
 
 export function Sidebar() {

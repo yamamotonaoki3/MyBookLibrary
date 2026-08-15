@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { searchBooks } from "@/lib/rakuten";
 import { logger } from "@/lib/logger";
-
-// salesDate の形式 "2024年01月" や "2024年01月15日" を Date に変換する
-function parseSalesDate(salesDate: string): Date | null {
-  const match = salesDate.match(/(\d{4})年(\d{2})月(?:(\d{2})日)?/);
-  if (!match) return null;
-  const year = parseInt(match[1]);
-  const month = parseInt(match[2]) - 1;
-  const day = match[3] ? parseInt(match[3]) : 1;
-  return new Date(year, month, day);
-}
+import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 
 function isWithinOneWeek(date: Date): boolean {
   const oneWeekAgo = new Date();
@@ -54,7 +45,7 @@ export async function GET(req: NextRequest) {
 
     const newBooks = books.filter((book) => {
       if (!book.isbn) return false;
-      const date = parseSalesDate(book.salesDate);
+      const date = parseSalesDateToUtcDate(book.salesDate);
       return date !== null && isWithinOneWeek(date);
     });
 

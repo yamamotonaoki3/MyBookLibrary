@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 import { z } from "zod";
 
 const EditBookSchema = z.object({
@@ -11,16 +12,6 @@ const EditBookSchema = z.object({
   coverImageUrl: z.string().url().optional().nullable(),
   publishedAt: z.string().optional().nullable(),
 });
-
-function parseSalesDate(salesDate: string): Date {
-  const match = salesDate.match(/(\d{4})年(\d{2})月(?:(\d{2})日)?/);
-  if (!match) return new Date();
-  const year = parseInt(match[1]);
-  const month = parseInt(match[2]) - 1;
-  const day = match[3] ? parseInt(match[3]) : 1;
-  // DATE列にUTC日付として保存されるため、ローカルタイムゾーンだと1日ずれる
-  return new Date(Date.UTC(year, month, day));
-}
 
 export async function PATCH(
   request: Request,
@@ -57,6 +48,14 @@ export async function PATCH(
 
     const { title, author, isbn, coverImageUrl, publishedAt } = parsed.data;
 
+    let publishedAtDate: Date | null = null;
+    if (publishedAt) {
+      publishedAtDate = parseSalesDateToUtcDate(publishedAt);
+      if (!publishedAtDate) {
+        return Response.json({ error: "出版年月日の形式が正しくありません" }, { status: 400 });
+      }
+    }
+
     const normalizedAuthor = normalizeAuthorName(author);
     let authorRecord = await prisma.author.findFirst({
       where: { name: normalizedAuthor },
@@ -72,7 +71,7 @@ export async function PATCH(
         authorId: authorRecord.id,
         isbn: isbn || null,
         coverImageUrl: coverImageUrl ?? null,
-        publishedAt: publishedAt ? parseSalesDate(publishedAt) : book.publishedAt,
+        publishedAt: publishedAtDate ?? book.publishedAt,
       },
       include: { author: true },
     });

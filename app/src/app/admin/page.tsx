@@ -35,6 +35,7 @@ import type { UserItem } from "@/lib/followsListData";
 import type { RecommendedUser } from "@/lib/userRecommendations";
 import { AuditLogsView } from "./audit-logs/AuditLogsView";
 import { useAdminFetch } from "@/lib/adminFetch";
+import { BookEnrichmentPanel } from "./_components/BookEnrichmentPanel";
 
 type AdminTab = "settings" | "audit" | "management";
 
@@ -1953,6 +1954,8 @@ export default function AdminPage() {
                 )}
               </div>
             )}
+
+            <BookEnrichmentPanel adminFetch={adminFetch} />
           </div>
         </div>
       )}

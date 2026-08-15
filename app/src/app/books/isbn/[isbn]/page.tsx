@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { searchBooksByIsbn } from "@/lib/rakuten";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
+import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -10,15 +11,6 @@ export const dynamic = "force-dynamic";
 type Props = {
   params: Promise<{ isbn: string }>;
 };
-
-function parseSalesDate(salesDate: string): Date {
-  const match = salesDate.match(/(\d{4})年(\d{2})月(?:(\d{2})日)?/);
-  if (!match) return new Date();
-  const year = parseInt(match[1]);
-  const month = parseInt(match[2]) - 1;
-  const day = match[3] ? parseInt(match[3]) : 1;
-  return new Date(year, month, day);
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { isbn } = await params;
@@ -56,7 +48,9 @@ export default async function BookIsbnPage({ params }: Props) {
       authorId: authorRecord.id,
       isbn: rakutenBook.isbn || isbn,
       coverImageUrl: rakutenBook.largeImageUrl || null,
-      publishedAt: rakutenBook.salesDate ? parseSalesDate(rakutenBook.salesDate) : new Date(),
+      publishedAt: rakutenBook.salesDate
+        ? (parseSalesDateToUtcDate(rakutenBook.salesDate) ?? new Date())
+        : new Date(),
     },
   });
 

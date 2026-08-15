@@ -37,6 +37,11 @@ variable "cron_secret" {
   sensitive = true
 }
 
+variable "enrichment_tick_secret" {
+  type      = string
+  sensitive = true
+}
+
 variable "nextauth_url" {
   type = string
 }
@@ -60,17 +65,18 @@ variable "calil_api_key" {
 # ──────────────────────────────────────────────
 locals {
   params = {
-    AUTH_SECRET         = var.auth_secret
-    AUTH_GOOGLE_ID      = var.auth_google_id
-    AUTH_GOOGLE_SECRET  = var.auth_google_secret
-    DATABASE_URL        = var.database_url
-    RAKUTEN_APP_ID      = var.rakuten_app_id
-    RAKUTEN_ACCESS_KEY  = var.rakuten_access_key
-    CALIL_API_KEY       = var.calil_api_key
-    CRON_SECRET         = var.cron_secret
-    NEXTAUTH_URL        = var.nextauth_url
-    SEED_ADMIN_EMAIL    = var.seed_admin_email
-    SEED_ADMIN_PASSWORD = var.seed_admin_password
+    AUTH_SECRET            = var.auth_secret
+    AUTH_GOOGLE_ID         = var.auth_google_id
+    AUTH_GOOGLE_SECRET     = var.auth_google_secret
+    DATABASE_URL           = var.database_url
+    RAKUTEN_APP_ID         = var.rakuten_app_id
+    RAKUTEN_ACCESS_KEY     = var.rakuten_access_key
+    CALIL_API_KEY          = var.calil_api_key
+    CRON_SECRET            = var.cron_secret
+    ENRICHMENT_TICK_SECRET = var.enrichment_tick_secret
+    NEXTAUTH_URL           = var.nextauth_url
+    SEED_ADMIN_EMAIL       = var.seed_admin_email
+    SEED_ADMIN_PASSWORD    = var.seed_admin_password
   }
 }
 

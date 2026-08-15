@@ -4,14 +4,7 @@ import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
-
-function parsePublishedAt(raw: string | null | undefined): Date {
-  if (!raw) return new Date();
-  const m = raw.match(/(\d{4})年(\d{2})月/);
-  if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, 1);
-  const d = new Date(raw);
-  return isNaN(d.getTime()) ? new Date() : d;
-}
+import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 
 type ParsedRow = {
   title: string;
@@ -169,13 +162,17 @@ export async function POST(request: NextRequest) {
 
         if (!book) {
           // 管理者代理登録のため createdByUserId は意図的に設定しない
+          const parsedPublishedAt = parseSalesDateToUtcDate(row.publishedAt, {
+            allowIsoFallback: true,
+          });
           book = await prisma.book.create({
             data: {
               title: row.title,
               authorId,
               isbn: row.isbn,
               coverImageUrl: row.coverImageUrl,
-              publishedAt: parsePublishedAt(row.publishedAt),
+              publishedAt: parsedPublishedAt ?? new Date(),
+              publishedAtUnknown: parsedPublishedAt === null,
             },
             select: { id: true, isbn: true, title: true, authorId: true },
           });

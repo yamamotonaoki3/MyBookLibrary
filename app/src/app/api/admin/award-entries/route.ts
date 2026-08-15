@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 
 export async function GET() {
   const { error } = await requireAdminSession();
@@ -22,22 +23,6 @@ export async function GET() {
     logger.error({ err: error }, "[GET /api/admin/award-entries]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }
-}
-
-// "2024年01月15日" "2024年01月" "20240115" などを Date に変換する
-function parsePublishedAt(raw: string | null | undefined): Date {
-  if (!raw) return new Date();
-  // "2024年01月15日" or "2024年01月"
-  const mJa = raw.match(/(\d{4})年(\d{1,2})月(?:(\d{1,2})日)?/);
-  if (mJa) {
-    return new Date(
-      parseInt(mJa[1]),
-      parseInt(mJa[2]) - 1,
-      mJa[3] ? parseInt(mJa[3]) : 1
-    );
-  }
-  const d = new Date(raw);
-  return isNaN(d.getTime()) ? new Date() : d;
 }
 
 export async function POST(request: NextRequest) {
@@ -81,7 +66,8 @@ export async function POST(request: NextRequest) {
           authorId: authorRecord.id,
           isbn: isbn || null,
           coverImageUrl: coverImageUrl ?? null,
-          publishedAt: parsePublishedAt(publishedAt),
+          publishedAt:
+            parseSalesDateToUtcDate(publishedAt, { allowIsoFallback: true }) ?? new Date(),
         },
       });
     }

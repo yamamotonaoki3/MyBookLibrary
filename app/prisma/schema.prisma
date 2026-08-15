@@ -106,19 +106,21 @@ model Author {
 }
 
 model Book {
-  id              Int             @id @default(autoincrement())
-  authorId        Int             @map("author_id")
-  title           String
-  isbn            String?         @unique
-  publishedAt     DateTime        @map("published_at") @db.Date
-  coverImageUrl   String?         @map("cover_image_url")
-  source          String          @default("rakuten")
-  createdByUserId Int?            @map("created_by_user_id")
-  author          Author          @relation(fields: [authorId], references: [id])
-  createdByUser   User?           @relation("BookCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  awardEntries    AwardEntry[]
-  readingStatuses ReadingStatus[]
-  reviews         Review[]
+  id                 Int                  @id @default(autoincrement())
+  authorId           Int                  @map("author_id")
+  title              String
+  isbn               String?              @unique
+  publishedAt        DateTime             @map("published_at") @db.Date
+  publishedAtUnknown Boolean              @default(false) @map("published_at_unknown")
+  coverImageUrl      String?              @map("cover_image_url")
+  source             String               @default("rakuten")
+  createdByUserId    Int?                 @map("created_by_user_id")
+  author             Author               @relation(fields: [authorId], references: [id])
+  createdByUser      User?                @relation("BookCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  awardEntries       AwardEntry[]
+  readingStatuses    ReadingStatus[]
+  reviews            Review[]
+  enrichmentItems    BookEnrichmentItem[]
 
   @@map("books")
 }
@@ -271,4 +273,37 @@ model AuditLog {
   @@index([actorUserId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model BookEnrichmentJob {
+  id              Int                  @id @default(autoincrement())
+  status          String               @default("pending") // pending | running | completed | failed
+  activeSlot      String?              @unique @map("active_slot")
+  totalCount      Int                  @default(0) @map("total_count")
+  doneCount       Int                  @default(0) @map("done_count")
+  successCount    Int                  @default(0) @map("success_count")
+  failCount       Int                  @default(0) @map("fail_count")
+  startedByUserId Int?                 @map("started_by_user_id")
+  startedAt       DateTime?            @map("started_at")
+  finishedAt      DateTime?            @map("finished_at")
+  lastTickAt      DateTime?            @map("last_tick_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  items           BookEnrichmentItem[]
+
+  @@index([status])
+  @@map("book_enrichment_jobs")
+}
+
+model BookEnrichmentItem {
+  id           Int      @id @default(autoincrement())
+  jobId        Int      @map("job_id")
+  bookId       Int      @map("book_id")
+  status       String   @default("pending") // pending | processing | done | error
+  errorMessage String?  @db.Text @map("error_message")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  job          BookEnrichmentJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  book         Book              @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, status])
+  @@map("book_enrichment_items")
 }
