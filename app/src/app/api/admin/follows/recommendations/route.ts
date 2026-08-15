@@ -1,4 +1,4 @@
-import { getFollowsListData } from "@/lib/followsListData";
+import { getRecommendedUsers } from "@/lib/userRecommendations";
 import { requireAdminSession } from "@/lib/session";
 import { NextResponse } from "next/server";
 
@@ -6,7 +6,7 @@ export async function GET() {
   const { userId, error } = await requireAdminSession();
   if (error) return error;
 
-  const data = await getFollowsListData(userId);
+  const recommendations = await getRecommendedUsers(userId);
 
-  return NextResponse.json(data);
+  return NextResponse.json(recommendations);
 }

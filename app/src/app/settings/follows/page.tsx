@@ -2,22 +2,15 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
 import FollowButton from "@/app/_components/FollowButton";
 import { getRecommendedUsers } from "@/lib/userRecommendations";
+import { getFollowsListData, type UserItem } from "@/lib/followsListData";
 import { RecommendedFollows } from "./_components/RecommendedFollows";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "フォロー管理 | MyBookLibrary",
-};
-
-type UserItem = {
-  id: number;
-  name: string;
-  isMutual: boolean;
-  following: boolean;
 };
 
 function UserList({ users, emptyText }: { users: UserItem[]; emptyText: string }) {
@@ -63,36 +56,10 @@ export default async function FollowsPage() {
 
   const myUserId = Number(session.user.id);
 
-  const [followingRows, followerRows] = await Promise.all([
-    prisma.follow.findMany({
-      where: { followerId: myUserId },
-      select: { following: { select: { id: true, name: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.follow.findMany({
-      where: { followingId: myUserId },
-      select: { follower: { select: { id: true, name: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
+  const [{ following, followers }, recommendations] = await Promise.all([
+    getFollowsListData(myUserId),
+    getRecommendedUsers(myUserId),
   ]);
-
-  const recommendations = await getRecommendedUsers(myUserId);
-
-  const followingIds = new Set(followingRows.map((r) => r.following.id));
-  const followerIds = new Set(followerRows.map((r) => r.follower.id));
-
-  const following: UserItem[] = followingRows.map((r) => ({
-    id: r.following.id,
-    name: r.following.name,
-    isMutual: followerIds.has(r.following.id),
-    following: true,
-  }));
-  const followers: UserItem[] = followerRows.map((r) => ({
-    id: r.follower.id,
-    name: r.follower.name,
-    isMutual: followingIds.has(r.follower.id),
-    following: followingIds.has(r.follower.id),
-  }));
 
   return (
     <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">

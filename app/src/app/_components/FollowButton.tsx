@@ -7,12 +7,14 @@ type Props = {
   targetUserId: number;
   targetUserName: string;
   initialFollowing: boolean;
+  onChanged?: () => void;
 };
 
 export default function FollowButton({
   targetUserId,
   targetUserName,
   initialFollowing,
+  onChanged,
 }: Props) {
   const router = useRouter();
   const [following, setFollowing] = useState(initialFollowing);
@@ -33,6 +35,7 @@ export default function FollowButton({
       if (res.ok || res.status === 409) {
         setFollowing(!following);
         router.refresh();
+        onChanged?.();
       }
     } catch {
       // 失敗時は状態を変えない
