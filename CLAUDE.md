@@ -100,7 +100,7 @@ docs: 要件定義書を追加
 | フロントエンド | Next.js 16 (React 19) + TypeScript |
 | バックエンド | Next.js API Routes（同一プロジェクト内） |
 | データベース | MySQL 8.4 |
-| ORM | Prisma 7 |
+| ORM | Prisma 6 |
 | スタイリング | Tailwind CSS v4 |
 | コンテナ | Docker |
 | 認証 | 未定（NextAuth.js 候補） |

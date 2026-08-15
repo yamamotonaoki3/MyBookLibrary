@@ -52,9 +52,11 @@
 | スタイリング | Tailwind CSS v4 + shadcn/ui |
 | テスト | Jest + ts-jest |
 | コンテナ | Docker（開発時の MySQL 用） |
-| 外部 API | 楽天ブックス API・国立国会図書館 API（NDL） |
+| 外部 API | 楽天ブックス API・国立国会図書館 API（NDL）・カーリル API |
 | PWA | @ducanh2912/next-pwa |
 | デプロイ | AWS（EC2 + RDS + CloudFront） |
+
+E2E テストには Playwright を使用（詳細は下記「テスト」参照）。
 
 ## 開発環境の起動
 
@@ -93,6 +95,7 @@ MyBookLibrary/
 │   └── src/
 │       ├── app/              # App Router（ページ・API Routes）
 │       │   ├── api/          # API エンドポイント
+│       │   ├── _components/  # 共通コンポーネント
 │       │   └── (auth)/       # 認証ページ（login・register・forgot-password）
 │       ├── lib/              # サーバーサイドユーティリティ
 │       ├── types/            # TypeScript 型定義
