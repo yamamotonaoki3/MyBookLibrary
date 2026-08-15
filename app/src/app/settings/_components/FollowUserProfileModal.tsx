@@ -103,7 +103,7 @@ export function FollowUserProfileModal({ targetUserId, targetUserName }: Props) 
                   読まれている本
                 </h3>
                 {data.readingBooks.length === 0 ? (
-                  <p className="text-sm text-zinc-500">読書中・読了の本はまだありません。</p>
+                  <p className="text-sm text-zinc-500">まだ本が登録されていません。</p>
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {data.readingBooks.map((rb) => (

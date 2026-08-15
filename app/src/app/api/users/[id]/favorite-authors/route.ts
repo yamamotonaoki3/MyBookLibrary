@@ -4,7 +4,7 @@ import { getAuthenticatedUserId } from "@/lib/session";
 
 type Props = { params: Promise<{ id: string }> };
 
-const READING_STATUSES = ["reading", "read"] as const;
+const READING_STATUSES = ["want_to_read", "reading", "read"] as const;
 
 export async function GET(request: NextRequest, { params }: Props) {
   const { userId: myUserId, error } = await getAuthenticatedUserId();
