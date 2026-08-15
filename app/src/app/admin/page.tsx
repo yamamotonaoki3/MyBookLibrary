@@ -22,6 +22,9 @@ import {
   Library,
   ScrollText,
   UserCog,
+  KeyRound,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -243,6 +246,10 @@ export default function AdminPage() {
   const [changingRoleUserId, setChangingRoleUserId] = useState<number | null>(null);
   const [roleChangeTargetUser, setRoleChangeTargetUser] = useState<UserRow | null>(null);
   const [selectedUserForDetail, setSelectedUserForDetail] = useState<UserRow | null>(null);
+  const [resettingPasswordUserId, setResettingPasswordUserId] = useState<number | null>(null);
+  const [resetPasswordTargetUser, setResetPasswordTargetUser] = useState<UserRow | null>(null);
+  const [tempPasswordResult, setTempPasswordResult] = useState<{ user: UserRow; tempPassword: string } | null>(null);
+  const [tempPasswordCopied, setTempPasswordCopied] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
   const [reportedReviewsOpen, setReportedReviewsOpen] = useState(false);
   const [csvImportModalOpen, setCsvImportModalOpen] = useState(false);
@@ -341,6 +348,22 @@ export default function AdminPage() {
       return;
     }
     setUsers((prev) => prev.filter((u) => u.id !== target.id));
+  }
+
+  async function executeResetPassword() {
+    if (!resetPasswordTargetUser) return;
+    const target = resetPasswordTargetUser;
+    setResettingPasswordUserId(target.id);
+    setResetPasswordTargetUser(null);
+    const res = await adminFetch(`/api/admin/users/${target.id}/reset-password`, { method: "POST" });
+    setResettingPasswordUserId(null);
+    if (!res.ok) {
+      alert("パスワードのリセットに失敗しました。");
+      return;
+    }
+    const data: { tempPassword: string } = await res.json();
+    setTempPasswordCopied(false);
+    setTempPasswordResult({ user: target, tempPassword: data.tempPassword });
   }
 
   async function executeChangeUserRole() {
@@ -1723,6 +1746,15 @@ export default function AdminPage() {
       />
 
       <ConfirmDialog
+        open={resetPasswordTargetUser !== null}
+        onOpenChange={(open) => { if (!open) setResetPasswordTargetUser(null); }}
+        title="パスワードを強制リセットしますか？"
+        description={`「${resetPasswordTargetUser?.name}」（${resetPasswordTargetUser?.email}）のパスワードを新しい一時パスワードに差し替えます。本人は次回ログイン後、必ず新しいパスワードへの変更を求められます。`}
+        confirmLabel="リセットする"
+        onConfirm={executeResetPassword}
+      />
+
+      <ConfirmDialog
         open={deleteTargetManualBook !== null}
         onOpenChange={(open) => { if (!open) setDeleteTargetManualBook(null); }}
         title="この本を削除しますか？"
@@ -1793,6 +1825,15 @@ export default function AdminPage() {
                         {isAdmin ? "管理者権限を外す" : "管理者にする"}
                       </Button>
                     )}
+                    {!isMyself && (
+                      <Button
+                        variant="outline"
+                        onClick={() => { setResetPasswordTargetUser(user); setSelectedUserForDetail(null); }}
+                        disabled={resettingPasswordUserId === user.id}
+                      >
+                        <KeyRound className="mr-1 h-4 w-4" />パスワードを強制リセット
+                      </Button>
+                    )}
                     {canDelete && (
                       <Button
                         variant="destructive"
@@ -1807,6 +1848,42 @@ export default function AdminPage() {
                 </>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* 一時パスワード表示モーダル */}
+      {tempPasswordResult && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200"
+        >
+          <div className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 animate-in fade-in zoom-in-95 duration-200">
+            <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              一時パスワードを発行しました
+            </h2>
+            <p className="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+              「{tempPasswordResult.user.name}」（{tempPasswordResult.user.email}）用の一時パスワードです。
+              この画面を閉じると再表示できません。電話や社内チャットなど、メール以外の安全な方法で本人にお伝えください。
+            </p>
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+              <code className="flex-1 select-all break-all text-sm font-mono text-zinc-900 dark:text-zinc-50">
+                {tempPasswordResult.tempPassword}
+              </code>
+              <button
+                type="button"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(tempPasswordResult.tempPassword);
+                  setTempPasswordCopied(true);
+                }}
+                className="shrink-0 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                aria-label="コピー"
+              >
+                {tempPasswordCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </button>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => setTempPasswordResult(null)}>閉じる</Button>
+            </div>
           </div>
         </div>
       )}

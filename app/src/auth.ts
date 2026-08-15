@@ -54,6 +54,7 @@ export async function authorizeCredentials(
     email: user.email,
     name: user.name,
     role: user.role,
+    mustChangePassword: user.mustChangePassword,
   };
 }
 
@@ -120,16 +121,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.name = (user as { name?: string | null }).name ?? null;
         token.role = (user as { role?: string }).role ?? "user";
+        token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
       }
-      // update() が呼ばれた時点でのDBの最新roleを反映する（Issue #417の
-      // クライアント側キャッシュ問題への対応）
+      // update() が呼ばれた時点でのDBの最新role・mustChangePasswordを反映する
+      // （Issue #417のクライアント側キャッシュ問題への対応）
       if (trigger === "update" && token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: Number(token.id) },
-          select: { role: true },
+          select: { role: true, mustChangePassword: true },
         });
         if (dbUser) {
           token.role = dbUser.role;
+          token.mustChangePassword = dbUser.mustChangePassword;
         }
       }
       // token.name が未設定の旧JWTのみDBから1回補完（null は再クエリしない）
@@ -144,12 +147,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === "google" && token.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email },
-          select: { id: true, name: true, role: true },
+          select: { id: true, name: true, role: true, mustChangePassword: true },
         });
         if (dbUser) {
           token.id = String(dbUser.id);
           token.role = dbUser.role;
           token.name = dbUser.name;
+          token.mustChangePassword = dbUser.mustChangePassword;
         }
       }
       return token;
@@ -159,6 +163,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.name = (token.name as string | null) ?? null;
         session.user.role = (token.role as string) ?? "user";
+        // mustChangePasswordはJWT発行後に管理者操作で変わりうるため、
+        // クライアント側の強制リダイレクトができるだけ早く追従するよう
+        // セッション参照のたびにDBの最新値で上書きする（サーバー側の実際の
+        // アクセス制御はgetAuthenticatedUserId/requireAdminSessionが担う）。
+        const dbUser = token.id
+          ? await prisma.user.findUnique({
+              where: { id: Number(token.id) },
+              select: { mustChangePassword: true },
+            })
+          : null;
+        session.user.mustChangePassword =
+          dbUser?.mustChangePassword ?? (token.mustChangePassword as boolean) ?? false;
       }
       return session;
     },

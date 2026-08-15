@@ -62,6 +62,20 @@ export const SecretWordSchema = z.object({
     .max(50, "秘密の言葉は50文字以内で入力してください"),
 });
 
+export const ChangePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "現在のパスワードを入力してください"),
+    password: z
+      .string()
+      .min(8, "パスワードは8文字以上で入力してください")
+      .max(100, "パスワードは100文字以内で入力してください"),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "パスワードが一致しません",
+    path: ["confirmPassword"],
+  });
+
 export const AuditLogQuerySchema = z.object({
   eventType: z.string().optional(),
   actorUserId: z.coerce.number().int().positive().optional(),

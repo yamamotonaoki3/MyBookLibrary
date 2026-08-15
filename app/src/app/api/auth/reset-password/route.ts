@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
       where: { id: user.id },
       data: {
         password: hashed,
+        mustChangePassword: false,
         loginFailCount: 0,
         lockedUntil: null,
         secretWordFailCount: 0,
