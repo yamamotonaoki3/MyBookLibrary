@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { useSession } from "next-auth/react";
@@ -25,6 +26,8 @@ import {
   KeyRound,
   Copy,
   Check,
+  Info,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -875,6 +878,18 @@ export default function AdminPage() {
                 <LibrarySettings />
               </CardContent>
             </Card>
+
+            {/* このアプリについて */}
+            <Link
+              href="/about"
+              className="mt-6 flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              <span className="flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                このアプリについて
+              </span>
+              <ChevronRight className="h-4 w-4 text-zinc-400" />
+            </Link>
           </div>
         )}
 

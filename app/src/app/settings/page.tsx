@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { Users, Heart, Library, KeyRound, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Users, Heart, Library, KeyRound, Trash2, Info, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getFollowsListData } from "@/lib/followsListData";
 import { getRecommendedUsers } from "@/lib/userRecommendations";
@@ -87,6 +88,18 @@ export default async function SettingsPage() {
               <DeleteAccountButton />
             </SettingsAccordionSection>
           )}
+
+          {/* このアプリについて */}
+          <Link
+            href="/about"
+            className="mb-6 flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            <span className="flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              このアプリについて
+            </span>
+            <ChevronRight className="h-4 w-4 text-zinc-400" />
+          </Link>
         </div>
       </div>
     </div>
