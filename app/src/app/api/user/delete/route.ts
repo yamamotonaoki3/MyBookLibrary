@@ -25,7 +25,14 @@ export async function DELETE(request: NextRequest) {
 
   await prisma.$transaction([
     prisma.report.deleteMany({ where: { userId } }),
-    prisma.notification.deleteMany({ where: { userId } }),
+    prisma.notification.deleteMany({
+      where: {
+        OR: [
+          { userId },
+          { actorId: userId, type: { in: ["mutual_favorite_author", "mutual_want_to_read"] } },
+        ],
+      },
+    }),
     prisma.like.deleteMany({ where: { userId } }),
     prisma.review.deleteMany({ where: { userId } }),
     prisma.readingStatus.deleteMany({ where: { userId } }),

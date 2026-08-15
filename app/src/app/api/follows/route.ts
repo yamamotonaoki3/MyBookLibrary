@@ -123,7 +123,28 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.follow.delete({ where: { id: existing.id } });
+    const followedBack = await prisma.follow.findUnique({
+      where: {
+        followerId_followingId: { followerId: targetUserId, followingId: userId },
+      },
+      select: { id: true },
+    });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.follow.delete({ where: { id: existing.id } });
+
+      if (followedBack) {
+        await tx.notification.deleteMany({
+          where: {
+            type: { in: ["mutual_favorite_author", "mutual_want_to_read"] },
+            OR: [
+              { userId, actorId: targetUserId },
+              { userId: targetUserId, actorId: userId },
+            ],
+          },
+        });
+      }
+    });
 
     return NextResponse.json({ following: false });
   } catch (e) {

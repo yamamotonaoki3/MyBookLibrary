@@ -40,7 +40,7 @@ function UserList({
           >
             {u.name}
           </Link>
-          {u.isMutual && <FollowUserProfileModal targetUserId={u.id} targetUserName={u.name} />}
+          <FollowUserProfileModal targetUserId={u.id} targetUserName={u.name} />
           <span className="ml-auto">
             <FollowButton
               key={`${u.id}-${u.following}`}
@@ -88,6 +88,7 @@ function RecommendationList({
               </Link>
               <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">{namesLabel}</span>
             </div>
+            <FollowUserProfileModal targetUserId={rec.userId} targetUserName={rec.name} />
             <span className="ml-auto">
               <FollowButton
                 targetUserId={rec.userId}
