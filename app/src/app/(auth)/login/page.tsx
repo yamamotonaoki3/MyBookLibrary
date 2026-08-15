@@ -26,6 +26,18 @@ export default async function LoginPage({
           </p>
         )}
         <LoginForm error={params.error} callbackUrl={params.callbackUrl} />
+        <p className="mt-4 text-center text-[10px] text-muted-foreground">
+          本の書影・書誌情報の取得に楽天ブックスAPI（
+          <a
+            href="https://developers.rakuten.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-foreground"
+          >
+            Supported by Rakuten Developers
+          </a>
+          ）、書誌情報・ISBNの検索に国立国会図書館サーチのAPIを利用しています。
+        </p>
       </CardContent>
     </Card>
   );
