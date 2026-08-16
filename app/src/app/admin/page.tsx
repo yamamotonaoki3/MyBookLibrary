@@ -842,6 +842,7 @@ export default function AdminPage() {
                   followers={followsData.followers}
                   recommendations={followRecommendations}
                   onFollowChange={() => setFollowsRefreshKey((k) => k + 1)}
+                  viewAllHref="/settings/follows"
                 />
               </CardContent>
             </Card>
