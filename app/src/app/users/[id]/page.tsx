@@ -158,7 +158,7 @@ export default async function UserProfilePage({ params }: Props) {
                     className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"
                   >
                     <span
-                      className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+                      className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ${
                         rs.status === "read"
                           ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                           : rs.status === "reading"
@@ -170,11 +170,11 @@ export default async function UserProfilePage({ params }: Props) {
                     </span>
                     <Link
                       href={`/books/${rs.book.id}`}
-                      className="text-sm font-medium text-zinc-800 hover:underline dark:text-zinc-200"
+                      className="min-w-0 flex-1 truncate text-sm font-medium text-zinc-800 hover:underline dark:text-zinc-200"
                     >
                       {rs.book.title}
                     </Link>
-                    <span className="ml-auto text-xs text-zinc-500">
+                    <span className="ml-auto max-w-[35%] shrink-0 truncate text-xs text-zinc-500">
                       {rs.book.author.name}
                     </span>
                   </li>
