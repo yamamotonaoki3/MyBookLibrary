@@ -104,7 +104,8 @@ export default async function BookDetailPage({ params }: Props) {
   const publishedLabel = matched?.salesDate ?? buildPublishedLabel(book.publishedAt);
 
   return (
-    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
+    <div className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
+    <div className="flex-1 overflow-y-auto">
       {/* 書籍ヘッダー */}
       <div className="flex gap-4">
         <div className="relative h-36 w-24 shrink-0 overflow-hidden rounded-lg">
@@ -264,6 +265,7 @@ export default async function BookDetailPage({ params }: Props) {
           </ul>
         )}
       </section>
+    </div>
     </div>
   );
 }
