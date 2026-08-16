@@ -964,42 +964,44 @@ export default function AdminPage() {
                 {results.map((book, i) => (
                   <li
                     key={`${book.isbn || ""}_${i}`}
-                    className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"
+                    className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"
                   >
-                    <div className="relative h-16 w-10 flex-shrink-0 overflow-hidden rounded">
-                      {book.coverImageUrl ? (
-                        <Image
-                          src={book.coverImageUrl}
-                          alt={book.title}
-                          fill
-                          className="object-cover"
-                          sizes="40px"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-[9px] text-zinc-400 dark:bg-zinc-800">
-                          No Image
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 text-sm">
-                      <p className="font-semibold text-zinc-900 dark:text-zinc-50">{book.title}</p>
-                      <p className="text-zinc-500 dark:text-zinc-400">
-                        {book.author} / {book.salesDate}
-                      </p>
-                      <div className="mt-1 flex items-center gap-1.5">
+                    <div className="flex items-center gap-3">
+                      <div className="relative h-16 w-10 flex-shrink-0 overflow-hidden rounded">
+                        {book.coverImageUrl ? (
+                          <Image
+                            src={book.coverImageUrl}
+                            alt={book.title}
+                            fill
+                            className="object-cover"
+                            sizes="40px"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-[9px] text-zinc-400 dark:bg-zinc-800">
+                            No Image
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 text-sm">
+                        <p className="font-semibold text-zinc-900 dark:text-zinc-50">{book.title}</p>
+                        <p className="text-zinc-500 dark:text-zinc-400">{book.author}</p>
+                        <p className="text-zinc-500 dark:text-zinc-400">{book.salesDate}</p>
                         {book.size && (
-                          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                            {book.size}
-                          </span>
+                          <p className="mt-1">
+                            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                              {book.size}
+                            </span>
+                          </p>
                         )}
                         {book.isbn && (
-                          <span className="text-xs text-zinc-400">ISBN: {book.isbn}</span>
+                          <p className="mt-1 text-xs text-zinc-400">ISBN: {book.isbn}</p>
                         )}
                       </div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
+                      className="self-end"
                       onClick={() => handleSelect(book)}
                     >
                       選択
@@ -1915,13 +1917,26 @@ export default function AdminPage() {
               フォーマット（ヘッダー行任意）: title, author, isbn, coverImageUrl, publishedAt, awardId, year, type
             </p>
             <div className="flex flex-col gap-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
-                className="text-sm text-zinc-600 dark:text-zinc-400"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  ファイルを選択
+                </Button>
+                <span className="min-w-0 flex-1 truncate text-sm text-zinc-600 dark:text-zinc-400">
+                  {csvFile ? csvFile.name : "選択されていません"}
+                </span>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button
                   onClick={handleImport}

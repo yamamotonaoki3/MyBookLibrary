@@ -110,13 +110,13 @@ export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-1">
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end">
+            <div className="flex min-w-0 flex-col gap-1">
               <label className="text-xs text-zinc-500 dark:text-zinc-400">イベント種別</label>
               <select
                 value={eventType}
                 onChange={(e) => setEventType(e.target.value)}
-                className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
               >
                 <option value="">すべて</option>
                 {Object.entries(AUDIT_EVENT_LABEL).map(([value, label]) => (
@@ -126,34 +126,34 @@ export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {})
                 ))}
               </select>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <label className="text-xs text-zinc-500 dark:text-zinc-400">実行者ユーザーID</label>
               <input
                 type="number"
                 value={actorUserId}
                 onChange={(e) => setActorUserId(e.target.value)}
-                className="w-28 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 sm:w-28"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <label className="text-xs text-zinc-500 dark:text-zinc-400">開始日</label>
               <input
                 type="date"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
-                className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex min-w-0 flex-col gap-1">
               <label className="text-xs text-zinc-500 dark:text-zinc-400">終了日</label>
               <input
                 type="date"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
-                className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
-            <Button size="sm" onClick={() => fetchLogs(1)} disabled={loading}>
+            <Button size="sm" onClick={() => fetchLogs(1)} disabled={loading} className="col-span-2 sm:col-span-1">
               絞り込む
             </Button>
           </div>
