@@ -62,33 +62,35 @@ export default async function FollowsPage() {
   ]);
 
   return (
-    <div className="flex flex-col px-4 py-6 lg:px-8 lg:py-8">
-      <h1 className="mb-6 text-2xl font-bold tracking-tight lg:text-3xl">
+    <div className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
+      <h1 className="mb-6 shrink-0 text-2xl font-bold tracking-tight lg:text-3xl">
         フォロー管理
       </h1>
 
-      <div className="flex max-w-lg flex-col gap-8">
-        <section>
-          <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            フォロー中（{following.length}）
-          </h2>
-          <UserList
-            users={following}
-            emptyText="フォロー中のユーザーはいません。"
-          />
-        </section>
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex max-w-lg flex-col gap-8">
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              フォロー中（{following.length}）
+            </h2>
+            <UserList
+              users={following}
+              emptyText="フォロー中のユーザーはいません。"
+            />
+          </section>
 
-        <section>
-          <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            フォロワー（{followers.length}）
-          </h2>
-          <UserList
-            users={followers}
-            emptyText="フォロワーはまだいません。"
-          />
-        </section>
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              フォロワー（{followers.length}）
+            </h2>
+            <UserList
+              users={followers}
+              emptyText="フォロワーはまだいません。"
+            />
+          </section>
 
-        <RecommendedFollows recommendations={recommendations} />
+          <RecommendedFollows recommendations={recommendations} />
+        </div>
       </div>
     </div>
   );
