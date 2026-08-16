@@ -125,37 +125,36 @@ export function FollowsTabs({ following, followers, recommendations, onFollowCha
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-700">
-        <div role="tablist" className="flex flex-1 gap-1">
-          {TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              id={`${idPrefix}-tab-${key}`}
-              aria-controls={`${idPrefix}-tabpanel-${key}`}
-              aria-selected={activeTab === key}
-              tabIndex={activeTab === key ? 0 : -1}
-              onClick={() => setActiveTab(key)}
-              className={`min-w-0 flex-1 truncate border-b-2 px-1 py-2 text-xs font-medium transition-colors sm:text-sm ${
-                activeTab === key
-                  ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100"
-                  : "border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-              }`}
-            >
-              {label}（{counts[key]}）
-            </button>
-          ))}
-        </div>
-        {viewAllHref && (
-          <Link
-            href={viewAllHref}
-            className="mb-2 flex shrink-0 items-center gap-0.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+      {viewAllHref && (
+        <Link
+          href={viewAllHref}
+          className="mb-3 flex items-center gap-0.5 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+        >
+          一覧ページで見る
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      )}
+
+      <div role="tablist" className="mb-4 flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
+        {TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            id={`${idPrefix}-tab-${key}`}
+            aria-controls={`${idPrefix}-tabpanel-${key}`}
+            aria-selected={activeTab === key}
+            tabIndex={activeTab === key ? 0 : -1}
+            onClick={() => setActiveTab(key)}
+            className={`min-w-0 flex-1 truncate border-b-2 px-1 py-2 text-xs font-medium transition-colors sm:text-sm ${
+              activeTab === key
+                ? "border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100"
+                : "border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            }`}
           >
-            一覧ページで見る
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        )}
+            {label}（{counts[key]}）
+          </button>
+        ))}
       </div>
 
       <div
