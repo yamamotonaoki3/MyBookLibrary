@@ -32,6 +32,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { AccountInfoCard } from "@/app/settings/_components/AccountInfoCard";
 import { LibrarySettings } from "@/app/settings/_components/LibrarySettings";
 import { FollowsTabs } from "@/app/settings/_components/FollowsTabs";
 import type { UserItem } from "@/lib/followsListData";
@@ -809,22 +810,11 @@ export default function AdminPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className={`${accountInfoOpen ? "" : "hidden"} lg:block`}>
-                <dl className="flex flex-col gap-2 text-sm">
-                  <div className="flex justify-between border-b border-zinc-100 py-2 dark:border-zinc-800">
-                    <dt className="text-zinc-500 dark:text-zinc-400">名前</dt>
-                    <dd className="text-zinc-800 dark:text-zinc-200">{session?.user?.name}</dd>
-                  </div>
-                  <div className="flex justify-between border-b border-zinc-100 py-2 dark:border-zinc-800">
-                    <dt className="text-zinc-500 dark:text-zinc-400">メールアドレス</dt>
-                    <dd className="text-zinc-800 dark:text-zinc-200">{session?.user?.email}</dd>
-                  </div>
-                  <div className="flex justify-between py-2">
-                    <dt className="text-zinc-500 dark:text-zinc-400">ロール</dt>
-                    <dd className="text-zinc-800 dark:text-zinc-200">
-                      {session?.user?.role === "admin" ? "管理者" : session?.user?.role}
-                    </dd>
-                  </div>
-                </dl>
+                <AccountInfoCard
+                  name={session?.user?.name ?? null}
+                  email={session?.user?.email ?? null}
+                  isAdmin={session?.user?.role === "admin"}
+                />
               </CardContent>
             </Card>
 
