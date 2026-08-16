@@ -53,7 +53,12 @@ export default async function SettingsPage() {
 
           {/* フォロー */}
           <SettingsAccordionSection icon={<Heart className="h-4 w-4" />} title="フォロー">
-            <FollowsTabs following={following} followers={followers} recommendations={recommendations} />
+            <FollowsTabs
+              following={following}
+              followers={followers}
+              recommendations={recommendations}
+              viewAllHref="/settings/follows"
+            />
           </SettingsAccordionSection>
 
           {/* 近隣図書館の設定 */}
