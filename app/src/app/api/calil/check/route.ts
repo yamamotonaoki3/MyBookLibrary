@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkAvailability } from "@/lib/calil";
+import { isbn13ToIsbn10 } from "@/lib/isbn";
 import { searchBooksNdl } from "@/lib/ndl";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { logger } from "@/lib/logger";
@@ -38,8 +39,11 @@ export async function GET(request: NextRequest) {
     .filter((v): v is string => v !== null)
     .slice(0, 5);
 
-  // 楽天ISBNとNDL ISBNを結合（重複排除）
-  const isbns = [...new Set([isbn, ...ndlIsbns])];
+  // ISBN-10でしか蔵書がヒットしない図書館があるため変換して併用する
+  const isbn10 = isbn13ToIsbn10(isbn);
+
+  // 楽天ISBN・変換したISBN-10・NDL ISBNを結合（重複排除）
+  const isbns = [...new Set([isbn, ...(isbn10 ? [isbn10] : []), ...ndlIsbns])];
 
   try {
     const uniqueSystemids = [...new Set(libraries.map((l) => l.systemid))];
