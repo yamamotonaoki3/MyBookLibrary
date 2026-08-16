@@ -83,11 +83,11 @@ export function BookEnrichmentPanel({ adminFetch }: Props) {
 
   return (
     <div className="mt-4 rounded-md border border-zinc-200 p-4 dark:border-zinc-700">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex flex-col gap-2">
         <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-          未取得ISBN・書影・出版年を一括補完
+          データ不足を補完
         </h3>
-        <Button onClick={handleStart} disabled={starting || isRunning} size="sm">
+        <Button onClick={handleStart} disabled={starting || isRunning} size="sm" className="self-start">
           {isRunning ? "実行中..." : "一括補完を開始"}
         </Button>
       </div>

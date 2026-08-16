@@ -63,7 +63,7 @@ export function BookCard({ entry }: Props) {
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col justify-between gap-2">
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <span
@@ -84,11 +84,11 @@ export function BookCard({ entry }: Props) {
           </div>
 
           <Link href={`/books/${book.id}`}>
-            <h3 className="font-semibold leading-tight text-zinc-900 hover:underline dark:text-zinc-50">
+            <h3 className="break-words font-semibold leading-tight text-zinc-900 hover:underline dark:text-zinc-50">
               {book.title}
             </h3>
           </Link>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="mt-1 break-words text-sm text-zinc-500 dark:text-zinc-400">
             {book.author.name}
           </p>
         </div>
