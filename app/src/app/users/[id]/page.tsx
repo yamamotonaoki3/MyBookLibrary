@@ -158,7 +158,7 @@ export default async function UserProfilePage({ params }: Props) {
                     className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900"
                   >
                     <span
-                      className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ${
+                      className={`w-14 shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-center text-xs font-medium ${
                         rs.status === "read"
                           ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
                           : rs.status === "reading"
