@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { isPlausibleMatch } from "@/lib/matchUtils";
 
 // E2Eテストではローカルのスタブサーバーへ向ける（未指定時は本番エンドポイント）。
 // 詳細は docs/test-dependency-map.md「外部APIへの配慮」を参照。
@@ -12,6 +13,8 @@ export type NdlSearchBook = {
   isbn: string | null;
   publisherName: string;
   salesDate: string;
+  // <dcterms:extent>の生テキスト（例: "172p ; 20cm"）。判型判定(isLikelyHardcoverByExtent)に使う。
+  extent: string;
 };
 
 function extractTag(xml: string, localName: string): string {
@@ -57,7 +60,31 @@ function formatNdlDate(raw: string): string {
   return m[2] ? `${m[1]}年${m[2].padStart(2, "0")}月` : `${m[1]}年`;
 }
 
-function parseNdlRecords(xml: string): NdlSearchBook[] {
+/** cm数を判型判定に使えるようソートキー化する（"YYYY年MM月"/"YYYY年"いずれの形式にも対応）。 */
+function parseSalesDateForSortNdl(salesDate: string): number {
+  const match = salesDate.match(/(\d{4})年(?:(\d{2})月)?/);
+  if (!match) return Infinity;
+  const [, year, month = "01"] = match;
+  return new Date(`${year}-${month}-01`).getTime();
+}
+
+/**
+ * <dcterms:extent>タグ（例: "172p ; 20cm"）からcm数を抽出する。
+ * 小数点付き表記（例: "20.5cm"）にも対応する。
+ */
+export function parseExtentCm(extent: string): number | null {
+  const match = extent.match(/(\d+(?:\.\d+)?)\s*cm/);
+  return match ? parseFloat(match[1]) : null;
+}
+
+/** extentのcm数から「単行本らしい」かを判定する。新書は17〜18cm帯で境界が曖昧なため、保守的に18cm以上を単行本らしいとみなす。 */
+export function isLikelyHardcoverByExtent(extent: string): boolean {
+  const cm = parseExtentCm(extent);
+  return cm !== null && cm >= 18;
+}
+
+/** <recordData>群をNdlSearchBook[]にパースする（重複排除しない）。 */
+function parseNdlRecordsRaw(xml: string): NdlSearchBook[] {
   const recordRegex = /<(?:\w+:)?recordData>([\s\S]*?)<\/(?:\w+:)?recordData>/gi;
   const books: NdlSearchBook[] = [];
   let match;
@@ -70,14 +97,27 @@ function parseNdlRecords(xml: string): NdlSearchBook[] {
     const publisher = extractTag(rec, "publisher");
     const date = extractTag(rec, "date");
     const isbn = parseIsbn(extractAllTags(rec, "identifier"));
+    const extent = extractTag(rec, "extent");
     books.push({
       title,
       author,
       isbn,
       publisherName: publisher,
       salesDate: formatNdlDate(date),
+      extent,
     });
   }
+
+  return books;
+}
+
+/** 重複排除しない全件取得版（同タイトルの複数版を両方見る用途）。 */
+export function parseNdlRecordsAll(xml: string): NdlSearchBook[] {
+  return parseNdlRecordsRaw(xml);
+}
+
+function parseNdlRecords(xml: string): NdlSearchBook[] {
+  const books = parseNdlRecordsRaw(xml);
 
   // タイトル正規化で重複排除（最初の1件を保持）
   const seen = new Set<string>();
@@ -96,24 +136,24 @@ export type NdlSearchParams =
   // フィールド指定なしの全文検索。厳密検索が0件の場合のフォールバック専用（呼び出し側は結果を自動反映しないこと）
   | { type: "anywhere"; q: string; page: number };
 
-export async function searchBooksNdl(
-  params: NdlSearchParams
-): Promise<{ items: NdlSearchBook[]; totalPages: number }> {
-  let query: string;
-  if (params.type === "author") {
-    query = `creator="${params.q}"`;
-  } else if (params.type === "keyword") {
+function buildNdlQuery(params: NdlSearchParams): string {
+  if (params.type === "author") return `creator="${params.q}"`;
+  if (params.type === "keyword") {
     const parts = params.q.split(/[\s　]+/);
-    query = `title="${parts[0]}"`;
+    let query = `title="${parts[0]}"`;
     if (parts.length > 1) query += ` AND creator="${parts.slice(1).join(" ")}"`;
-  } else if (params.type === "titleAndAuthor") {
-    query = `title="${params.title}" AND creator="${params.author}"`;
-  } else if (params.type === "anywhere") {
-    query = `anywhere="${params.q}"`;
-  } else {
-    query = `title="${params.q}"`;
+    return query;
   }
+  if (params.type === "titleAndAuthor") return `title="${params.title}" AND creator="${params.author}"`;
+  if (params.type === "anywhere") return `anywhere="${params.q}"`;
+  return `title="${params.q}"`;
+}
 
+/** NDL SRU APIへ問い合わせ、生XMLと総件数を返す共通処理。 */
+async function fetchNdlXml(
+  params: NdlSearchParams
+): Promise<{ xml: string; total: number } | null> {
+  const query = buildNdlQuery(params);
   const startRecord = (params.page - 1) * HITS_PER_PAGE + 1;
   const urlParams = new URLSearchParams({
     operation: "searchRetrieve",
@@ -125,16 +165,55 @@ export async function searchBooksNdl(
 
   try {
     const res = await fetch(`${NDL_SRU_BASE}?${urlParams}`);
-    if (!res.ok) return { items: [], totalPages: 0 };
+    if (!res.ok) return null;
     const xml = await res.text();
     const totalMatch = xml.match(/<numberOfRecords>(\d+)<\/numberOfRecords>/);
     const total = totalMatch ? parseInt(totalMatch[1], 10) : 0;
-    const totalPages = Math.ceil(total / HITS_PER_PAGE);
-    const items = parseNdlRecords(xml);
-    return { items, totalPages };
+    return { xml, total };
   } catch {
-    return { items: [], totalPages: 0 };
+    return null;
   }
+}
+
+export async function searchBooksNdl(
+  params: NdlSearchParams
+): Promise<{ items: NdlSearchBook[]; totalPages: number }> {
+  const result = await fetchNdlXml(params);
+  if (!result) return { items: [], totalPages: 0 };
+  const totalPages = Math.ceil(result.total / HITS_PER_PAGE);
+  return { items: parseNdlRecords(result.xml), totalPages };
+}
+
+export type NdlHardcoverCandidate = NdlSearchBook & { isLikelyHardcover: boolean };
+
+/**
+ * titleAndAuthor検索を実行し、isPlausibleMatchを満たしISBNを持つ候補を、
+ * 単行本らしさ（isLikelyHardcoverByExtent）→出版日（最古）の順に並べて返す。
+ * 重複排除しないため、単行本・文庫等の複数版がそのまま候補として残る。
+ */
+export async function searchNdlHardcoverCandidates(params: {
+  title: string;
+  author: string;
+}): Promise<NdlHardcoverCandidate[]> {
+  const result = await fetchNdlXml({ type: "titleAndAuthor", title: params.title, author: params.author, page: 1 });
+  if (!result) return [];
+
+  return parseNdlRecordsAll(result.xml)
+    .filter((item) => item.isbn && isPlausibleMatch(item, params))
+    .map((item) => ({ ...item, isLikelyHardcover: isLikelyHardcoverByExtent(item.extent) }))
+    .sort((a, b) => {
+      if (a.isLikelyHardcover !== b.isLikelyHardcover) return a.isLikelyHardcover ? -1 : 1;
+      return parseSalesDateForSortNdl(a.salesDate) - parseSalesDateForSortNdl(b.salesDate);
+    });
+}
+
+/** searchNdlHardcoverCandidatesのうち単行本らしい最古の1件のみを返す（1件確定が必要な呼び出し元向け）。 */
+export async function searchNdlPreferHardcover(params: {
+  title: string;
+  author: string;
+}): Promise<NdlHardcoverCandidate | null> {
+  const candidates = await searchNdlHardcoverCandidates(params);
+  return candidates.find((c) => c.isLikelyHardcover) ?? null;
 }
 
 type NdlBook = {

@@ -8,6 +8,7 @@ export type ReviewCandidate = {
   author: string;
   isbn: string;
   lamp: "green" | "red";
+  isLikelyHardcover?: boolean;
 };
 
 export type ReviewItem = {
@@ -123,6 +124,11 @@ export function BookEnrichmentResultModal({
                             </span>
                             <span className="text-xs text-zinc-700 dark:text-zinc-300">
                               {candidate.title}（{candidate.author}）ISBN: {candidate.isbn}
+                              {candidate.isLikelyHardcover !== undefined && (
+                                <span className="ml-1 rounded bg-zinc-200 px-1 py-0.5 text-[10px] text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
+                                  {candidate.isLikelyHardcover ? "単行本" : "文庫等"}
+                                </span>
+                              )}
                             </span>
                           </div>
                           <Button

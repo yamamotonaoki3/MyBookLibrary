@@ -1,16 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { recordAuditEvent, AUDIT_EVENT } from "@/lib/auditLog";
-import { searchBooks, searchBooksByIsbn } from "@/lib/rakuten";
+import { searchBooksByIsbn } from "@/lib/rakuten";
 import { searchBooksNdl, searchBookByIsbn } from "@/lib/ndl";
 import { isPlausibleMatch } from "@/lib/matchUtils";
+import { collectEditionCandidates, NDL_WAIT_MS, RAKUTEN_WAIT_MS } from "@/lib/editionResolver";
 import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 import type { Prisma } from "@/generated/prisma";
 
-// 楽天・NDLとも実質的にQPS1程度が上限のため、呼び出し間に待機を挿入する。
-// NDLサーチAPIの利用規約でも多重アクセス（同時並行アクセス）は避けるよう明記されている。
-const RAKUTEN_WAIT_MS = 700;
-const NDL_WAIT_MS = 1100;
 const STALE_THRESHOLD_MS = 3 * 60 * 1000;
 
 function sleep(ms: number): Promise<void> {
@@ -25,6 +22,7 @@ type IsbnCandidate = {
   author: string;
   isbn: string;
   lamp: "green" | "red";
+  isLikelyHardcover?: boolean;
 };
 
 type ResultDetail = {
@@ -67,55 +65,42 @@ async function enrichBook(book: {
       isbn = ndlStrictMatch.isbn;
     }
 
-    // 1b. 楽天のタイトル+著者検索（CSVインポート由来のタイトル・著者名は
-    // 正確なことが前提のため、1回のAND検索で候補を絞り込む）。
-    // 候補が単一かつNDLで実在確認（グリーン）できた場合のみ自動反映し、
-    // それ以外（候補が複数、またはレッドのみ）は自動反映せず、
-    // 管理者が確認・選択できるよう候補一覧を記録するに留める。
+    // 1b. NDL単行本候補＋楽天のタイトル+著者検索（dedupe:false）をマージして候補収集する。
+    // 単行本・文庫等の複数版を1件に統合せず、isPlausibleMatchを満たす候補すべてを対象とする。
+    // 候補が単一かつ実在確認（グリーン）できた場合のみ自動反映し、それ以外（候補が複数、
+    // またはレッドのみ）は自動反映せず、管理者が確認・選択できるよう候補一覧を記録する。
     if (!isbn) {
-      // dedupe:false — 単行本・文庫など同一タイトル・著者の複数版を
-      // 別候補として扱えるようにする（重複排除するとISBN違いの版が
-      // 1件に潰れてしまい、管理者が選ぶ機会自体が失われるため）
-      const results = await searchBooks({
-        title: book.title,
-        author: book.author.name,
-        dedupe: false,
-      });
-      await sleep(RAKUTEN_WAIT_MS);
-      const seenIsbns = new Set<string>();
-      const plausible = results.filter((r) => {
-        if (!r.isbn || seenIsbns.has(r.isbn)) return false;
-        if (!isPlausibleMatch({ title: r.title, author: r.author }, target)) return false;
-        seenIsbns.add(r.isbn);
-        return true;
-      });
+      const merged = await collectEditionCandidates({ title: book.title, author: book.author.name });
 
-      if (plausible.length > 0) {
+      if (merged.length > 0) {
         const candidates: IsbnCandidate[] = [];
-        for (const candidate of plausible) {
-          const ndlBook = await searchBookByIsbn(candidate.isbn);
-          await sleep(NDL_WAIT_MS);
+        for (const candidate of merged) {
+          // NDL単行本候補は検索時点で既にNDLでの実在が確認済みのため、再確認は行わない。
+          // 楽天由来の候補のみNDLで実在確認する。
+          let lamp: "green" | "red";
+          if (candidate.origin === "ndl") {
+            lamp = "green";
+          } else {
+            const ndlBook = await searchBookByIsbn(candidate.isbn);
+            await sleep(NDL_WAIT_MS);
+            lamp = ndlBook ? "green" : "red";
+          }
           candidates.push({
             title: candidate.title,
             author: candidate.author,
             isbn: candidate.isbn,
-            lamp: ndlBook ? "green" : "red",
+            lamp,
+            isLikelyHardcover: candidate.isLikelyHardcover,
           });
         }
 
         const greenCandidates = candidates.filter((c) => c.lamp === "green");
         if (candidates.length === 1 && greenCandidates.length === 1) {
-          const sole = plausible[0];
-          isbn = sole.isbn;
-          coverImageUrl = coverImageUrl ?? sole.largeImageUrl ?? null;
-          if (book.publishedAtUnknown && sole.salesDate) {
-            publishedAt = parseSalesDateToUtcDate(sole.salesDate);
-          }
+          isbn = merged[0].isbn;
+          // 書影・出版年はフェーズ2で確定ISBNを基準に取得するため、ここでは設定しない。
         } else {
           return { status: "needs_review", resultDetail: { candidates } };
         }
-      } else if (results[0]) {
-        candidateNote = `候補「${results[0].title}」（${results[0].author}）は一致度が低いため自動反映しませんでした`;
       }
     }
 

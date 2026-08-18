@@ -126,7 +126,7 @@ export function isNonBookSize(size: string): boolean {
 }
 
 /** 形式の優先度（数値が小さいほど優先）: 単行本 > 新書 > 文庫 > その他 */
-function getSizePriority(size: string): number {
+export function getSizePriority(size: string): number {
   if (/単行本|ハードカバー|上製本/.test(size)) return 1;
   if (/新書/.test(size)) return 2;
   if (/文庫/.test(size)) return 3;
