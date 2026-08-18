@@ -283,6 +283,7 @@ model BookEnrichmentJob {
   doneCount       Int                  @default(0) @map("done_count")
   successCount    Int                  @default(0) @map("success_count")
   failCount       Int                  @default(0) @map("fail_count")
+  reviewCount     Int                  @default(0) @map("review_count")
   startedByUserId Int?                 @map("started_by_user_id")
   startedAt       DateTime?            @map("started_at")
   finishedAt      DateTime?            @map("finished_at")
@@ -298,8 +299,9 @@ model BookEnrichmentItem {
   id           Int      @id @default(autoincrement())
   jobId        Int      @map("job_id")
   bookId       Int      @map("book_id")
-  status       String   @default("pending") // pending | processing | done | error
+  status       String   @default("pending") // pending | processing | done | error | needs_review | dismissed
   errorMessage String?  @db.Text @map("error_message")
+  resultDetail Json?    @map("result_detail")
   updatedAt    DateTime @updatedAt @map("updated_at")
   job          BookEnrichmentJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
   book         Book              @relation(fields: [bookId], references: [id], onDelete: Cascade)

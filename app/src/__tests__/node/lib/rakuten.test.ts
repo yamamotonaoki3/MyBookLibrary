@@ -152,6 +152,21 @@ describe("rakuten", () => {
 
       expect(result).toHaveLength(1);
     });
+
+    it("dedupe:falseを指定すると重複除去せず全件返す（同一タイトル・著者の複数ISBNを候補として残す用途）", async () => {
+      mockFetchJson({
+        Items: [
+          makeBook({ title: "同じ本", isbn: "9784000000001", size: "単行本" }),
+          makeBook({ title: "同じ本", isbn: "9784000000002", size: "文庫" }),
+        ],
+        pageCount: 1,
+      });
+
+      const result = await searchBooks({ title: "同じ本", dedupe: false });
+
+      expect(result).toHaveLength(2);
+      expect(result.map((b) => b.isbn).sort()).toEqual(["9784000000001", "9784000000002"]);
+    });
   });
 
   describe("getAuthorBookCount", () => {

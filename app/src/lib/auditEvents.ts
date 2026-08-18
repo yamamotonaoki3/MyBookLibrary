@@ -17,6 +17,8 @@ export const AUDIT_EVENT = {
   ADMIN_PASSWORD_RESET_FORCED: "admin_password_reset_forced",
   ADMIN_BOOK_ENRICHMENT_STARTED: "admin_book_enrichment_started",
   ADMIN_BOOK_ENRICHMENT_COMPLETED: "admin_book_enrichment_completed",
+  ADMIN_BOOK_ENRICHMENT_CONFIRMED: "admin_book_enrichment_confirmed",
+  ADMIN_BOOK_ENRICHMENT_DISMISSED: "admin_book_enrichment_dismissed",
 } as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT)[keyof typeof AUDIT_EVENT];
@@ -40,4 +42,6 @@ export const AUDIT_EVENT_LABEL: Record<AuditEventType, string> = {
   [AUDIT_EVENT.ADMIN_PASSWORD_RESET_FORCED]: "管理者: パスワード強制リセット",
   [AUDIT_EVENT.ADMIN_BOOK_ENRICHMENT_STARTED]: "管理者: 書籍データ補完 開始",
   [AUDIT_EVENT.ADMIN_BOOK_ENRICHMENT_COMPLETED]: "管理者: 書籍データ補完 完了",
+  [AUDIT_EVENT.ADMIN_BOOK_ENRICHMENT_CONFIRMED]: "管理者: 書籍データ補完 候補確定",
+  [AUDIT_EVENT.ADMIN_BOOK_ENRICHMENT_DISMISSED]: "管理者: 書籍データ補完 候補見送り",
 };
