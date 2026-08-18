@@ -234,6 +234,19 @@ describe("rakuten", () => {
       expect(normalizeTitle("  こころ　")).toBe("こころ");
       expect(normalizeAuthor(" 夏目　漱石 ")).toBe("夏目漱石");
     });
+
+    it.each([
+      ["丸岡　明／著", "丸岡明"],
+      ["逸見広 著", "逸見広"],
+      ["打木村治 編", "打木村治"],
+      ["田中千禾夫 編纂", "田中千禾夫"],
+    ])("末尾の役割表記「%s」を除去して「%s」にする", (input, expected) => {
+      expect(normalizeAuthor(input)).toBe(expected);
+    });
+
+    it("役割表記が付いていない氏名はそのまま変化しない", () => {
+      expect(normalizeAuthor("夏目漱石")).toBe("夏目漱石");
+    });
   });
 
   describe("isNonBookSize", () => {

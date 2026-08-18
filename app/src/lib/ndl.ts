@@ -89,11 +89,16 @@ function parseNdlRecords(xml: string): NdlSearchBook[] {
   });
 }
 
-export async function searchBooksNdl(params: {
-  type: "title" | "author" | "keyword";
-  q: string;
-  page: number;
-}): Promise<{ items: NdlSearchBook[]; totalPages: number }> {
+export type NdlSearchParams =
+  | { type: "title" | "author" | "keyword"; q: string; page: number }
+  // タイトル・著者名をスペースで分割推測せず、それぞれ厳密にAND検索する（keywordの誤分割対策）
+  | { type: "titleAndAuthor"; title: string; author: string; page: number }
+  // フィールド指定なしの全文検索。厳密検索が0件の場合のフォールバック専用（呼び出し側は結果を自動反映しないこと）
+  | { type: "anywhere"; q: string; page: number };
+
+export async function searchBooksNdl(
+  params: NdlSearchParams
+): Promise<{ items: NdlSearchBook[]; totalPages: number }> {
   let query: string;
   if (params.type === "author") {
     query = `creator="${params.q}"`;
@@ -101,6 +106,10 @@ export async function searchBooksNdl(params: {
     const parts = params.q.split(/[\s　]+/);
     query = `title="${parts[0]}"`;
     if (parts.length > 1) query += ` AND creator="${parts.slice(1).join(" ")}"`;
+  } else if (params.type === "titleAndAuthor") {
+    query = `title="${params.title}" AND creator="${params.author}"`;
+  } else if (params.type === "anywhere") {
+    query = `anywhere="${params.q}"`;
   } else {
     query = `title="${params.q}"`;
   }
