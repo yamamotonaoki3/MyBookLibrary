@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger";
 import { recordAuditEvent, AUDIT_EVENT } from "@/lib/auditLog";
 import { searchBooks, searchBooksByIsbn } from "@/lib/rakuten";
 import { searchBooksNdl } from "@/lib/ndl";
+import { isPlausibleMatch } from "@/lib/matchUtils";
 import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 
 // 楽天・NDLとも実質的にQPS1程度が上限のため、呼び出し間に待機を挿入する。
@@ -29,8 +30,66 @@ async function enrichBook(book: {
   let isbn = book.isbn;
   let coverImageUrl = book.coverImageUrl;
   let publishedAt: Date | null = null;
+  // 一致度が低く自動反映しなかった候補の記録（見つからなかった場合のエラーメッセージに付記する）
+  let candidateNote: string | undefined;
 
-  // 1. ISBNが分かっていれば楽天のISBN検索で書影・出版年を補う
+  const target = { title: book.title, author: book.author.name };
+
+  // フェーズ1: ISBNを確定させる（ISBN未確定時のみ、複数の手段をカスケードで試す）。
+  // 書影・出版年はこのフェーズでは取得しない。ISBN確定後にフェーズ2で確定ISBNを基準に
+  // まとめて取得することで、ISBNと書影・出版年が別レコード由来になる食い違いを防ぐ。
+  if (!isbn) {
+    // 1a. NDLのタイトル+著者厳密検索（スペース分割の誤推測をしないtitleAndAuthor）
+    const { items: ndlStrictItems } = await searchBooksNdl({
+      type: "titleAndAuthor",
+      title: book.title,
+      author: book.author.name,
+      page: 1,
+    });
+    await sleep(NDL_WAIT_MS);
+    const ndlStrictMatch = ndlStrictItems.find((item) => item.isbn && isPlausibleMatch(item, target));
+    if (ndlStrictMatch?.isbn) {
+      isbn = ndlStrictMatch.isbn;
+    }
+
+    // 1b. 楽天のタイトル+著者検索。結果の中から一致度を検証した候補のみ採用する
+    // （無条件に先頭候補を採用すると、同一著者の別作品に同じISBNが誤マッチしうる）
+    if (!isbn) {
+      const results = await searchBooks({ title: book.title, author: book.author.name });
+      await sleep(RAKUTEN_WAIT_MS);
+      const plausible = results.find((r) => isPlausibleMatch({ title: r.title, author: r.author }, target));
+      if (plausible?.isbn) {
+        isbn = plausible.isbn;
+        coverImageUrl = coverImageUrl ?? plausible.largeImageUrl ?? null;
+        if (book.publishedAtUnknown && plausible.salesDate) {
+          publishedAt = parseSalesDateToUtcDate(plausible.salesDate);
+        }
+      } else if (plausible) {
+        // タイトル・著者は一致したが、その候補にISBNが登録されていない
+        // （ISBN制度が無かった時代の出版物など）ためISBNとして採用できない
+        candidateNote = `候補「${plausible.title}」（${plausible.author}）は一致しましたがISBN情報が見つかりませんでした`;
+      } else if (results[0]) {
+        candidateNote = `候補「${results[0].title}」（${results[0].author}）は一致度が低いため自動反映しませんでした`;
+      }
+    }
+
+    // 1c. それでも不明なら、NDLの全文検索でフォールバック。
+    // フィールド指定なしの検索は誤検出のリスクが高いため、ここで見つかった候補は
+    // ISBNとして自動採用せず、人が確認できるよう記録するのみに留める。
+    if (!isbn) {
+      const { items: anywhereItems } = await searchBooksNdl({
+        type: "anywhere",
+        q: `${book.title} ${book.author.name}`,
+        page: 1,
+      });
+      await sleep(NDL_WAIT_MS);
+      if (!candidateNote && anywhereItems[0]) {
+        candidateNote = `候補「${anywhereItems[0].title}」（${anywhereItems[0].author}）は一致度が低いため自動反映しませんでした`;
+      }
+    }
+  }
+
+  // フェーズ2: 確定したISBNを基準に、書影・出版年をまとめて取得する
   if (isbn && (!coverImageUrl || book.publishedAtUnknown)) {
     const rakutenBook = await searchBooksByIsbn(isbn);
     await sleep(RAKUTEN_WAIT_MS);
@@ -38,37 +97,6 @@ async function enrichBook(book: {
       coverImageUrl = coverImageUrl ?? rakutenBook.largeImageUrl ?? null;
       if (book.publishedAtUnknown && rakutenBook.salesDate) {
         publishedAt = parseSalesDateToUtcDate(rakutenBook.salesDate);
-      }
-    }
-  }
-
-  // 2. ISBNまたは書影がまだ無ければ、タイトル+著者で楽天検索
-  if (!isbn || !coverImageUrl) {
-    const results = await searchBooks({ title: book.title, author: book.author.name });
-    await sleep(RAKUTEN_WAIT_MS);
-    const match = results[0];
-    if (match) {
-      isbn = isbn ?? (match.isbn || null);
-      coverImageUrl = coverImageUrl ?? match.largeImageUrl ?? null;
-      if (book.publishedAtUnknown && !publishedAt && match.salesDate) {
-        publishedAt = parseSalesDateToUtcDate(match.salesDate);
-      }
-    }
-  }
-
-  // 3. それでもISBNが不明ならNDLサーチAPIでタイトル+著者から検索
-  if (!isbn) {
-    const { items } = await searchBooksNdl({
-      type: "keyword",
-      q: `${book.title} ${book.author.name}`,
-      page: 1,
-    });
-    await sleep(NDL_WAIT_MS);
-    const match = items[0];
-    if (match?.isbn) {
-      isbn = match.isbn;
-      if (book.publishedAtUnknown && !publishedAt && match.salesDate) {
-        publishedAt = parseSalesDateToUtcDate(match.salesDate);
       }
     }
   }
@@ -87,7 +115,8 @@ async function enrichBook(book: {
   }
 
   if (Object.keys(data).length === 0) {
-    throw new Error("補完できるデータが見つかりませんでした");
+    const suffix = candidateNote ? `（${candidateNote}）` : "";
+    throw new Error(`補完できるデータが見つかりませんでした${suffix}`);
   }
 
   // 既存のISBNと重複する可能性があるため一意制約違反はスキップ扱いにする

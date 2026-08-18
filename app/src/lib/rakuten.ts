@@ -96,9 +96,17 @@ export function normalizeTitle(title: string): string {
   return title.trim().replace(/\s+/g, "").normalize("NFKC");
 }
 
-/** 著者名の表記ゆれ（スペース有無・全半角）を吸収する */
+/**
+ * 著者名の表記ゆれ（スペース有無・全半角）を吸収する。
+ * 楽天・NDLの著者名には「氏名／著」「氏名 編」のような役割表記が付くことがあるため、
+ * 末尾の役割表記も除去する（付与されていない氏名はそのまま変化しない）。
+ */
 export function normalizeAuthor(author: string): string {
-  return author.trim().replace(/\s+/g, "").normalize("NFKC");
+  return author
+    .trim()
+    .replace(/\s+/g, "")
+    .normalize("NFKC")
+    .replace(/\/?(編著|編纂|編訳|監修|著|編|訳)$/, "");
 }
 
 function parseSalesDateForSort(salesDate: string): number {

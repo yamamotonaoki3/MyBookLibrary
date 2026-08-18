@@ -108,6 +108,31 @@ describe("searchBooksNdl", () => {
     expect(calledUrl.searchParams.get("query")).toBe('title="こころ" AND creator="夏目漱石"');
   });
 
+  it("type=titleAndAuthorはスペース分割せずtitle/authorをそれぞれAND条件にする（スペースを含むタイトルの誤分割対策）", async () => {
+    const fetchFn = mockFetchText(sruXml("", 0));
+
+    await searchBooksNdl({
+      type: "titleAndAuthor",
+      title: "新約 とある魔術の禁書目録",
+      author: "鎌池和馬",
+      page: 1,
+    });
+
+    const calledUrl = new URL(fetchFn.mock.calls[0][0] as string);
+    expect(calledUrl.searchParams.get("query")).toBe(
+      'title="新約 とある魔術の禁書目録" AND creator="鎌池和馬"'
+    );
+  });
+
+  it("type=anywhereはフィールド指定なしの全文検索クエリになる", async () => {
+    const fetchFn = mockFetchText(sruXml("", 0));
+
+    await searchBooksNdl({ type: "anywhere", q: "こころ 夏目漱石", page: 1 });
+
+    const calledUrl = new URL(fetchFn.mock.calls[0][0] as string);
+    expect(calledUrl.searchParams.get("query")).toBe('anywhere="こころ 夏目漱石"');
+  });
+
   it("2ページ目はstartRecordが31になる", async () => {
     const fetchFn = mockFetchText(sruXml("", 0));
 
