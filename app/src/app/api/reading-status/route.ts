@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { ReadingStatusSchema } from "@/lib/validations";
@@ -5,6 +6,7 @@ import { getAuthenticatedUserId } from "@/lib/session";
 import { getMutualFollowerIds } from "@/lib/mutualFollows";
 import { logger } from "@/lib/logger";
 import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
+import { resolvePreferringHardcover } from "@/lib/editionResolver";
 
 async function notifyMutualFollowersOfWantToRead(
   userId: number,
@@ -79,17 +81,54 @@ export async function POST(request: Request) {
     }
 
     if (!book) {
-      book = await prisma.book.create({
-        data: {
+      // 絶版等で渡されたisbn（文庫等）よりも良い版（単行本）がNDL/楽天にあれば、
+      // そちらを優先して登録する。
+      const resolved = await resolvePreferringHardcover({
+        title,
+        author: normalizedAuthor,
+        fallback: {
           title,
-          authorId: authorRecord.id,
-          isbn: isbn || null,
-          coverImageUrl: coverImageUrl ?? null,
-          publishedAt: publishedAt ? (parseSalesDateToUtcDate(publishedAt) ?? new Date()) : new Date(),
-          source: source ?? "rakuten",
-          createdByUserId: userId,
+          author: normalizedAuthor,
+          isbn: isbn || "",
+          largeImageUrl: coverImageUrl ?? undefined,
+          salesDate: publishedAt ?? undefined,
         },
       });
+
+      // 解決したISBNが渡されたisbnと異なる（単行本が優先された）場合、
+      // 既に他経路で登録済みでないか確認する（Unique制約に抵触しないためのガード）。
+      if (resolved.isbn && resolved.isbn !== isbn) {
+        const existingByResolvedIsbn = await prisma.book.findFirst({ where: { isbn: resolved.isbn } });
+        if (existingByResolvedIsbn) {
+          book = existingByResolvedIsbn;
+        }
+      }
+
+      if (!book) {
+        const resolvedPublishedAt = resolved.salesDate ?? publishedAt;
+        book = await prisma.book
+          .create({
+            data: {
+              title: resolved.title,
+              authorId: authorRecord.id,
+              isbn: resolved.isbn || null,
+              coverImageUrl: resolved.largeImageUrl ?? coverImageUrl ?? null,
+              publishedAt: resolvedPublishedAt
+                ? (parseSalesDateToUtcDate(resolvedPublishedAt) ?? new Date())
+                : new Date(),
+              source: source ?? "rakuten",
+              createdByUserId: userId,
+            },
+          })
+          .catch(async (err) => {
+            // 同時リクエスト等でUnique制約に抵触した場合は、既存レコードを使う
+            if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+              const existing = await prisma.book.findFirst({ where: { isbn: resolved.isbn || isbn || undefined } });
+              if (existing) return existing;
+            }
+            throw err;
+          });
+      }
     }
 
     // 未読はデフォルト状態（レコードなし）なので削除、それ以外はupsert

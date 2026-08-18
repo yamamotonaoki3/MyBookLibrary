@@ -3,6 +3,10 @@ import {
   searchBookByIsbn,
   getAuthorBookCountNdl,
   searchAuthorsByName,
+  parseExtentCm,
+  isLikelyHardcoverByExtent,
+  searchNdlHardcoverCandidates,
+  searchNdlPreferHardcover,
 } from "@/lib/ndl";
 import { mockFetchText, mockFetchNetworkError, restoreFetch } from "../../helpers/fetchMock";
 
@@ -18,12 +22,14 @@ const sruRecord = (opts: {
   publisher?: string;
   date?: string;
   identifier?: string;
+  extent?: string;
 }) => `<record><recordData>
 <dc:title>${opts.title}</dc:title>
 ${opts.creator !== undefined ? `<dc:creator>${opts.creator}</dc:creator>` : ""}
 ${opts.publisher !== undefined ? `<dc:publisher>${opts.publisher}</dc:publisher>` : ""}
 ${opts.date !== undefined ? `<dcterms:date>${opts.date}</dcterms:date>` : ""}
 ${opts.identifier !== undefined ? `<dc:identifier>${opts.identifier}</dc:identifier>` : ""}
+${opts.extent !== undefined ? `<dcterms:extent>${opts.extent}</dcterms:extent>` : ""}
 </recordData></record>`;
 
 afterEach(() => {
@@ -53,6 +59,7 @@ describe("searchBooksNdl", () => {
         isbn: "9784000000001",
         publisherName: "岩波書店",
         salesDate: "2000年",
+        extent: "",
       },
     ]);
     expect(result.totalPages).toBe(3); // Math.ceil(65 / 30)
@@ -156,6 +163,115 @@ describe("searchBooksNdl", () => {
     const result = await searchBooksNdl({ type: "title", q: "x", page: 1 });
 
     expect(result).toEqual({ items: [], totalPages: 0 });
+  });
+});
+
+describe("parseExtentCm", () => {
+  it.each([
+    ["172p ; 20cm", 20],
+    ["305p ; 15cm", 15],
+    ["172p ; 20.5cm", 20.5],
+    ["172p", null],
+  ])("「%s」から%scmを抽出する", (extent, expected) => {
+    expect(parseExtentCm(extent)).toBe(expected);
+  });
+});
+
+describe("isLikelyHardcoverByExtent", () => {
+  it.each([
+    ["172p ; 20cm", true],
+    ["188p ; 15cm", false],
+    ["172p ; 18cm", true],
+    ["172p ; 17.9cm", false],
+    ["172p", false],
+  ])("「%s」の単行本らしさ判定は%sになる", (extent, expected) => {
+    expect(isLikelyHardcoverByExtent(extent)).toBe(expected);
+  });
+});
+
+describe("searchNdlHardcoverCandidates / searchNdlPreferHardcover", () => {
+  it("単行本・文庫が混在する場合、単行本らしいものを先頭に並べる（重複排除しない）", async () => {
+    const xml = sruXml(
+      sruRecord({ title: "しき", creator: "町屋良平", identifier: "ISBN 9784309417738", date: "2020", extent: "188p ; 15cm" }) +
+        sruRecord({ title: "しき", creator: "町屋良平", identifier: "ISBN 9784309027180", date: "2018", extent: "172p ; 20cm" }),
+      2
+    );
+    mockFetchText(xml);
+
+    const result = await searchNdlHardcoverCandidates({ title: "しき", author: "町屋良平" });
+
+    expect(result).toHaveLength(2);
+    expect(result[0].isbn).toBe("9784309027180");
+    expect(result[0].isLikelyHardcover).toBe(true);
+    expect(result[1].isbn).toBe("9784309417738");
+    expect(result[1].isLikelyHardcover).toBe(false);
+  });
+
+  it("isPlausibleMatchを満たさない候補は除外する", async () => {
+    const xml = sruXml(
+      sruRecord({ title: "しき", creator: "別の著者", identifier: "ISBN 9784000000001", extent: "172p ; 20cm" }),
+      1
+    );
+    mockFetchText(xml);
+
+    const result = await searchNdlHardcoverCandidates({ title: "しき", author: "町屋良平" });
+
+    expect(result).toEqual([]);
+  });
+
+  it("ISBNが無い候補は除外する", async () => {
+    const xml = sruXml(sruRecord({ title: "しき", creator: "町屋良平", extent: "172p ; 20cm" }), 1);
+    mockFetchText(xml);
+
+    const result = await searchNdlHardcoverCandidates({ title: "しき", author: "町屋良平" });
+
+    expect(result).toEqual([]);
+  });
+
+  it("単行本候補が複数（刊行年月違い）ある場合、最も古い版を先頭にする", async () => {
+    const xml = sruXml(
+      sruRecord({ title: "本", creator: "著者A", identifier: "ISBN 9784000000002", date: "2020.05", extent: "172p ; 20cm" }) +
+        sruRecord({ title: "本", creator: "著者A", identifier: "ISBN 9784000000001", date: "2018.03", extent: "172p ; 20cm" }),
+      2
+    );
+    mockFetchText(xml);
+
+    const result = await searchNdlHardcoverCandidates({ title: "本", author: "著者A" });
+
+    expect(result[0].isbn).toBe("9784000000001");
+  });
+
+  it("fetch失敗時は空配列を返す", async () => {
+    mockFetchText("", { status: 500 });
+
+    const result = await searchNdlHardcoverCandidates({ title: "本", author: "著者A" });
+
+    expect(result).toEqual([]);
+  });
+
+  it("searchNdlPreferHardcoverは単行本候補が無ければnullを返す", async () => {
+    const xml = sruXml(
+      sruRecord({ title: "しき", creator: "町屋良平", identifier: "ISBN 9784309417738", extent: "188p ; 15cm" }),
+      1
+    );
+    mockFetchText(xml);
+
+    const result = await searchNdlPreferHardcover({ title: "しき", author: "町屋良平" });
+
+    expect(result).toBeNull();
+  });
+
+  it("searchNdlPreferHardcoverは単行本候補があればそれを返す", async () => {
+    const xml = sruXml(
+      sruRecord({ title: "しき", creator: "町屋良平", identifier: "ISBN 9784309417738", extent: "188p ; 15cm" }) +
+        sruRecord({ title: "しき", creator: "町屋良平", identifier: "ISBN 9784309027180", extent: "172p ; 20cm" }),
+      2
+    );
+    mockFetchText(xml);
+
+    const result = await searchNdlPreferHardcover({ title: "しき", author: "町屋良平" });
+
+    expect(result?.isbn).toBe("9784309027180");
   });
 });
 
