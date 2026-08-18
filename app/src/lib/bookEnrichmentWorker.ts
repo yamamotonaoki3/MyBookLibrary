@@ -2,9 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { recordAuditEvent, AUDIT_EVENT } from "@/lib/auditLog";
 import { searchBooks, searchBooksByIsbn } from "@/lib/rakuten";
-import { searchBooksNdl } from "@/lib/ndl";
+import { searchBooksNdl, searchBookByIsbn } from "@/lib/ndl";
 import { isPlausibleMatch } from "@/lib/matchUtils";
 import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
+import type { Prisma } from "@/generated/prisma";
 
 // 楽天・NDLとも実質的にQPS1程度が上限のため、呼び出し間に待機を挿入する。
 // NDLサーチAPIの利用規約でも多重アクセス（同時並行アクセス）は避けるよう明記されている。
@@ -19,6 +20,20 @@ function sleep(ms: number): Promise<void> {
 // 処理中に他プロセスからジョブが停止・削除されていないかの確認間隔（1件ごとの外部APIコストを避けるため件数間引き）
 const TICK_UPDATE_INTERVAL = 5;
 
+type IsbnCandidate = {
+  title: string;
+  author: string;
+  isbn: string;
+  lamp: "green" | "red";
+};
+
+type ResultDetail = {
+  candidates?: IsbnCandidate[];
+  candidateNote?: string;
+};
+
+type EnrichResult = { status: "done" } | { status: "needs_review"; resultDetail: ResultDetail };
+
 async function enrichBook(book: {
   id: number;
   isbn: string | null;
@@ -26,7 +41,7 @@ async function enrichBook(book: {
   coverImageUrl: string | null;
   publishedAtUnknown: boolean;
   author: { name: string };
-}): Promise<void> {
+}): Promise<EnrichResult> {
   let isbn = book.isbn;
   let coverImageUrl = book.coverImageUrl;
   let publishedAt: Date | null = null;
@@ -52,22 +67,53 @@ async function enrichBook(book: {
       isbn = ndlStrictMatch.isbn;
     }
 
-    // 1b. 楽天のタイトル+著者検索。結果の中から一致度を検証した候補のみ採用する
-    // （無条件に先頭候補を採用すると、同一著者の別作品に同じISBNが誤マッチしうる）
+    // 1b. 楽天のタイトル+著者検索（CSVインポート由来のタイトル・著者名は
+    // 正確なことが前提のため、1回のAND検索で候補を絞り込む）。
+    // 候補が単一かつNDLで実在確認（グリーン）できた場合のみ自動反映し、
+    // それ以外（候補が複数、またはレッドのみ）は自動反映せず、
+    // 管理者が確認・選択できるよう候補一覧を記録するに留める。
     if (!isbn) {
-      const results = await searchBooks({ title: book.title, author: book.author.name });
+      // dedupe:false — 単行本・文庫など同一タイトル・著者の複数版を
+      // 別候補として扱えるようにする（重複排除するとISBN違いの版が
+      // 1件に潰れてしまい、管理者が選ぶ機会自体が失われるため）
+      const results = await searchBooks({
+        title: book.title,
+        author: book.author.name,
+        dedupe: false,
+      });
       await sleep(RAKUTEN_WAIT_MS);
-      const plausible = results.find((r) => isPlausibleMatch({ title: r.title, author: r.author }, target));
-      if (plausible?.isbn) {
-        isbn = plausible.isbn;
-        coverImageUrl = coverImageUrl ?? plausible.largeImageUrl ?? null;
-        if (book.publishedAtUnknown && plausible.salesDate) {
-          publishedAt = parseSalesDateToUtcDate(plausible.salesDate);
+      const seenIsbns = new Set<string>();
+      const plausible = results.filter((r) => {
+        if (!r.isbn || seenIsbns.has(r.isbn)) return false;
+        if (!isPlausibleMatch({ title: r.title, author: r.author }, target)) return false;
+        seenIsbns.add(r.isbn);
+        return true;
+      });
+
+      if (plausible.length > 0) {
+        const candidates: IsbnCandidate[] = [];
+        for (const candidate of plausible) {
+          const ndlBook = await searchBookByIsbn(candidate.isbn);
+          await sleep(NDL_WAIT_MS);
+          candidates.push({
+            title: candidate.title,
+            author: candidate.author,
+            isbn: candidate.isbn,
+            lamp: ndlBook ? "green" : "red",
+          });
         }
-      } else if (plausible) {
-        // タイトル・著者は一致したが、その候補にISBNが登録されていない
-        // （ISBN制度が無かった時代の出版物など）ためISBNとして採用できない
-        candidateNote = `候補「${plausible.title}」（${plausible.author}）は一致しましたがISBN情報が見つかりませんでした`;
+
+        const greenCandidates = candidates.filter((c) => c.lamp === "green");
+        if (candidates.length === 1 && greenCandidates.length === 1) {
+          const sole = plausible[0];
+          isbn = sole.isbn;
+          coverImageUrl = coverImageUrl ?? sole.largeImageUrl ?? null;
+          if (book.publishedAtUnknown && sole.salesDate) {
+            publishedAt = parseSalesDateToUtcDate(sole.salesDate);
+          }
+        } else {
+          return { status: "needs_review", resultDetail: { candidates } };
+        }
       } else if (results[0]) {
         candidateNote = `候補「${results[0].title}」（${results[0].author}）は一致度が低いため自動反映しませんでした`;
       }
@@ -125,6 +171,8 @@ async function enrichBook(book: {
       `DB更新に失敗しました: ${err instanceof Error ? err.message : String(err)}`
     );
   });
+
+  return { status: "done" };
 }
 
 export async function processEnrichmentJob(jobId: number): Promise<void> {
@@ -163,15 +211,29 @@ export async function processEnrichmentJob(jobId: number): Promise<void> {
     if (claimed.count === 0) continue;
 
     try {
-      await enrichBook(item.book);
-      await prisma.bookEnrichmentItem.update({
-        where: { id: item.id },
-        data: { status: "done" },
-      });
-      await prisma.bookEnrichmentJob.update({
-        where: { id: jobId },
-        data: { doneCount: { increment: 1 }, successCount: { increment: 1 } },
-      });
+      const result = await enrichBook(item.book);
+      if (result.status === "needs_review") {
+        await prisma.bookEnrichmentItem.update({
+          where: { id: item.id },
+          data: {
+            status: "needs_review",
+            resultDetail: result.resultDetail as unknown as Prisma.InputJsonValue,
+          },
+        });
+        await prisma.bookEnrichmentJob.update({
+          where: { id: jobId },
+          data: { doneCount: { increment: 1 }, reviewCount: { increment: 1 } },
+        });
+      } else {
+        await prisma.bookEnrichmentItem.update({
+          where: { id: item.id },
+          data: { status: "done" },
+        });
+        await prisma.bookEnrichmentJob.update({
+          where: { id: jobId },
+          data: { doneCount: { increment: 1 }, successCount: { increment: 1 } },
+        });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.error({ err, bookId: item.bookId, jobId }, "[bookEnrichmentWorker] item failed");
@@ -221,6 +283,7 @@ export async function processEnrichmentJob(jobId: number): Promise<void> {
       jobId,
       successCount: finished.successCount,
       failCount: finished.failCount,
+      reviewCount: finished.reviewCount,
     },
   });
 }

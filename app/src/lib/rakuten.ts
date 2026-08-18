@@ -74,11 +74,14 @@ export async function searchBooks(params: {
   title?: string;
   author?: string;
   maxPages?: number;
+  // タイトル+著者ごとに1件へ統合するか（既定true）。一括補完のように
+  // 単行本・文庫など同一タイトル・著者の複数ISBNを別候補として見たい場合はfalseを指定する。
+  dedupe?: boolean;
 }): Promise<RakutenBook[]> {
-  const { maxPages = 100, ...fetchParams } = params;
+  const { maxPages = 100, dedupe = true, ...fetchParams } = params;
   const { items, pageCount } = await fetchBookPage({ ...fetchParams, page: 1, hits: 30 });
 
-  if (pageCount <= 1) return deduplicateByTitle(items);
+  if (pageCount <= 1) return dedupe ? deduplicateByTitle(items) : items;
 
   // 2ページ目以降を逐次取得（並列だと429 Too Many Requestsになるため）
   const allItems = [...items];
@@ -89,7 +92,7 @@ export async function searchBooks(params: {
     allItems.push(...pageItems);
   }
 
-  return deduplicateByTitle(allItems);
+  return dedupe ? deduplicateByTitle(allItems) : allItems;
 }
 
 export function normalizeTitle(title: string): string {
