@@ -121,22 +121,8 @@ model Book {
   readingStatuses    ReadingStatus[]
   reviews            Review[]
   enrichmentItems    BookEnrichmentItem[]
-  bookIsbns          BookIsbn[]
 
   @@map("books")
-}
-
-model BookIsbn {
-  id        Int      @id @default(autoincrement())
-  bookId    Int      @map("book_id")
-  isbn      String   @unique
-  isPrimary Boolean  @default(false) @map("is_primary")
-  source    String   @default("rakuten") // "ndl" | "rakuten" | "manual"
-  createdAt DateTime @default(now()) @map("created_at")
-  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
-
-  @@index([bookId])
-  @@map("book_isbns")
 }
 
 model Award {
