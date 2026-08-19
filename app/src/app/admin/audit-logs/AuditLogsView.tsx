@@ -53,6 +53,14 @@ function EnrichmentDetailView({ detail }: { detail: unknown }) {
   const record = detail as Record<string, unknown>;
   const succeededBooks = isEnrichmentBookOutcomeList(record.succeededBooks) ? record.succeededBooks : [];
   const failedBooks = isEnrichmentBookOutcomeList(record.failedBooks) ? record.failedBooks : [];
+  const successCount = typeof record.successCount === "number" ? record.successCount : null;
+  const failCount = typeof record.failCount === "number" ? record.failCount : null;
+  // 一覧は際限なく大きくならないよう上限件数で打ち切って記録されているため、
+  // ジョブ全体の実件数（successCount/failCount）と一覧の件数を比較し、打ち切られていれば注記する
+  const succeededTruncatedCount =
+    successCount !== null && successCount > succeededBooks.length ? successCount - succeededBooks.length : 0;
+  const failedTruncatedCount =
+    failCount !== null && failCount > failedBooks.length ? failCount - failedBooks.length : 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -63,7 +71,7 @@ function EnrichmentDetailView({ detail }: { detail: unknown }) {
       {succeededBooks.length > 0 && (
         <div>
           <p className="mb-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-            成功（{succeededBooks.length}件）
+            成功（{succeededBooks.length}件{succeededTruncatedCount > 0 && `・他${succeededTruncatedCount}件`}）
           </p>
           <ul className="max-h-40 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
             {succeededBooks.map((b, i) => (
@@ -78,7 +86,7 @@ function EnrichmentDetailView({ detail }: { detail: unknown }) {
       {failedBooks.length > 0 && (
         <div>
           <p className="mb-1 text-xs font-medium text-red-600 dark:text-red-400">
-            失敗（{failedBooks.length}件）
+            失敗（{failedBooks.length}件{failedTruncatedCount > 0 && `・他${failedTruncatedCount}件`}）
           </p>
           <ul className="max-h-40 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
             {failedBooks.map((b, i) => (
