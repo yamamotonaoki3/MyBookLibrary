@@ -1,5 +1,17 @@
-import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+
+// Prisma.PrismaClientKnownRequestErrorのinstanceof判定は、Next.js dev server の
+// ホットリロードで「@/generated/prisma」モジュールが多重ロードされた場合に、
+// クラスの同一性が崩れて一致しなくなることがある（本番ビルドでは発生しない）。
+// そのため、他の一意制約違反判定と異なり、ここでは code プロパティのみで判定する。
+function isUniqueConstraintError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: unknown }).code === "P2002"
+  );
+}
 
 export type BookIsbnCandidate = {
   isbn: string;
@@ -56,7 +68,7 @@ export async function addIsbns(
       });
     } catch (err) {
       // 他Bookに既に紐づくISBN、または同時登録による重複はスキップする
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      if (isUniqueConstraintError(err)) {
         continue;
       }
       throw err;
