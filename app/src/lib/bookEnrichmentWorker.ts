@@ -6,6 +6,7 @@ import { searchBooksNdl, searchBookByIsbn } from "@/lib/ndl";
 import { isPlausibleMatch } from "@/lib/matchUtils";
 import { collectEditionCandidates, NDL_WAIT_MS, RAKUTEN_WAIT_MS } from "@/lib/editionResolver";
 import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
+import { addIsbns, setPrimaryIsbn } from "@/lib/bookIsbn";
 import type { Prisma } from "@/generated/prisma";
 
 const STALE_THRESHOLD_MS = 3 * 60 * 1000;
@@ -77,6 +78,14 @@ async function enrichBook(book: {
       const merged = await collectEditionCandidates({ title: book.title, author: book.author.name });
 
       if (merged.length > 0) {
+        // 見つかった候補ISBNは、管理者が確認・選択する前の時点ですべてBookIsbnへ登録しておく。
+        // 一括補完の対象外になった版も含めて、後から在庫確認モーダルで参照できるようにするため。
+        try {
+          await addIsbns(book.id, merged.map((c) => ({ isbn: c.isbn, source: c.origin })));
+        } catch (err) {
+          logger.error({ err, bookId: book.id }, "[bookEnrichmentWorker] failed to save edition candidates to BookIsbn");
+        }
+
         const candidates: IsbnCandidate[] = [];
         for (const candidate of merged) {
           // NDL単行本候補は検索時点で既にNDLでの実在が確認済みのため、再確認は行わない。
@@ -166,6 +175,17 @@ async function enrichBook(book: {
       `DB更新に失敗しました: ${err instanceof Error ? err.message : String(err)}`
     );
   });
+
+  // ISBNが確定した場合はBookIsbn側の代表ISBNも同期する（1a等、複数候補を経由せず
+  // 1件のみ見つかった経路でもBookIsbnに反映されるよう、addIsbnsで存在を保証してから設定する）。
+  if (data.isbn) {
+    try {
+      await addIsbns(book.id, [{ isbn: data.isbn, source: "ndl" }]);
+      await setPrimaryIsbn(book.id, data.isbn);
+    } catch (err) {
+      logger.error({ err, bookId: book.id }, "[bookEnrichmentWorker] failed to sync primary BookIsbn");
+    }
+  }
 
   const updatedFields: string[] = [];
   if (data.isbn) updatedFields.push("ISBN");
