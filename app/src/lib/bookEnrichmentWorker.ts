@@ -50,6 +50,8 @@ async function enrichBook(book: {
   let publishedAt: Date | null = null;
   // 一致度が低く自動反映しなかった候補の記録（見つからなかった場合のエラーメッセージに付記する）
   let candidateNote: string | undefined;
+  // 既にISBNが確定していた本で、他版ISBNを新たに収集できたかどうか
+  let backfilledEditions = false;
 
   const target = { title: book.title, author: book.author.name };
 
@@ -131,6 +133,21 @@ async function enrichBook(book: {
         candidateNote = `候補「${anywhereItems[0].title}」（${anywhereItems[0].author}）は一致度が低いため自動反映しませんでした`;
       }
     }
+  } else {
+    // 既にISBNが確定している本でも、BookIsbnが1件も無ければ他版を遡って収集する。
+    // seedデータや「受賞作品登録」など、複数版収集ロジックを経由せず登録された本を対象とする。
+    const existingIsbnCount = await prisma.bookIsbn.count({ where: { bookId: book.id } });
+    if (existingIsbnCount === 0) {
+      try {
+        const merged = await collectEditionCandidates({ title: book.title, author: book.author.name });
+        if (merged.length > 0) {
+          await addIsbns(book.id, merged.map((c) => ({ isbn: c.isbn, source: c.origin })));
+          backfilledEditions = true;
+        }
+      } catch (err) {
+        logger.error({ err, bookId: book.id }, "[bookEnrichmentWorker] failed to backfill edition candidates for existing isbn");
+      }
+    }
   }
 
   // フェーズ2: 確定したISBNを基準に、書影・出版年をまとめて取得する
@@ -158,7 +175,7 @@ async function enrichBook(book: {
     data.publishedAtUnknown = false;
   }
 
-  if (Object.keys(data).length === 0) {
+  if (Object.keys(data).length === 0 && !backfilledEditions) {
     // ISBN・書影・出版年のうち、何が不足したままなのかを明示する
     const missing: string[] = [];
     if (!isbn) missing.push("ISBN");
@@ -169,19 +186,21 @@ async function enrichBook(book: {
     throw new Error(`${missingLabel}が見つかりませんでした${suffix}`);
   }
 
-  // 既存のISBNと重複する可能性があるため一意制約違反はスキップ扱いにする
-  await prisma.book.update({ where: { id: book.id }, data }).catch((err) => {
-    throw new Error(
-      `DB更新に失敗しました: ${err instanceof Error ? err.message : String(err)}`
-    );
-  });
+  if (Object.keys(data).length > 0) {
+    // 既存のISBNと重複する可能性があるため一意制約違反はスキップ扱いにする
+    await prisma.book.update({ where: { id: book.id }, data }).catch((err) => {
+      throw new Error(
+        `DB更新に失敗しました: ${err instanceof Error ? err.message : String(err)}`
+      );
+    });
+  }
 
-  // ISBNが確定した場合はBookIsbn側の代表ISBNも同期する（1a等、複数候補を経由せず
-  // 1件のみ見つかった経路でもBookIsbnに反映されるよう、addIsbnsで存在を保証してから設定する）。
-  if (data.isbn) {
+  // ISBNが確定していれば（今回新たに解決した場合・元から確定していた場合いずれも）
+  // BookIsbn側の代表ISBNを同期する。addIsbnsで存在を保証してから設定する。
+  if (isbn) {
     try {
-      await addIsbns(book.id, [{ isbn: data.isbn, source: "ndl" }]);
-      await setPrimaryIsbn(book.id, data.isbn);
+      await addIsbns(book.id, [{ isbn, source: data.isbn ? "ndl" : "existing" }]);
+      await setPrimaryIsbn(book.id, isbn);
     } catch (err) {
       logger.error({ err, bookId: book.id }, "[bookEnrichmentWorker] failed to sync primary BookIsbn");
     }
@@ -191,6 +210,7 @@ async function enrichBook(book: {
   if (data.isbn) updatedFields.push("ISBN");
   if (data.coverImageUrl) updatedFields.push("書影");
   if (data.publishedAt) updatedFields.push("出版年");
+  if (backfilledEditions) updatedFields.push("複数版ISBN");
 
   return { status: "done", resultDetail: { updatedFields } };
 }

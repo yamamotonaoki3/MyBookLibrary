@@ -282,6 +282,69 @@ describe("processEnrichmentJob", () => {
     });
   });
 
+  it("既にISBNが確定済みでBookIsbnが0件の本は、他版ISBNを遡って収集しBookIsbnへ登録する", async () => {
+    const bookWithIsbn = {
+      ...baseBook,
+      isbn: "9784000000099",
+      coverImageUrl: "https://example.com/cover.jpg",
+    };
+    setupJobRun({ ...baseItem, book: bookWithIsbn });
+    prismaMock.bookIsbn.count.mockResolvedValue(0);
+    mockedCollectEditionCandidates.mockResolvedValue([
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000099", isLikelyHardcover: true, origin: "ndl" },
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000100", isLikelyHardcover: false, origin: "rakuten" },
+    ]);
+    prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
+    prismaMock.bookIsbn.create.mockResolvedValue({});
+    prismaMock.bookIsbn.findUnique.mockResolvedValue({ bookId: 1, isbn: "9784000000099" });
+    prismaMock.bookIsbn.updateMany.mockResolvedValue({});
+    prismaMock.bookIsbn.update.mockResolvedValue({});
+
+    await processEnrichmentJob(1);
+
+    // 書影は既に設定済み・出版年も不明でないため、Book本体の更新は発生しない
+    expect(prismaMock.book.update).not.toHaveBeenCalled();
+    // 収集した2件がBookIsbnへ登録される
+    expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000099" }) })
+    );
+    expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000100" }) })
+    );
+    // 元々のISBNが代表として同期される
+    expect(prismaMock.bookIsbn.update).toHaveBeenCalledWith({
+      where: { isbn: "9784000000099" },
+      data: { isPrimary: true },
+    });
+    // 遡及登録のみでも成功（done）として扱われる
+    expect(prismaMock.bookEnrichmentItem.update).toHaveBeenCalledWith({
+      where: { id: 10 },
+      data: {
+        status: "done",
+        resultDetail: expect.objectContaining({ updatedFields: ["複数版ISBN"] }),
+      },
+    });
+  });
+
+  it("既にISBNが確定済みでBookIsbnが既にある本は、他版ISBNの再収集を行わない", async () => {
+    const bookWithIsbn = { ...baseBook, isbn: "9784000000099" };
+    setupJobRun({ ...baseItem, book: bookWithIsbn });
+    prismaMock.bookIsbn.count.mockResolvedValue(1);
+    mockedSearchBooksByIsbn.mockResolvedValue(null);
+    prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
+
+    await processEnrichmentJob(1);
+
+    expect(mockedCollectEditionCandidates).not.toHaveBeenCalled();
+    expect(prismaMock.bookEnrichmentItem.update).toHaveBeenCalledWith({
+      where: { id: 10 },
+      data: {
+        status: "error",
+        errorMessage: expect.stringContaining("書影"),
+      },
+    });
+  });
+
   it("中断リクエストがある場合、未処理アイテムをcancelledにしジョブをcancelledで完了する", async () => {
     prismaMock.bookEnrichmentJob.findUnique.mockResolvedValue({
       id: 1,

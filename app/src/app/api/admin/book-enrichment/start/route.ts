@@ -25,7 +25,13 @@ export async function POST(request: NextRequest) {
 
     const targets = await prisma.book.findMany({
       where: {
-        OR: [{ isbn: null }, { coverImageUrl: null }, { publishedAtUnknown: true }],
+        OR: [
+          { isbn: null },
+          { coverImageUrl: null },
+          { publishedAtUnknown: true },
+          // ISBN・書影・出版年が揃っていても、他版ISBNが未収集(BookIsbnが0件)の本は対象にする
+          { bookIsbns: { none: {} } },
+        ],
       },
       select: { id: true },
     });
