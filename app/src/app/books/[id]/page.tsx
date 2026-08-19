@@ -9,7 +9,6 @@ import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
 import { ReadingStatusButtons } from "./_components/ReadingStatusButtons";
 import { ReportButton } from "./_components/ReportButton";
 import EditBookButton from "./_components/EditBookButton";
-import LibraryAvailabilityButton from "./_components/LibraryAvailabilityButton";
 import FollowButton from "@/app/_components/FollowButton";
 import Link from "next/link";
 
@@ -153,10 +152,6 @@ export default async function BookDetailPage({ params }: Props) {
             />
           )}
         </div>
-      </div>
-
-      <div className="mt-2">
-        <LibraryAvailabilityButton bookId={book.id} bookTitle={book.title} />
       </div>
 
       <div className="mt-4">

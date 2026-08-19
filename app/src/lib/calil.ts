@@ -101,54 +101,6 @@ export async function checkAvailability(
   }
 }
 
-/**
- * mergeResults()とは異なり、複数ISBNの結果をISBNごとにグルーピングしたまま返す。
- * Bookに紐づく全版の在庫状況をISBN別に一覧表示するために使う。
- */
-export async function checkAvailabilityByIsbn(
-  isbns: string[],
-  systemids: string[]
-): Promise<Record<string, AvailabilityResult[]>> {
-  const apiKey = process.env.CALIL_API_KEY;
-  if (!apiKey) throw new Error("CALIL_API_KEY is not set");
-
-  const params = new URLSearchParams({
-    appkey: apiKey,
-    isbn: isbns.join(","),
-    systemid: systemids.join(","),
-    format: "json",
-    callback: "no",
-  });
-
-  let url = `${CALIL_API_BASE}/check?${params}`;
-  const deadline = Date.now() + 20000;
-
-  while (true) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("カーリルAPI貸出状況確認に失敗しました");
-
-    const data = await res.json();
-
-    if (!data.continue || Date.now() >= deadline) {
-      const grouped: Record<string, AvailabilityResult[]> = {};
-      for (const isbn of isbns) {
-        grouped[isbn] = extractResultsForIsbn(data, isbn, systemids);
-      }
-      return grouped;
-    }
-
-    const sessionParams = new URLSearchParams({
-      appkey: apiKey,
-      session: data.session,
-      format: "json",
-      callback: "no",
-    });
-    url = `${CALIL_API_BASE}/check?${sessionParams}`;
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  }
-}
-
 function extractResultsForIsbn(
   data: { books?: CheckResponseBooks },
   isbn: string,
