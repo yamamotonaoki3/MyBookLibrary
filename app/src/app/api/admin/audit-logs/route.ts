@@ -38,7 +38,18 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { actorUser: { select: { id: true, name: true, email: true } } },
+        // detailは行によっては大きくなりうるため、一覧では取得しない（詳細モーダルを開いた時に個別取得する）
+        select: {
+          id: true,
+          eventType: true,
+          actorUserId: true,
+          actorEmail: true,
+          targetType: true,
+          targetId: true,
+          ipAddress: true,
+          createdAt: true,
+          actorUser: { select: { id: true, name: true, email: true } },
+        },
       }),
       prisma.auditLog.count({ where }),
     ]);

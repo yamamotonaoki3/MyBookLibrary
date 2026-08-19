@@ -28,9 +28,13 @@ type IsbnCandidate = {
 type ResultDetail = {
   candidates?: IsbnCandidate[];
   candidateNote?: string;
+  // 成功時に実際に更新したフィールドの一覧（例: ["ISBN", "書影"]）
+  updatedFields?: string[];
 };
 
-type EnrichResult = { status: "done" } | { status: "needs_review"; resultDetail: ResultDetail };
+type EnrichResult =
+  | { status: "done"; resultDetail: ResultDetail }
+  | { status: "needs_review"; resultDetail: ResultDetail };
 
 async function enrichBook(book: {
   id: number;
@@ -146,8 +150,14 @@ async function enrichBook(book: {
   }
 
   if (Object.keys(data).length === 0) {
+    // ISBN・書影・出版年のうち、何が不足したままなのかを明示する
+    const missing: string[] = [];
+    if (!isbn) missing.push("ISBN");
+    if (!coverImageUrl) missing.push("書影");
+    if (book.publishedAtUnknown && !publishedAt) missing.push("出版年");
+    const missingLabel = missing.length > 0 ? missing.join("・") : "データ";
     const suffix = candidateNote ? `（${candidateNote}）` : "";
-    throw new Error(`補完できるデータが見つかりませんでした${suffix}`);
+    throw new Error(`${missingLabel}が見つかりませんでした${suffix}`);
   }
 
   // 既存のISBNと重複する可能性があるため一意制約違反はスキップ扱いにする
@@ -157,7 +167,43 @@ async function enrichBook(book: {
     );
   });
 
-  return { status: "done" };
+  const updatedFields: string[] = [];
+  if (data.isbn) updatedFields.push("ISBN");
+  if (data.coverImageUrl) updatedFields.push("書影");
+  if (data.publishedAt) updatedFields.push("出版年");
+
+  return { status: "done", resultDetail: { updatedFields } };
+}
+
+// 監査ログのdetailに含める本の一覧は際限なく大きくならないよう上限を設ける
+const AUDIT_LOG_BOOK_LIST_LIMIT = 200;
+
+async function buildBookListsForAudit(jobId: number) {
+  const [doneItems, errorItems] = await Promise.all([
+    prisma.bookEnrichmentItem.findMany({
+      where: { jobId, status: "done" },
+      include: { book: { select: { title: true } } },
+      orderBy: { id: "asc" },
+      take: AUDIT_LOG_BOOK_LIST_LIMIT,
+    }),
+    prisma.bookEnrichmentItem.findMany({
+      where: { jobId, status: "error" },
+      include: { book: { select: { title: true } } },
+      orderBy: { id: "asc" },
+      take: AUDIT_LOG_BOOK_LIST_LIMIT,
+    }),
+  ]);
+
+  return {
+    succeededBooks: doneItems.map((i) => ({
+      title: i.book.title,
+      updatedFields: (i.resultDetail as ResultDetail | null)?.updatedFields ?? [],
+    })),
+    failedBooks: errorItems.map((i) => ({
+      title: i.book.title,
+      errorMessage: i.errorMessage,
+    })),
+  };
 }
 
 export async function processEnrichmentJob(jobId: number): Promise<void> {
@@ -180,8 +226,19 @@ export async function processEnrichmentJob(jobId: number): Promise<void> {
   });
 
   let processedSinceTick = 0;
+  let cancelled = false;
 
   for (;;) {
+    // 管理者が「中断」ボタンを押していないか、次のアイテムを処理する前に確認する。
+    const currentJob = await prisma.bookEnrichmentJob.findUnique({
+      where: { id: jobId },
+      select: { cancelRequested: true },
+    });
+    if (currentJob?.cancelRequested) {
+      cancelled = true;
+      break;
+    }
+
     const item = await prisma.bookEnrichmentItem.findFirst({
       where: { jobId, status: "pending" },
       include: { book: { include: { author: true } } },
@@ -212,7 +269,10 @@ export async function processEnrichmentJob(jobId: number): Promise<void> {
       } else {
         await prisma.bookEnrichmentItem.update({
           where: { id: item.id },
-          data: { status: "done" },
+          data: {
+            status: "done",
+            resultDetail: result.resultDetail as unknown as Prisma.InputJsonValue,
+          },
         });
         await prisma.bookEnrichmentJob.update({
           where: { id: jobId },
@@ -242,6 +302,42 @@ export async function processEnrichmentJob(jobId: number): Promise<void> {
     }
   }
 
+  if (cancelled) {
+    // 中断リクエスト時点で未処理だったアイテムはcancelledにする
+    await prisma.bookEnrichmentItem.updateMany({
+      where: { jobId, status: { in: ["pending", "processing"] } },
+      data: { status: "cancelled" },
+    });
+
+    const cancelledJob = await prisma.bookEnrichmentJob.updateMany({
+      where: { id: jobId, status: "running" },
+      data: {
+        status: "cancelled",
+        activeSlot: null,
+        finishedAt: new Date(),
+        lastTickAt: new Date(),
+      },
+    });
+    if (cancelledJob.count === 0) return;
+
+    const finished = await prisma.bookEnrichmentJob.findUniqueOrThrow({ where: { id: jobId } });
+    const { succeededBooks, failedBooks } = await buildBookListsForAudit(jobId);
+
+    await recordAuditEvent({
+      eventType: AUDIT_EVENT.ADMIN_BOOK_ENRICHMENT_CANCELLED,
+      actorUserId: finished.startedByUserId,
+      detail: {
+        jobId,
+        successCount: finished.successCount,
+        failCount: finished.failCount,
+        reviewCount: finished.reviewCount,
+        succeededBooks,
+        failedBooks,
+      },
+    });
+    return;
+  }
+
   // 別ワーカーが確保済みのアイテムを処理中なら、そのワーカーに完了処理を任せる。
   const outstandingItemCount = await prisma.bookEnrichmentItem.count({
     where: { jobId, status: { in: ["pending", "processing"] } },
@@ -260,6 +356,7 @@ export async function processEnrichmentJob(jobId: number): Promise<void> {
   if (completed.count === 0) return;
 
   const finished = await prisma.bookEnrichmentJob.findUniqueOrThrow({ where: { id: jobId } });
+  const { succeededBooks, failedBooks } = await buildBookListsForAudit(jobId);
 
   await recordAuditEvent({
     eventType: AUDIT_EVENT.ADMIN_BOOK_ENRICHMENT_COMPLETED,
@@ -269,6 +366,8 @@ export async function processEnrichmentJob(jobId: number): Promise<void> {
       successCount: finished.successCount,
       failCount: finished.failCount,
       reviewCount: finished.reviewCount,
+      succeededBooks,
+      failedBooks,
     },
   });
 }

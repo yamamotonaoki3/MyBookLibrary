@@ -15,11 +15,23 @@ type AuditLogRow = {
   actorEmail: string | null;
   targetType: string | null;
   targetId: number | null;
-  detail: unknown;
   ipAddress: string | null;
   createdAt: string;
   actorUser: { id: number; name: string; email: string } | null;
 };
+
+type AuditLogDetail = AuditLogRow & { detail: unknown };
+
+type EnrichmentBookOutcome = { title: string; updatedFields?: string[]; errorMessage?: string | null };
+
+const ENRICHMENT_SUMMARY_EVENTS = new Set([
+  "admin_book_enrichment_completed",
+  "admin_book_enrichment_cancelled",
+]);
+
+function isEnrichmentBookOutcomeList(value: unknown): value is EnrichmentBookOutcome[] {
+  return Array.isArray(value) && value.every((v) => typeof v === "object" && v !== null && "title" in v);
+}
 
 type AuditLogResponse = {
   items: AuditLogRow[];
@@ -29,6 +41,58 @@ type AuditLogResponse = {
 };
 
 const PAGE_SIZE = 50;
+
+function EnrichmentDetailView({ detail }: { detail: unknown }) {
+  if (typeof detail !== "object" || detail === null) {
+    return (
+      <pre className="overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+        {JSON.stringify(detail, null, 2)}
+      </pre>
+    );
+  }
+  const record = detail as Record<string, unknown>;
+  const succeededBooks = isEnrichmentBookOutcomeList(record.succeededBooks) ? record.succeededBooks : [];
+  const failedBooks = isEnrichmentBookOutcomeList(record.failedBooks) ? record.failedBooks : [];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-zinc-800 dark:text-zinc-200">
+        成功 {String(record.successCount ?? "-")} ・ 失敗 {String(record.failCount ?? "-")} ・ 要確認{" "}
+        {String(record.reviewCount ?? "-")}
+      </p>
+      {succeededBooks.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            成功（{succeededBooks.length}件）
+          </p>
+          <ul className="max-h-40 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+            {succeededBooks.map((b, i) => (
+              <li key={i}>
+                {b.title}
+                {b.updatedFields && b.updatedFields.length > 0 && `（${b.updatedFields.join("・")}）`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {failedBooks.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-red-600 dark:text-red-400">
+            失敗（{failedBooks.length}件）
+          </p>
+          <ul className="max-h-40 overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+            {failedBooks.map((b, i) => (
+              <li key={i}>
+                {b.title}
+                {b.errorMessage && `（${b.errorMessage}）`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {}) {
   const adminFetch = useAdminFetch();
@@ -40,7 +104,9 @@ export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {})
   const [actorUserId, setActorUserId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [selected, setSelected] = useState<AuditLogRow | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selected, setSelected] = useState<AuditLogDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const applyResponse = useCallback((data: AuditLogResponse) => {
     setItems(data.items);
@@ -83,6 +149,23 @@ export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {})
       })
       .finally(() => setLoading(false));
   }, [applyResponse, adminFetch]);
+
+  useEffect(() => {
+    if (selectedId === null) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDetailLoading(true);
+    adminFetch(`/api/admin/audit-logs/${selectedId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.item) setSelected(data.item);
+      })
+      .finally(() => setDetailLoading(false));
+  }, [selectedId, adminFetch]);
+
+  function closeDetail() {
+    setSelectedId(null);
+    setSelected(null);
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
@@ -206,7 +289,7 @@ export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {})
                           {item.ipAddress ?? "-"}
                         </td>
                         <td className="px-4 py-3">
-                          <Button size="sm" variant="outline" onClick={() => setSelected(item)}>
+                          <Button size="sm" variant="outline" onClick={() => setSelectedId(item.id)}>
                             詳細
                           </Button>
                         </td>
@@ -222,7 +305,7 @@ export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {})
                   <li key={item.id}>
                     <button
                       type="button"
-                      onClick={() => setSelected(item)}
+                      onClick={() => setSelectedId(item.id)}
                       className="flex w-full flex-col items-start gap-1 rounded-lg border border-zinc-200 bg-white p-3 text-left text-sm dark:border-zinc-700 dark:bg-zinc-900"
                     >
                       <span className="font-medium text-zinc-900 dark:text-zinc-50">
@@ -272,68 +355,78 @@ export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {})
         </CardContent>
       </Card>
 
-      {selected && (
+      {selectedId !== null && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSelected(null);
+            if (e.target === e.currentTarget) closeDetail();
           }}
         >
           <div className="mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">監査ログ詳細</h2>
               <button
-                onClick={() => setSelected(null)}
+                onClick={closeDetail}
                 className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
               >
                 ✕
               </button>
             </div>
-            <div className="flex flex-col gap-3 text-sm">
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">日時</p>
-                <p className="text-zinc-800 dark:text-zinc-200">
-                  {new Date(selected.createdAt).toLocaleString("ja-JP", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">イベント</p>
-                <p className="text-zinc-800 dark:text-zinc-200">
-                  {AUDIT_EVENT_LABEL[selected.eventType as AuditEventType] ?? selected.eventType}
-                </p>
-              </div>
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">実行者</p>
-                <p className="text-zinc-800 dark:text-zinc-200">
-                  {selected.actorUser?.name ?? "-"}
-                  {selected.actorEmail && ` (${selected.actorEmail})`}
-                </p>
-              </div>
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">対象</p>
-                <p className="text-zinc-800 dark:text-zinc-200">
-                  {selected.targetType ? `${selected.targetType} #${selected.targetId}` : "-"}
-                </p>
-              </div>
-              <div>
-                <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">IPアドレス</p>
-                <p className="text-zinc-800 dark:text-zinc-200">{selected.ipAddress ?? "-"}</p>
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">詳細情報</p>
-                <pre className="overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                  {JSON.stringify(selected.detail, null, 2)}
-                </pre>
-              </div>
-            </div>
+            {detailLoading || !selected ? (
+              <p className="text-sm text-muted-foreground">読み込み中...</p>
+            ) : (
+              <>
+                <div className="flex flex-col gap-3 text-sm">
+                  <div>
+                    <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">日時</p>
+                    <p className="text-zinc-800 dark:text-zinc-200">
+                      {new Date(selected.createdAt).toLocaleString("ja-JP", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">イベント</p>
+                    <p className="text-zinc-800 dark:text-zinc-200">
+                      {AUDIT_EVENT_LABEL[selected.eventType as AuditEventType] ?? selected.eventType}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">実行者</p>
+                    <p className="text-zinc-800 dark:text-zinc-200">
+                      {selected.actorUser?.name ?? "-"}
+                      {selected.actorEmail && ` (${selected.actorEmail})`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">対象</p>
+                    <p className="text-zinc-800 dark:text-zinc-200">
+                      {selected.targetType ? `${selected.targetType} #${selected.targetId}` : "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">IPアドレス</p>
+                    <p className="text-zinc-800 dark:text-zinc-200">{selected.ipAddress ?? "-"}</p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">詳細情報</p>
+                    {ENRICHMENT_SUMMARY_EVENTS.has(selected.eventType) ? (
+                      <EnrichmentDetailView detail={selected.detail} />
+                    ) : (
+                      <pre className="overflow-x-auto rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                        {JSON.stringify(selected.detail, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
             <div className="mt-6 flex justify-end">
-              <Button onClick={() => setSelected(null)}>閉じる</Button>
+              <Button onClick={closeDetail}>閉じる</Button>
             </div>
           </div>
         </div>

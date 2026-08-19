@@ -277,13 +277,14 @@ model AuditLog {
 
 model BookEnrichmentJob {
   id              Int                  @id @default(autoincrement())
-  status          String               @default("pending") // pending | running | completed | failed
+  status          String               @default("pending") // pending | running | completed | failed | cancelled
   activeSlot      String?              @unique @map("active_slot")
   totalCount      Int                  @default(0) @map("total_count")
   doneCount       Int                  @default(0) @map("done_count")
   successCount    Int                  @default(0) @map("success_count")
   failCount       Int                  @default(0) @map("fail_count")
   reviewCount     Int                  @default(0) @map("review_count")
+  cancelRequested Boolean              @default(false) @map("cancel_requested")
   startedByUserId Int?                 @map("started_by_user_id")
   startedAt       DateTime?            @map("started_at")
   finishedAt      DateTime?            @map("finished_at")
@@ -299,7 +300,7 @@ model BookEnrichmentItem {
   id           Int      @id @default(autoincrement())
   jobId        Int      @map("job_id")
   bookId       Int      @map("book_id")
-  status       String   @default("pending") // pending | processing | done | error | needs_review | dismissed
+  status       String   @default("pending") // pending | processing | done | error | needs_review | dismissed | cancelled
   errorMessage String?  @db.Text @map("error_message")
   resultDetail Json?    @map("result_detail")
   updatedAt    DateTime @updatedAt @map("updated_at")
