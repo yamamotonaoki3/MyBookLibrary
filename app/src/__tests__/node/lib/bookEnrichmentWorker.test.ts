@@ -112,6 +112,37 @@ describe("processEnrichmentJob", () => {
     });
   });
 
+  it("候補が単一で自動反映された場合、BookIsbnにも代表ISBNとして登録される", async () => {
+    setupJobRun(baseItem);
+    mockedCollectEditionCandidates.mockResolvedValue([
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: true, origin: "rakuten" },
+    ]);
+    mockedSearchBookByIsbn.mockResolvedValue({
+      title: "対象タイトル",
+      author: "対象著者",
+      publisher: "",
+      pubdate: "2000-01-01",
+    });
+    mockedSearchBooksByIsbn.mockResolvedValue(null);
+    prismaMock.book.update.mockResolvedValue({});
+    prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
+    prismaMock.bookIsbn.create.mockResolvedValue({});
+    prismaMock.bookIsbn.findUnique.mockResolvedValue({ bookId: 1, isbn: "9784000000001" });
+    prismaMock.bookIsbn.updateMany.mockResolvedValue({});
+    prismaMock.bookIsbn.update.mockResolvedValue({});
+
+    await processEnrichmentJob(1);
+
+    // 単一候補（1b経路）の登録と、代表ISBN確定時の同期登録の2回呼ばれる
+    expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000001" }) })
+    );
+    expect(prismaMock.bookIsbn.update).toHaveBeenCalledWith({
+      where: { isbn: "9784000000001" },
+      data: { isPrimary: true },
+    });
+  });
+
   it("候補が単一（NDL単行本由来）の場合、NDL実在確認を再度行わずグリーン扱いで自動反映する", async () => {
     setupJobRun(baseItem);
     mockedCollectEditionCandidates.mockResolvedValue([
@@ -165,6 +196,33 @@ describe("processEnrichmentJob", () => {
         data: { doneCount: { increment: 1 }, reviewCount: { increment: 1 } },
       })
     );
+  });
+
+  it("候補が複数見つかりneeds_reviewになった場合も、確定前に候補すべてがBookIsbnへ登録される", async () => {
+    setupJobRun(baseItem);
+    mockedCollectEditionCandidates.mockResolvedValue([
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: true, origin: "rakuten" },
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000002", isLikelyHardcover: false, origin: "rakuten" },
+    ]);
+    mockedSearchBookByIsbn.mockResolvedValue({
+      title: "対象タイトル",
+      author: "対象著者",
+      publisher: "",
+      pubdate: "2000-01-01",
+    });
+    prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
+    prismaMock.bookIsbn.create.mockResolvedValue({});
+
+    await processEnrichmentJob(1);
+
+    expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000001", source: "rakuten" }) })
+    );
+    expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000002", source: "rakuten" }) })
+    );
+    // needs_review時点ではBook.isbnも代表ISBNも未確定のまま
+    expect(prismaMock.book.update).not.toHaveBeenCalled();
   });
 
   it("単行本（NDL）と文庫（楽天）が両方見つかった場合もneeds_reviewとして両方を記録する", async () => {
