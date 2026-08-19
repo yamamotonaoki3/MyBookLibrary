@@ -49,12 +49,14 @@ function setupJobRun(item: typeof baseItem | null) {
   prismaMock.bookEnrichmentJob.findUnique.mockResolvedValue({
     id: 1,
     status: "running",
+    cancelRequested: false,
   });
   prismaMock.bookEnrichmentItem.updateMany.mockResolvedValue({ count: 1 });
   prismaMock.bookEnrichmentJob.update.mockResolvedValue({});
   prismaMock.bookEnrichmentItem.findFirst
     .mockResolvedValueOnce(item)
     .mockResolvedValue(null);
+  prismaMock.bookEnrichmentItem.findMany.mockResolvedValue([]);
   prismaMock.bookEnrichmentItem.count.mockResolvedValue(0);
   prismaMock.bookEnrichmentJob.updateMany.mockResolvedValue({ count: 1 });
   prismaMock.bookEnrichmentJob.findUniqueOrThrow.mockResolvedValue({
@@ -97,7 +99,7 @@ describe("processEnrichmentJob", () => {
     });
     expect(prismaMock.bookEnrichmentItem.update).toHaveBeenCalledWith({
       where: { id: 10 },
-      data: { status: "done" },
+      data: { status: "done", resultDetail: expect.objectContaining({ updatedFields: expect.any(Array) }) },
     });
     expect(prismaMock.bookEnrichmentJob.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -220,5 +222,36 @@ describe("processEnrichmentJob", () => {
         },
       },
     });
+  });
+
+  it("中断リクエストがある場合、未処理アイテムをcancelledにしジョブをcancelledで完了する", async () => {
+    prismaMock.bookEnrichmentJob.findUnique.mockResolvedValue({
+      id: 1,
+      status: "running",
+      cancelRequested: true,
+    });
+    prismaMock.bookEnrichmentItem.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.bookEnrichmentJob.update.mockResolvedValue({});
+    prismaMock.bookEnrichmentItem.findMany.mockResolvedValue([]);
+    prismaMock.bookEnrichmentJob.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.bookEnrichmentJob.findUniqueOrThrow.mockResolvedValue({
+      id: 1,
+      startedByUserId: 1,
+      successCount: 0,
+      failCount: 0,
+      reviewCount: 0,
+    });
+
+    await processEnrichmentJob(1);
+
+    expect(prismaMock.bookEnrichmentItem.updateMany).toHaveBeenCalledWith({
+      where: { jobId: 1, status: { in: ["pending", "processing"] } },
+      data: { status: "cancelled" },
+    });
+    expect(prismaMock.bookEnrichmentJob.updateMany).toHaveBeenCalledWith({
+      where: { id: 1, status: "running" },
+      data: expect.objectContaining({ status: "cancelled" }),
+    });
+    expect(prismaMock.bookEnrichmentItem.findFirst).not.toHaveBeenCalled();
   });
 });

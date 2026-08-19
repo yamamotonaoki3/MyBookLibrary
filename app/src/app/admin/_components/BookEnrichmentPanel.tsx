@@ -12,12 +12,13 @@ const POLL_INTERVAL_MS = 2000;
 
 type EnrichmentJob = {
   id: number;
-  status: "pending" | "running" | "completed";
+  status: "pending" | "running" | "completed" | "cancelled";
   totalCount: number;
   doneCount: number;
   successCount: number;
   failCount: number;
   reviewCount: number;
+  cancelRequested: boolean;
 };
 
 type Props = {
@@ -30,6 +31,7 @@ export function BookEnrichmentPanel({ adminFetch }: Props) {
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevStatusRef = useRef<string | null>(null);
@@ -66,7 +68,10 @@ export function BookEnrichmentPanel({ adminFetch }: Props) {
 
   // 実行中→完了への遷移を検知したときだけ結果モーダルを自動表示する
   useEffect(() => {
-    if (job?.status === "completed" && prevStatusRef.current === "running") {
+    if (
+      (job?.status === "completed" || job?.status === "cancelled") &&
+      prevStatusRef.current === "running"
+    ) {
       setResultModalOpen(true);
     }
     prevStatusRef.current = job?.status ?? null;
@@ -104,6 +109,19 @@ export function BookEnrichmentPanel({ adminFetch }: Props) {
     await fetchStatus();
   }
 
+  async function handleCancel() {
+    if (!window.confirm("実行中の一括補完処理を中断しますか？未処理の項目は中断扱いになります。")) {
+      return;
+    }
+    setCancelling(true);
+    try {
+      await adminFetch("/api/admin/book-enrichment/cancel", { method: "POST" });
+      await fetchStatus();
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   const isRunning = job?.status === "running";
 
   return (
@@ -116,7 +134,18 @@ export function BookEnrichmentPanel({ adminFetch }: Props) {
           <Button onClick={handleStart} disabled={starting || isRunning} size="sm" className="self-start">
             {isRunning ? "実行中..." : "一括補完を開始"}
           </Button>
-          {job?.status === "completed" && (
+          {isRunning && (
+            <Button
+              onClick={handleCancel}
+              disabled={cancelling || job?.cancelRequested}
+              size="sm"
+              variant="outline"
+              className="self-start"
+            >
+              {job?.cancelRequested ? "中断処理中..." : "中断"}
+            </Button>
+          )}
+          {(job?.status === "completed" || job?.status === "cancelled") && (
             <Button
               onClick={() => setResultModalOpen(true)}
               disabled={isRunning}
