@@ -9,7 +9,7 @@ import FavoriteAuthorButton from "@/app/books/_components/FavoriteAuthorButton";
 import { ReadingStatusButtons } from "./_components/ReadingStatusButtons";
 import { ReportButton } from "./_components/ReportButton";
 import EditBookButton from "./_components/EditBookButton";
-import LibraryAvailabilityButton from "./_components/LibraryAvailabilityButton";
+import LibraryAvailabilityButton from "@/components/ui/LibraryAvailabilityButton";
 import FollowButton from "@/app/_components/FollowButton";
 import Link from "next/link";
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BookWithAwardEntry, ReadingStatus } from "@/types/award";
-import { LibraryAvailability } from "@/components/ui/library-availability";
+import LibraryAvailabilityButton from "@/components/ui/LibraryAvailabilityButton";
 
 type Props = {
   entry: BookWithAwardEntry;
@@ -93,11 +93,9 @@ export function BookCard({ entry }: Props) {
           </p>
         </div>
 
-        {book.isbn && (
-          <div className="mt-1">
-            <LibraryAvailability isbn={book.isbn} title={book.title} />
-          </div>
-        )}
+        <div className="mt-1">
+          <LibraryAvailabilityButton bookId={book.id} bookTitle={book.title} />
+        </div>
 
         <div className="flex flex-wrap gap-1">
           {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
