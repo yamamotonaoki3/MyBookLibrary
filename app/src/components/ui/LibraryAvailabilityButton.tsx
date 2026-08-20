@@ -17,9 +17,9 @@ export default function LibraryAvailabilityButton({ bookId, bookTitle }: Props) 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+        className="flex items-center gap-1 whitespace-nowrap text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
       >
-        <Library className="h-3.5 w-3.5" />
+        <Library className="h-3.5 w-3.5 shrink-0" />
         登録されている版ごとの在庫を見る
       </button>
 
