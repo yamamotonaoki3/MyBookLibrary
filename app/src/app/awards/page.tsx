@@ -10,6 +10,15 @@ export const metadata: Metadata = {
   title: "賞別作品一覧 | MyBookLibrary",
 };
 
+// 賞タブの表示順（DBのid昇順=seed投入順とは独立に指定する）。
+// ここに無い賞名は末尾に回すため、将来賞が追加されても表示から消えない。
+const AWARD_DISPLAY_ORDER: Record<string, number> = {
+  "直木賞": 0,
+  "芥川賞": 1,
+  "本屋大賞": 2,
+  "このミステリーがすごい！": 3,
+};
+
 type PageProps = {
   searchParams: Promise<{
     awardId?: string;
@@ -26,6 +35,11 @@ export default async function AwardsPage({ searchParams }: PageProps) {
     orderBy: { id: "asc" },
     select: { id: true, name: true },
   });
+  // タブの表示順のみ指定の並びに変更する。デフォルト選択（awardId未指定時）は
+  // 従来通りDBのid昇順を基準にするため、選択ロジックには元の awards を使う。
+  const sortedAwards = [...awards].sort(
+    (a, b) => (AWARD_DISPLAY_ORDER[a.name] ?? Infinity) - (AWARD_DISPLAY_ORDER[b.name] ?? Infinity)
+  );
 
   const showAll = awardIdParam === "all";
   const selectedAwardId: number | "all" = showAll
@@ -81,7 +95,7 @@ export default async function AwardsPage({ searchParams }: PageProps) {
         <p className="text-zinc-500">賞データが登録されていません。</p>
       ) : (
         <>
-          <AwardTabs awards={awards} selectedAwardId={selectedAwardId} />
+          <AwardTabs awards={sortedAwards} selectedAwardId={selectedAwardId} />
 
           <div className="mt-4 mb-2 flex items-center justify-between gap-4">
             <YearFilter
