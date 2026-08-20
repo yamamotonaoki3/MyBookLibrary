@@ -17,6 +17,15 @@ const HITS_PER_PAGE = 30;
 // 無限スクロールによる連続リクエストから外部API（楽天/NDL）を守るための間隔
 const SEARCH_RATE_LIMIT_INTERVAL_MS = 500;
 
+// 楽天+DB登録済みの本を合わせた件数がこの件数未満の場合のみ、1ページ目でNDLへも軽く問い合わせて
+// 結果をマージする。多くの検索（人気作家等）では発動させず、速度・NDL利用規約への配慮を維持する。
+// 実際の使用感を見て調整可能な値として切り出している。
+const NDL_SUPPLEMENT_THRESHOLD = 5;
+
+// 楽天結果に無いDB登録済みの本を補完表示する際の上限件数。sourceによる絞り込みを外した
+// ことで該当件数が多くなりうるため、ページを圧迫しない程度に上限を設ける。
+const DB_MERGE_LIMIT = 20;
+
 export type SearchResult = {
   id?: number;
   title: string;
@@ -168,10 +177,77 @@ export async function GET(request: NextRequest) {
       status: statusByIsbn.get(b.isbn) ?? lookupStatus(b.title, b.author) ?? "unread",
     }));
 
+    // 1ページ目のみ、楽天検索結果に無いDB登録済みの本（手動登録本・NDL解決済みの本など）を先頭に追加する。
+    // 楽天のカタログに存在しない本（絶版・近刊で未登録等）でも、一括補完等で既にDBへ
+    // 登録済みであれば検索結果から漏れないようにするため、sourceによる絞り込みは行わない。
+    // 下の「楽天0件時のNDLフォールバック」より前に計算し、フォールバック発生時にもこのDB分を
+    // マージできるようにする。
+    let dbOnlyItems: SearchResult[] = [];
+    if (page === 1) {
+      // keywordはタイトル・著者の両パートを持ちうるため、楽天検索で使った params
+      // （既にkeyword分割済み）と同じ条件で絞り込む。author指定時はタイトルを問わない。
+      const whereClause = type === "author"
+        ? { author: { name: { contains: q } } }
+        : params.author
+          ? { title: { contains: params.title ?? q }, author: { name: { contains: params.author } } }
+          : { title: { contains: params.title ?? q } };
+      const dbBooksForMerge = await prisma.book.findMany({
+        where: whereClause,
+        // 絞り込みを緩めたことで該当件数が多くなりうるため、補完目的として妥当な件数に上限を設ける。
+        // ページネーションはせず、超過分は対象外とする（このマージはあくまで楽天の抜け漏れを
+        // 補う位置づけのため）。
+        take: DB_MERGE_LIMIT,
+        include: {
+          author: true,
+          awardEntries: { select: { year: true, type: true, award: { select: { name: true } } } },
+          readingStatuses: { where: { userId }, select: { status: true } },
+        },
+      });
+
+      const rakutenKeys = new Set(rakutenItems.map((b) => makeKey(b.title, b.author)));
+      const rakutenIsbns = new Set(
+        rakutenItems.map((b) => b.isbn).filter((v): v is string => v !== null)
+      );
+      // 著者表記の揺れで重複表示にならないよう、タイトルが検索結果・DB登録本の
+      // 両方で一意な場合はタイトルのみの一致でも重複とみなす（lookup 側と同じ基準）
+      const rakutenTitleCounts = countTitles(rakutenItems.map((b) => b.title));
+      const dbBookTitleCounts = countTitles(dbBooksForMerge.map((b) => b.title));
+      const isDuplicateOfRakuten = (b: { title: string; isbn: string | null; author: { name: string } }) => {
+        if (b.isbn !== null && rakutenIsbns.has(b.isbn)) return true;
+        if (rakutenKeys.has(makeKey(b.title, b.author.name))) return true;
+        const t = normalizeTitle(b.title);
+        return rakutenTitleCounts.get(t) === 1 && dbBookTitleCounts.get(t) === 1;
+      };
+      const formatDate = (d: Date) =>
+        `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日`;
+
+      dbOnlyItems = dbBooksForMerge
+        .filter((b) => !isDuplicateOfRakuten(b))
+        .map((b) => ({
+          id: b.id,
+          title: b.title,
+          author: b.author.name,
+          isbn: b.isbn ?? null,
+          publisherName: "",
+          salesDate: formatDate(b.publishedAt),
+          size: "",
+          coverImageUrl: b.coverImageUrl,
+          awards: b.awardEntries.map((e) => ({ name: e.award.name, year: e.year, type: e.type })),
+          status: b.readingStatuses[0]?.status ?? "unread",
+          source: b.source === "manual" ? ("manual" as const) : undefined,
+        }));
+    }
+
+    // NDLへの問い合わせは1リクエストにつき最大1回に抑える（下の全体0件フォールバックと
+    // 件数不足時の補完は排他的にしか発生しないが、フォールバックが0件で終わった場合に
+    // 補完側で同一クエリを重複して問い合わせないようフラグで管理する）。
+    let ndlAlreadyQueried = false;
+
     // 楽天が0件 → NDLにフォールバック。
     // 非書籍の除外で空になっただけの場合、後続ページに書籍がありうる間はフォールバックせず、
     // 最終ページまで書籍がなければフォールバックする。
     if (rawItems.length === 0 || (rakutenItems.length === 0 && page >= pageCount)) {
+      ndlAlreadyQueried = true;
       const ndlResult = await searchBooksNdl({ type: type as "title" | "author" | "keyword", q, page });
       if (ndlResult.items.length > 0) {
         const ndlIsbns = ndlResult.items.map((b) => b.isbn).filter((v): v is string => v !== null);
@@ -212,64 +288,69 @@ export async function GET(request: NextRequest) {
           status: (b.isbn ? ndlStatusByIsbn.get(b.isbn) : undefined) ?? ndlLookupStatus(b.title, b.author) ?? "unread",
         }));
 
+        // DBマージ分（dbOnlyItems）もNDL結果と重複しなければ先頭に加える。
+        // 楽天が0件でもDB登録済みの本（このNDLフォールバック自体が拾わなかったもの）を
+        // 取りこぼさないようにするため。
+        const ndlItemKeys = new Set(ndlItems.map((b) => makeKey(b.title, b.author)));
+        const ndlItemIsbns = new Set(ndlItems.map((b) => b.isbn).filter((v): v is string => v !== null));
+        // 著者表記の揺れで重複表示にならないよう、タイトルが双方で一意な場合は
+        // タイトルのみの一致でも重複とみなす（他の重複判定と同じ基準）
+        const ndlItemTitleCounts = countTitles(ndlItems.map((b) => b.title));
+        const dbOnlyItemTitleCounts = countTitles(dbOnlyItems.map((b) => b.title));
+        const dbOnlyNotInNdl = dbOnlyItems.filter((b) => {
+          if (b.isbn !== null && ndlItemIsbns.has(b.isbn)) return false;
+          if (ndlItemKeys.has(makeKey(b.title, b.author))) return false;
+          const t = normalizeTitle(b.title);
+          if (ndlItemTitleCounts.get(t) === 1 && dbOnlyItemTitleCounts.get(t) === 1) return false;
+          return true;
+        });
+
         return NextResponse.json({
-          items: ndlItems,
+          items: [...dbOnlyNotInNdl, ...ndlItems],
           totalPages: ndlResult.totalPages,
           currentPage: page,
         } satisfies SearchResponse);
       }
     }
 
-    // 1ページ目のみ手動登録本をDBから取得して先頭に追加
-    let manualItems: SearchResult[] = [];
-    if (page === 1) {
-      const whereClause = type === "author"
-        ? { author: { name: { contains: q } } }
-        : { title: { contains: q } };
-      const manualBooks = await prisma.book.findMany({
-        where: { source: "manual", ...whereClause },
-        include: {
-          author: true,
-          awardEntries: { select: { year: true, type: true, award: { select: { name: true } } } },
-          readingStatuses: { where: { userId }, select: { status: true } },
-        },
-      });
+    let items: SearchResult[] = [...dbOnlyItems, ...rakutenItems];
 
-      const rakutenKeys = new Set(rakutenItems.map((b) => makeKey(b.title, b.author)));
-      const rakutenIsbns = new Set(
-        rakutenItems.map((b) => b.isbn).filter((v): v is string => v !== null)
-      );
-      // 著者表記の揺れで重複表示にならないよう、タイトルが検索結果・手動登録の
-      // 両方で一意な場合はタイトルのみの一致でも重複とみなす（lookup 側と同じ基準）
-      const rakutenTitleCounts = countTitles(rakutenItems.map((b) => b.title));
-      const manualTitleCounts = countTitles(manualBooks.map((b) => b.title));
-      const isDuplicateOfRakuten = (b: { title: string; isbn: string | null; author: { name: string } }) => {
-        if (b.isbn !== null && rakutenIsbns.has(b.isbn)) return true;
-        if (rakutenKeys.has(makeKey(b.title, b.author.name))) return true;
-        const t = normalizeTitle(b.title);
-        return rakutenTitleCounts.get(t) === 1 && manualTitleCounts.get(t) === 1;
-      };
-      const formatDate = (d: Date) =>
-        `${d.getFullYear()}年${String(d.getMonth() + 1).padStart(2, "0")}月${String(d.getDate()).padStart(2, "0")}日`;
+    // 楽天+DBマージ後の件数が少ない場合のみ、NDLへも軽く問い合わせて結果をマージする
+    // （全体0件時の上記フォールバックとは別に、既存の結果は残したまま補う）。
+    // 上記フォールバックで既にNDLへ問い合わせ済み（0件だった）場合は、同一クエリの
+    // 重複問い合わせを避けるためスキップする。
+    // 書影は取得しない（NDLは書影情報を持たないため、既存の全件フォールバックと同じ形式）。
+    if (page === 1 && items.length < NDL_SUPPLEMENT_THRESHOLD && !ndlAlreadyQueried) {
+      const ndlSupplement = await searchBooksNdl({ type: type as "title" | "author" | "keyword", q, page: 1 });
+      if (ndlSupplement.items.length > 0) {
+        const existingKeys = new Set(items.map((b) => makeKey(b.title, b.author)));
+        const existingIsbns = new Set(items.map((b) => b.isbn).filter((v): v is string => v !== null));
+        const existingTitleCounts = countTitles(items.map((b) => b.title));
+        const ndlTitleCounts = countTitles(ndlSupplement.items.map((b) => b.title));
+        const isDuplicateOfExisting = (b: { title: string; author: string; isbn: string | null }) => {
+          if (b.isbn !== null && existingIsbns.has(b.isbn)) return true;
+          if (existingKeys.has(makeKey(b.title, b.author))) return true;
+          const t = normalizeTitle(b.title);
+          return existingTitleCounts.get(t) === 1 && ndlTitleCounts.get(t) === 1;
+        };
 
-      manualItems = manualBooks
-        .filter((b) => !isDuplicateOfRakuten(b))
-        .map((b) => ({
-          id: b.id,
-          title: b.title,
-          author: b.author.name,
-          isbn: b.isbn ?? null,
-          publisherName: "",
-          salesDate: formatDate(b.publishedAt),
-          size: "",
-          coverImageUrl: b.coverImageUrl,
-          awards: b.awardEntries.map((e) => ({ name: e.award.name, year: e.year, type: e.type })),
-          status: b.readingStatuses[0]?.status ?? "unread",
-          source: "manual" as const,
-        }));
+        const supplementItems: SearchResult[] = ndlSupplement.items
+          .filter((b) => !isDuplicateOfExisting(b))
+          .map((b) => ({
+            title: b.title,
+            author: b.author,
+            isbn: b.isbn,
+            publisherName: b.publisherName,
+            salesDate: b.salesDate,
+            size: "",
+            coverImageUrl: null,
+            awards: [],
+            status: "unread",
+          }));
+
+        items = [...items, ...supplementItems];
+      }
     }
-
-    const items = [...manualItems, ...rakutenItems];
 
     // 非書籍の除外でページが空になっても pageCount は維持する。
     // 後続ページに書籍が含まれる可能性があり、ページネーションを閉じると辿れなくなるため。
