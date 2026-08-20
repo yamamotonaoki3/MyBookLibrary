@@ -6,7 +6,6 @@ jest.mock("@/lib/rakuten", () => ({
 jest.mock("@/lib/ndl", () => ({
   ...jest.requireActual("@/lib/ndl"),
   searchBooksNdl: jest.fn(),
-  searchBookByIsbn: jest.fn(),
 }));
 jest.mock("@/lib/editionResolver", () => ({
   ...jest.requireActual("@/lib/editionResolver"),
@@ -20,12 +19,11 @@ jest.mock("@/lib/auditLog", () => ({
 import { prismaMock } from "../../helpers/prismaMock";
 import { processEnrichmentJob } from "@/lib/bookEnrichmentWorker";
 import { searchBooksByIsbn } from "@/lib/rakuten";
-import { searchBooksNdl, searchBookByIsbn } from "@/lib/ndl";
+import { searchBooksNdl } from "@/lib/ndl";
 import { collectEditionCandidates } from "@/lib/editionResolver";
 
 const mockedSearchBooksByIsbn = searchBooksByIsbn as jest.Mock;
 const mockedSearchBooksNdl = searchBooksNdl as jest.Mock;
-const mockedSearchBookByIsbn = searchBookByIsbn as jest.Mock;
 const mockedCollectEditionCandidates = collectEditionCandidates as jest.Mock;
 
 const baseBook = {
@@ -73,23 +71,20 @@ beforeEach(() => {
   // NDL titleAndAuthor 厳密検索は既定でヒットなしとする
   mockedSearchBooksNdl.mockResolvedValue({ items: [], totalPages: 0 });
   mockedCollectEditionCandidates.mockResolvedValue([]);
+  // 書影フォールバック検索は既定で候補なしとする
+  prismaMock.bookIsbn.findMany.mockResolvedValue([]);
 });
 
 describe("processEnrichmentJob", () => {
-  it("候補が単一（楽天由来）かつ実在確認（グリーン）できた場合は自動でBookを更新する", async () => {
+  it("候補が単一（楽天由来）の場合は確認なしで自動でBookを更新する", async () => {
     setupJobRun(baseItem);
     mockedCollectEditionCandidates.mockResolvedValue([
       { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: true, origin: "rakuten" },
     ]);
-    mockedSearchBookByIsbn.mockResolvedValue({
-      title: "対象タイトル",
-      author: "対象著者",
-      publisher: "",
-      pubdate: "2000-01-01",
-    });
     mockedSearchBooksByIsbn.mockResolvedValue(null);
     prismaMock.book.update.mockResolvedValue({});
     prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
+    prismaMock.bookIsbn.findMany.mockResolvedValue([{ isbn: "9784000000001" }]);
 
     await processEnrichmentJob(1);
 
@@ -117,12 +112,6 @@ describe("processEnrichmentJob", () => {
     mockedCollectEditionCandidates.mockResolvedValue([
       { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: true, origin: "rakuten" },
     ]);
-    mockedSearchBookByIsbn.mockResolvedValue({
-      title: "対象タイトル",
-      author: "対象著者",
-      publisher: "",
-      pubdate: "2000-01-01",
-    });
     mockedSearchBooksByIsbn.mockResolvedValue(null);
     prismaMock.book.update.mockResolvedValue({});
     prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
@@ -130,6 +119,7 @@ describe("processEnrichmentJob", () => {
     prismaMock.bookIsbn.findUnique.mockResolvedValue({ bookId: 1, isbn: "9784000000001" });
     prismaMock.bookIsbn.updateMany.mockResolvedValue({});
     prismaMock.bookIsbn.update.mockResolvedValue({});
+    prismaMock.bookIsbn.findMany.mockResolvedValue([{ isbn: "9784000000001" }]);
 
     await processEnrichmentJob(1);
 
@@ -143,7 +133,7 @@ describe("processEnrichmentJob", () => {
     });
   });
 
-  it("候補が単一（NDL単行本由来）の場合、NDL実在確認を再度行わずグリーン扱いで自動反映する", async () => {
+  it("候補が単一（NDL単行本由来）の場合も自動反映する", async () => {
     setupJobRun(baseItem);
     mockedCollectEditionCandidates.mockResolvedValue([
       { title: "対象タイトル", author: "対象著者", isbn: "9784000000099", isLikelyHardcover: true, origin: "ndl" },
@@ -151,6 +141,7 @@ describe("processEnrichmentJob", () => {
     mockedSearchBooksByIsbn.mockResolvedValue(null);
     prismaMock.book.update.mockResolvedValue({});
     prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
+    prismaMock.bookIsbn.findMany.mockResolvedValue([{ isbn: "9784000000099" }]);
 
     await processEnrichmentJob(1);
 
@@ -158,127 +149,121 @@ describe("processEnrichmentJob", () => {
       where: { id: 1 },
       data: expect.objectContaining({ isbn: "9784000000099" }),
     });
-    // NDL由来候補は検索時点で実在確認済みのため、追加のsearchBookByIsbn呼び出しは発生しない
-    expect(mockedSearchBookByIsbn).not.toHaveBeenCalled();
   });
 
-  it("候補が複数見つかった場合はneeds_reviewとして候補一覧を記録する", async () => {
+  it("複数候補が見つかった場合は確認を挟まず全件BookIsbnへ登録し、hardcover優先の1件を代表ISBNとして自動反映する", async () => {
     setupJobRun(baseItem);
     mockedCollectEditionCandidates.mockResolvedValue([
-      { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: true, origin: "rakuten" },
-      { title: "対象タイトル", author: "対象著者", isbn: "9784000000002", isLikelyHardcover: false, origin: "rakuten" },
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: false, origin: "rakuten" },
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000002", isLikelyHardcover: true, origin: "ndl" },
     ]);
-    mockedSearchBookByIsbn.mockResolvedValue({
-      title: "対象タイトル",
-      author: "対象著者",
-      publisher: "",
-      pubdate: "2000-01-01",
-    });
+    mockedSearchBooksByIsbn.mockResolvedValue(null);
+    prismaMock.book.update.mockResolvedValue({});
     prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
+    prismaMock.bookIsbn.create.mockResolvedValue({});
+    prismaMock.bookIsbn.findMany.mockResolvedValue([
+      { isbn: "9784000000001" },
+      { isbn: "9784000000002" },
+    ]);
 
     await processEnrichmentJob(1);
 
-    expect(prismaMock.book.update).not.toHaveBeenCalled();
+    // 両候補ともBookIsbnへ登録される
+    expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000001", source: "rakuten" }) })
+    );
+    expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000002", source: "ndl" }) })
+    );
+    // isLikelyHardcoverがtrueの候補が代表ISBNとしてBook.isbnに採用される
+    expect(prismaMock.book.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: expect.objectContaining({ isbn: "9784000000002" }),
+    });
+    // 確認を挟まず即座にdoneとして完了する
     expect(prismaMock.bookEnrichmentItem.update).toHaveBeenCalledWith({
       where: { id: 10 },
-      data: {
-        status: "needs_review",
-        resultDetail: {
-          candidates: [
-            { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", lamp: "green", isLikelyHardcover: true },
-            { title: "対象タイトル", author: "対象著者", isbn: "9784000000002", lamp: "green", isLikelyHardcover: false },
-          ],
-        },
-      },
+      data: { status: "done", resultDetail: expect.objectContaining({ updatedFields: expect.any(Array) }) },
     });
     expect(prismaMock.bookEnrichmentJob.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { doneCount: { increment: 1 }, reviewCount: { increment: 1 } },
+        data: { doneCount: { increment: 1 }, successCount: { increment: 1 } },
       })
     );
   });
 
-  it("候補が複数見つかりneeds_reviewになった場合も、確定前に候補すべてがBookIsbnへ登録される", async () => {
+  it("hardcover候補が無い場合は先頭候補を代表ISBNとして自動反映する", async () => {
+    setupJobRun(baseItem);
+    mockedCollectEditionCandidates.mockResolvedValue([
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: false, origin: "rakuten" },
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000002", isLikelyHardcover: false, origin: "rakuten" },
+    ]);
+    mockedSearchBooksByIsbn.mockResolvedValue(null);
+    prismaMock.book.update.mockResolvedValue({});
+    prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
+    prismaMock.bookIsbn.create.mockResolvedValue({});
+    prismaMock.bookIsbn.findMany.mockResolvedValue([
+      { isbn: "9784000000001" },
+      { isbn: "9784000000002" },
+    ]);
+
+    await processEnrichmentJob(1);
+
+    expect(prismaMock.book.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: expect.objectContaining({ isbn: "9784000000001" }),
+    });
+  });
+
+  it("代表ISBNで書影が見つからない場合、他の候補ISBNへフォールバックして書影を取得する", async () => {
     setupJobRun(baseItem);
     mockedCollectEditionCandidates.mockResolvedValue([
       { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: true, origin: "rakuten" },
-      { title: "対象タイトル", author: "対象著者", isbn: "9784000000002", isLikelyHardcover: false, origin: "rakuten" },
     ]);
-    mockedSearchBookByIsbn.mockResolvedValue({
-      title: "対象タイトル",
-      author: "対象著者",
-      publisher: "",
-      pubdate: "2000-01-01",
-    });
+    // 代表ISBNでは見つからず、フォールバック候補で見つかる
+    mockedSearchBooksByIsbn
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ largeImageUrl: "https://example.com/fallback.jpg" });
+    prismaMock.bookIsbn.findMany
+      .mockResolvedValueOnce([{ isbn: "9784000000001" }])
+      .mockResolvedValueOnce([{ isbn: "9784000000003" }]);
+    prismaMock.book.update.mockResolvedValue({});
     prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
     prismaMock.bookIsbn.create.mockResolvedValue({});
 
     await processEnrichmentJob(1);
 
-    expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000001", source: "rakuten" }) })
-    );
-    expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000002", source: "rakuten" }) })
-    );
-    // needs_review時点ではBook.isbnも代表ISBNも未確定のまま
-    expect(prismaMock.book.update).not.toHaveBeenCalled();
+    expect(mockedSearchBooksByIsbn).toHaveBeenCalledWith("9784000000001");
+    expect(mockedSearchBooksByIsbn).toHaveBeenCalledWith("9784000000003");
+    expect(prismaMock.book.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: expect.objectContaining({ coverImageUrl: "https://example.com/fallback.jpg" }),
+    });
   });
 
-  it("単行本（NDL）と文庫（楽天）が両方見つかった場合もneeds_reviewとして両方を記録する", async () => {
+  it("hardcover代表候補が他Bookと衝突した場合、登録に成功した次点候補を採用する", async () => {
     setupJobRun(baseItem);
     mockedCollectEditionCandidates.mockResolvedValue([
-      { title: "対象タイトル", author: "対象著者", isbn: "9784000000010", isLikelyHardcover: true, origin: "ndl" },
-      { title: "対象タイトル", author: "対象著者", isbn: "9784000000011", isLikelyHardcover: false, origin: "rakuten" },
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: true, origin: "ndl" },
+      { title: "対象タイトル", author: "対象著者", isbn: "9784000000002", isLikelyHardcover: false, origin: "rakuten" },
     ]);
-    mockedSearchBookByIsbn.mockResolvedValue({
-      title: "対象タイトル",
-      author: "対象著者",
-      publisher: "",
-      pubdate: "2000-01-01",
-    });
+    mockedSearchBooksByIsbn.mockResolvedValue(null);
+    prismaMock.book.update.mockResolvedValue({});
     prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
+    prismaMock.bookIsbn.create
+      .mockRejectedValueOnce(new Error("Unique constraint failed"))
+      .mockResolvedValueOnce({});
+    prismaMock.bookIsbn.findMany.mockResolvedValue([{ isbn: "9784000000002" }]);
 
     await processEnrichmentJob(1);
 
-    expect(prismaMock.book.update).not.toHaveBeenCalled();
-    expect(prismaMock.bookEnrichmentItem.update).toHaveBeenCalledWith({
-      where: { id: 10 },
-      data: {
-        status: "needs_review",
-        resultDetail: {
-          candidates: [
-            { title: "対象タイトル", author: "対象著者", isbn: "9784000000010", lamp: "green", isLikelyHardcover: true },
-            { title: "対象タイトル", author: "対象著者", isbn: "9784000000011", lamp: "green", isLikelyHardcover: false },
-          ],
-        },
-      },
+    expect(prismaMock.book.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: expect.objectContaining({ isbn: "9784000000002" }),
     });
-    // NDL由来候補ぶんはsearchBookByIsbnを呼ばず、楽天由来候補の1件のみ確認する
-    expect(mockedSearchBookByIsbn).toHaveBeenCalledTimes(1);
-  });
-
-  it("候補のISBNがNDLで実在確認できない場合（レッド）はneeds_reviewとして記録する", async () => {
-    setupJobRun(baseItem);
-    mockedCollectEditionCandidates.mockResolvedValue([
-      { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", isLikelyHardcover: true, origin: "rakuten" },
-    ]);
-    mockedSearchBookByIsbn.mockResolvedValue(null);
-    prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
-
-    await processEnrichmentJob(1);
-
-    expect(prismaMock.book.update).not.toHaveBeenCalled();
     expect(prismaMock.bookEnrichmentItem.update).toHaveBeenCalledWith({
       where: { id: 10 },
-      data: {
-        status: "needs_review",
-        resultDetail: {
-          candidates: [
-            { title: "対象タイトル", author: "対象著者", isbn: "9784000000001", lamp: "red", isLikelyHardcover: true },
-          ],
-        },
-      },
+      data: { status: "done", resultDetail: expect.objectContaining({ updatedFields: expect.any(Array) }) },
     });
   });
 
