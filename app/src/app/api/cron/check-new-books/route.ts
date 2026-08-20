@@ -12,6 +12,22 @@ function isWithinOneWeek(date: Date): boolean {
 
 const MIN_CRON_SECRET_LENGTH = 16;
 
+function isUpcomingRelease(
+  rawSalesDate: string | null | undefined,
+  salesDate: Date | null,
+  today: Date,
+): boolean {
+  if (salesDate === null) return false;
+
+  const hasSpecificDay = /\d{1,2}日/.test(rawSalesDate ?? "");
+  if (hasSpecificDay) return salesDate > today;
+
+  const firstDayOfCurrentMonth = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
+  );
+  return salesDate >= firstDayOfCurrentMonth;
+}
+
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || cronSecret.length < MIN_CRON_SECRET_LENGTH) {
@@ -76,7 +92,7 @@ export async function GET(req: NextRequest) {
       data: toCreate.map((book) => {
         const salesDate = parseSalesDateToUtcDate(book.salesDate);
         const releaseMessage =
-          salesDate !== null && salesDate > today
+          isUpcomingRelease(book.salesDate, salesDate, today)
             ? "が発売予定です"
             : "が発売されました";
 
