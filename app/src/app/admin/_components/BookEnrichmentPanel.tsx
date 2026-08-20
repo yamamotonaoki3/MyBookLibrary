@@ -2,11 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  BookEnrichmentResultModal,
-  type FailedItem,
-  type ReviewItem,
-} from "./BookEnrichmentResultModal";
+import { BookEnrichmentResultModal, type FailedItem } from "./BookEnrichmentResultModal";
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -17,7 +13,6 @@ type EnrichmentJob = {
   doneCount: number;
   successCount: number;
   failCount: number;
-  reviewCount: number;
   cancelRequested: boolean;
 };
 
@@ -28,7 +23,6 @@ type Props = {
 export function BookEnrichmentPanel({ adminFetch }: Props) {
   const [job, setJob] = useState<EnrichmentJob | null>(null);
   const [failedItems, setFailedItems] = useState<FailedItem[]>([]);
-  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -43,7 +37,6 @@ export function BookEnrichmentPanel({ adminFetch }: Props) {
         if (!data) return;
         setJob(data.job);
         setFailedItems(data.failedItems ?? []);
-        setReviewItems(data.reviewItems ?? []);
       });
   }
 
@@ -93,20 +86,6 @@ export function BookEnrichmentPanel({ adminFetch }: Props) {
     } finally {
       setStarting(false);
     }
-  }
-
-  async function handleConfirm(itemId: number, isbn: string) {
-    await adminFetch(`/api/admin/book-enrichment/items/${itemId}/confirm`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isbn }),
-    });
-    await fetchStatus();
-  }
-
-  async function handleDismiss(itemId: number) {
-    await adminFetch(`/api/admin/book-enrichment/items/${itemId}/dismiss`, { method: "POST" });
-    await fetchStatus();
   }
 
   async function handleCancel() {
@@ -173,7 +152,7 @@ export function BookEnrichmentPanel({ adminFetch }: Props) {
               {job.doneCount} / {job.totalCount} 件処理済み
             </span>
             <span>
-              成功 {job.successCount} ・ 失敗 {job.failCount} ・ 要確認 {job.reviewCount}
+              成功 {job.successCount} ・ 失敗 {job.failCount}
             </span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
@@ -190,11 +169,8 @@ export function BookEnrichmentPanel({ adminFetch }: Props) {
       {resultModalOpen && job && (
         <BookEnrichmentResultModal
           job={job}
-          reviewItems={reviewItems}
           failedItems={failedItems}
           onClose={() => setResultModalOpen(false)}
-          onConfirm={handleConfirm}
-          onDismiss={handleDismiss}
         />
       )}
     </div>

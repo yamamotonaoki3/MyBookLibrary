@@ -1,25 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-
-export type ReviewCandidate = {
-  title: string;
-  author: string;
-  isbn: string;
-  lamp: "green" | "red";
-  isLikelyHardcover?: boolean;
-};
-
-export type ReviewItem = {
-  id: number;
-  bookId: number;
-  title: string;
-  resultDetail: {
-    candidates?: ReviewCandidate[];
-    candidateNote?: string;
-  } | null;
-};
 
 export type FailedItem = {
   bookId: number;
@@ -31,46 +12,16 @@ type JobSummary = {
   totalCount: number;
   successCount: number;
   failCount: number;
-  reviewCount: number;
 };
 
 type Props = {
   job: JobSummary;
-  reviewItems: ReviewItem[];
   failedItems: FailedItem[];
   onClose: () => void;
-  onConfirm: (itemId: number, isbn: string) => Promise<void>;
-  onDismiss: (itemId: number) => Promise<void>;
 };
 
-export function BookEnrichmentResultModal({
-  job,
-  reviewItems,
-  failedItems,
-  onClose,
-  onConfirm,
-  onDismiss,
-}: Props) {
+export function BookEnrichmentResultModal({ job, failedItems, onClose }: Props) {
   const [failedListOpen, setFailedListOpen] = useState(false);
-  const [busyItemId, setBusyItemId] = useState<number | null>(null);
-
-  async function handleConfirmClick(itemId: number, isbn: string) {
-    setBusyItemId(itemId);
-    try {
-      await onConfirm(itemId, isbn);
-    } finally {
-      setBusyItemId(null);
-    }
-  }
-
-  async function handleDismissClick(itemId: number) {
-    setBusyItemId(itemId);
-    try {
-      await onDismiss(itemId);
-    } finally {
-      setBusyItemId(null);
-    }
-  }
 
   return (
     <div
@@ -95,75 +46,9 @@ export function BookEnrichmentResultModal({
         <div className="mb-4 flex justify-between text-sm text-zinc-600 dark:text-zinc-400">
           <span>合計 {job.totalCount} 件</span>
           <span>
-            成功 {job.successCount} ・ 失敗 {job.failCount} ・ 要確認 {job.reviewCount}
+            成功 {job.successCount} ・ 失敗 {job.failCount}
           </span>
         </div>
-
-        {reviewItems.length > 0 && (
-          <div className="mb-4">
-            <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">
-              要確認（{reviewItems.length}件）
-            </h3>
-            <ul className="flex flex-col gap-3">
-              {reviewItems.map((item) => (
-                <li
-                  key={item.id}
-                  className="rounded-md border border-zinc-200 p-3 text-sm dark:border-zinc-700"
-                >
-                  <p className="mb-2 font-medium text-zinc-900 dark:text-zinc-50">{item.title}</p>
-                  {item.resultDetail?.candidates && item.resultDetail.candidates.length > 0 ? (
-                    <ul className="flex flex-col gap-2">
-                      {item.resultDetail.candidates.map((candidate) => (
-                        <li
-                          key={candidate.isbn}
-                          className="flex items-center justify-between gap-2 rounded bg-zinc-50 p-2 dark:bg-zinc-800"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <span className="mr-1" aria-label={candidate.lamp === "green" ? "実在確認済み" : "実在未確認"}>
-                              {candidate.lamp === "green" ? "🟢" : "🔴"}
-                            </span>
-                            <span className="text-xs text-zinc-700 dark:text-zinc-300">
-                              {candidate.title}（{candidate.author}）ISBN: {candidate.isbn}
-                              {candidate.isLikelyHardcover !== undefined && (
-                                <span className="ml-1 rounded bg-zinc-200 px-1 py-0.5 text-[10px] text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
-                                  {candidate.isLikelyHardcover ? "単行本" : "文庫等"}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busyItemId === item.id}
-                            onClick={() => handleConfirmClick(item.id, candidate.isbn)}
-                          >
-                            この候補を採用
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    item.resultDetail?.candidateNote && (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {item.resultDetail.candidateNote}
-                      </p>
-                    )
-                  )}
-                  <div className="mt-2 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busyItemId === item.id}
-                      onClick={() => handleDismissClick(item.id)}
-                    >
-                      見送る
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         {failedItems.length > 0 && (
           <div>
