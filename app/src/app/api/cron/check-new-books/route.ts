@@ -12,6 +12,22 @@ function isWithinOneWeek(date: Date): boolean {
 
 const MIN_CRON_SECRET_LENGTH = 16;
 
+function isUpcomingRelease(
+  rawSalesDate: string | null | undefined,
+  salesDate: Date | null,
+  today: Date,
+): boolean {
+  if (salesDate === null) return false;
+
+  const hasSpecificDay = /\d{1,2}日/.test(rawSalesDate ?? "");
+  if (hasSpecificDay) return salesDate > today;
+
+  const firstDayOfCurrentMonth = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1),
+  );
+  return salesDate >= firstDayOfCurrentMonth;
+}
+
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || cronSecret.length < MIN_CRON_SECRET_LENGTH) {
@@ -63,13 +79,30 @@ export async function GET(req: NextRequest) {
     const toCreate = newBooks.filter((b) => !existingIsbns.has(b.isbn));
     if (toCreate.length === 0) continue;
 
+    const nowInJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const today = new Date(
+      Date.UTC(
+        nowInJst.getUTCFullYear(),
+        nowInJst.getUTCMonth(),
+        nowInJst.getUTCDate(),
+      ),
+    );
+
     await prisma.notification.createMany({
-      data: toCreate.map((book) => ({
-        userId: fav.userId,
-        type: "new_book",
-        content: `${fav.author.name} の新刊「${book.title}」が発売されました`,
-        bookIsbn: book.isbn,
-      })),
+      data: toCreate.map((book) => {
+        const salesDate = parseSalesDateToUtcDate(book.salesDate);
+        const releaseMessage =
+          isUpcomingRelease(book.salesDate, salesDate, today)
+            ? "が発売予定です"
+            : "が発売されました";
+
+        return {
+          userId: fav.userId,
+          type: "new_book",
+          content: `${fav.author.name} の新刊「${book.title}」${releaseMessage}`,
+          bookIsbn: book.isbn,
+        };
+      }),
     });
     createdCount += toCreate.length;
   }
