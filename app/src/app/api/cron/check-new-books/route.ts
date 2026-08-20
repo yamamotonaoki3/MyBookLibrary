@@ -63,13 +63,30 @@ export async function GET(req: NextRequest) {
     const toCreate = newBooks.filter((b) => !existingIsbns.has(b.isbn));
     if (toCreate.length === 0) continue;
 
+    const nowInJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const today = new Date(
+      Date.UTC(
+        nowInJst.getUTCFullYear(),
+        nowInJst.getUTCMonth(),
+        nowInJst.getUTCDate(),
+      ),
+    );
+
     await prisma.notification.createMany({
-      data: toCreate.map((book) => ({
-        userId: fav.userId,
-        type: "new_book",
-        content: `${fav.author.name} の新刊「${book.title}」が発売されました`,
-        bookIsbn: book.isbn,
-      })),
+      data: toCreate.map((book) => {
+        const salesDate = parseSalesDateToUtcDate(book.salesDate);
+        const releaseMessage =
+          salesDate !== null && salesDate > today
+            ? "が発売予定です"
+            : "が発売されました";
+
+        return {
+          userId: fav.userId,
+          type: "new_book",
+          content: `${fav.author.name} の新刊「${book.title}」${releaseMessage}`,
+          bookIsbn: book.isbn,
+        };
+      }),
     });
     createdCount += toCreate.length;
   }
