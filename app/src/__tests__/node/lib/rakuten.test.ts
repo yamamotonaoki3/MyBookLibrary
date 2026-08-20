@@ -9,7 +9,12 @@ import {
   isNonBookSize,
   type RakutenBook,
 } from "@/lib/rakuten";
-import { mockFetchJson, mockFetchSequence, restoreFetch } from "../../helpers/fetchMock";
+import {
+  mockFetchJson,
+  mockFetchSequence,
+  mockFetchNetworkError,
+  restoreFetch,
+} from "../../helpers/fetchMock";
 
 jest.mock("@/lib/ndl", () => ({
   getAuthorBookCountNdl: jest.fn(),
@@ -79,13 +84,33 @@ describe("rakuten", () => {
       jest.useRealTimers();
     });
 
-    it("429以外のHTTPエラーは即座に空配列を返す（リトライしない）", async () => {
+    it("429以外のHTTPエラーもリトライし、上限に達すると空配列を返す", async () => {
+      jest.useFakeTimers();
       const fetchFn = mockFetchJson({}, { status: 500 });
 
-      const result = await fetchBookPage({ page: 1, hits: 30 });
+      const promise = fetchBookPage({ page: 1, hits: 30 });
+      await jest.advanceTimersByTimeAsync(5000);
+      const result = await promise;
 
       expect(result).toEqual({ items: [], pageCount: 0 });
-      expect(fetchFn).toHaveBeenCalledTimes(1);
+      expect(fetchFn).toHaveBeenCalledTimes(3);
+      jest.useRealTimers();
+    });
+
+    it("HTTPエラーの後に成功すればリトライを打ち切り結果を返す", async () => {
+      jest.useFakeTimers();
+      const fetchFn = mockFetchSequence([
+        { status: 500 },
+        { json: { Items: [makeBook()], pageCount: 1 } },
+      ]);
+
+      const promise = fetchBookPage({ page: 1, hits: 30 });
+      await jest.advanceTimersByTimeAsync(5000);
+      const result = await promise;
+
+      expect(result.pageCount).toBe(1);
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      jest.useRealTimers();
     });
 
     it("Itemsが無いレスポンスは空配列を返す", async () => {
@@ -95,6 +120,19 @@ describe("rakuten", () => {
 
       expect(result.items).toEqual([]);
       expect(result.pageCount).toBe(1);
+    });
+
+    it("通信エラー（fetch自体の例外）もリトライし、上限に達すると空配列を返す", async () => {
+      jest.useFakeTimers();
+      const fetchFn = mockFetchNetworkError();
+
+      const promise = fetchBookPage({ page: 1, hits: 30 });
+      await jest.advanceTimersByTimeAsync(5000);
+      const result = await promise;
+
+      expect(result).toEqual({ items: [], pageCount: 0 });
+      expect(fetchFn).toHaveBeenCalledTimes(3);
+      jest.useRealTimers();
     });
 
     it("author/titleパラメータをURLに含める", async () => {
@@ -235,12 +273,33 @@ describe("rakuten", () => {
       expect(result).toBeNull();
     });
 
-    it("HTTPエラーなら null を返す", async () => {
-      mockFetchJson({}, { status: 500 });
+    it("HTTPエラーが続く場合はリトライした上で null を返す", async () => {
+      jest.useFakeTimers();
+      const fetchFn = mockFetchJson({}, { status: 500 });
 
-      const result = await searchBooksByIsbn("9784000000001");
+      const promise = searchBooksByIsbn("9784000000001");
+      await jest.advanceTimersByTimeAsync(5000);
+      const result = await promise;
 
       expect(result).toBeNull();
+      expect(fetchFn).toHaveBeenCalledTimes(3);
+      jest.useRealTimers();
+    });
+
+    it("1回目が失敗しても2回目で成功すればその結果を返す", async () => {
+      jest.useFakeTimers();
+      const fetchFn = mockFetchSequence([
+        { status: 500 },
+        { json: { Items: [makeBook({ isbn: "9784000000001" })] } },
+      ]);
+
+      const promise = searchBooksByIsbn("9784000000001");
+      await jest.advanceTimersByTimeAsync(5000);
+      const result = await promise;
+
+      expect(result?.isbn).toBe("9784000000001");
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+      jest.useRealTimers();
     });
   });
 

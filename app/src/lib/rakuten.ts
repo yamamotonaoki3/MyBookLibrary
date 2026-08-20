@@ -25,6 +25,51 @@ function getCredentials() {
   return { appId, accessKey };
 }
 
+const RAKUTEN_MAX_ATTEMPTS = 3;
+
+/**
+ * 楽天APIへのfetchを、一時的な失敗（429・5xx等のres.ok=false、またはfetch自体の例外）に対して
+ * リトライする共通ヘルパー。429は指数的に待機時間を伸ばして再試行し、それ以外の失敗
+ * （5xxやネットワークエラー）は短い固定待機で再試行する。全て失敗した場合はnullを返す。
+ */
+async function fetchRakutenWithRetry(url: string): Promise<Response | null> {
+  for (let attempt = 0; attempt < RAKUTEN_MAX_ATTEMPTS; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, { next: { revalidate: 3600 } });
+    } catch (err) {
+      if (attempt < RAKUTEN_MAX_ATTEMPTS - 1) {
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      logger.error({ err }, "楽天API 通信エラー: リトライ上限に達しました");
+      return null;
+    }
+
+    if (res.status === 429) {
+      if (attempt < RAKUTEN_MAX_ATTEMPTS - 1) {
+        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      logger.error("楽天API 429: リトライ上限に達しました");
+      return null;
+    }
+
+    if (!res.ok) {
+      if (attempt < RAKUTEN_MAX_ATTEMPTS - 1) {
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+      logger.error({ status: res.status, statusText: res.statusText }, "楽天API エラー: リトライ上限に達しました");
+      return null;
+    }
+
+    return res;
+  }
+
+  return null;
+}
+
 export async function fetchBookPage(params: {
   author?: string;
   title?: string;
@@ -43,31 +88,14 @@ export async function fetchBookPage(params: {
   if (params.author) url.searchParams.set("author", params.author);
   if (params.title) url.searchParams.set("title", params.title);
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+  const res = await fetchRakutenWithRetry(url.toString());
+  if (!res) return { items: [], pageCount: 0 };
 
-    if (res.status === 429) {
-      if (attempt < 2) {
-        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
-        continue;
-      }
-      logger.error("楽天API 429: リトライ上限に達しました");
-      return { items: [], pageCount: 0 };
-    }
-
-    if (!res.ok) {
-      logger.error({ status: res.status, statusText: res.statusText }, "楽天API エラー");
-      return { items: [], pageCount: 0 };
-    }
-
-    const data = await res.json();
-    return {
-      items: (data.Items ?? []) as RakutenBook[],
-      pageCount: data.pageCount ?? 1,
-    };
-  }
-
-  return { items: [], pageCount: 0 };
+  const data = await res.json();
+  return {
+    items: (data.Items ?? []) as RakutenBook[],
+    pageCount: data.pageCount ?? 1,
+  };
 }
 
 export async function searchBooks(params: {
@@ -190,8 +218,8 @@ export async function searchBooksByIsbn(isbn: string): Promise<RakutenBook | nul
   url.searchParams.set("formatVersion", "2");
   url.searchParams.set("isbn", isbn);
 
-  const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
-  if (!res.ok) return null;
+  const res = await fetchRakutenWithRetry(url.toString());
+  if (!res) return null;
 
   const data = await res.json();
   const items = (data.Items ?? []) as RakutenBook[];
