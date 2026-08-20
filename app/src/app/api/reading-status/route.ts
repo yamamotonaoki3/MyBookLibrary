@@ -6,7 +6,8 @@ import { getAuthenticatedUserId } from "@/lib/session";
 import { getMutualFollowerIds } from "@/lib/mutualFollows";
 import { logger } from "@/lib/logger";
 import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
-import { resolvePreferringHardcover } from "@/lib/editionResolver";
+import { resolvePreferringHardcover, collectEditionCandidates } from "@/lib/editionResolver";
+import { addIsbns } from "@/lib/bookIsbn";
 
 async function notifyMutualFollowersOfWantToRead(
   userId: number,
@@ -104,6 +105,7 @@ export async function POST(request: Request) {
         }
       }
 
+      let isNewBook = false;
       if (!book) {
         const resolvedPublishedAt = resolved.salesDate ?? publishedAt;
         book = await prisma.book
@@ -128,6 +130,22 @@ export async function POST(request: Request) {
             }
             throw err;
           });
+        isNewBook = true;
+      }
+
+      // 新規作成時のみ、同一タイトル・著者の他版ISBNをNDL/楽天から収集してBookIsbnへ保存する。
+      // 既存Book一致時は毎回の呼び出しコストが大きいため対象外とする。
+      if (isNewBook && book) {
+        try {
+          const candidates = await collectEditionCandidates({
+            title: resolved.title,
+            author: resolved.author,
+          });
+          await addIsbns(book.id, candidates, { primaryIsbn: book.isbn ?? undefined });
+        } catch (err) {
+          // 複数版収集の失敗はBook登録自体を失敗させない
+          logger.error({ err }, "[POST /api/reading-status] failed to collect edition candidates");
+        }
       }
     }
 

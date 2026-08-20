@@ -40,4 +40,22 @@ describe("isPlausibleMatch", () => {
   it("タイトル・著者いずれも空文字なら一致とみなさない", () => {
     expect(isPlausibleMatch({ title: "", author: "" }, { title: "", author: "" })).toBe(false);
   });
+
+  it("NDLの並列タイトル（= 英語タイトル）を含んでいても一致とみなす", () => {
+    expect(
+      isPlausibleMatch(
+        { title: "かがみの孤城 = THE SOLITARY CASTLE IN THE MIRROR", author: "辻村深月" },
+        { title: "かがみの孤城", author: "辻村深月" }
+      )
+    ).toBe(true);
+  });
+
+  it("タイトルが「=」から始まる場合は並列タイトル除去でタイトルが空にならない", () => {
+    expect(
+      isPlausibleMatch(
+        { title: "=ほげ", author: "著者A" },
+        { title: "=ほげ", author: "著者A" }
+      )
+    ).toBe(true);
+  });
 });

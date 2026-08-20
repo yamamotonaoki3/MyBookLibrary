@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 import { logger } from "@/lib/logger";
+import { addIsbns, setPrimaryIsbn } from "@/lib/bookIsbn";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -45,6 +46,10 @@ export async function POST(request: NextRequest, { params }: Props) {
       where: { id: item.bookId },
       data: { isbn: selectedIsbn },
     });
+
+    // BookIsbn側も確定候補で同期する（他Bookに既に紐づく場合はBook.isbn更新時点のP2002で弾かれている）
+    await addIsbns(item.bookId, [{ isbn: selectedIsbn, source: "manual" }]);
+    await setPrimaryIsbn(item.bookId, selectedIsbn);
 
     await prisma.bookEnrichmentItem.update({
       where: { id: itemId },
