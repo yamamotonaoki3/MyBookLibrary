@@ -39,7 +39,7 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 | `app/api/admin/audit-logs` | 権限チェック、`AuditLogQuerySchema` のフィルタ（eventType/actorUserId/期間）・ページングの正常系/異常系 |
 | `app/api/admin/manual-books`, `admin/manual-books/[id]`, `admin/manual-books/merge` | 権限チェック、手動登録本の一覧・編集・削除、マージ時の関連データ（読書ステータス・レビュー・受賞登録）の付け替え |
 | `app/api/user/secret-word` | 現在のパスワード確認、合言葉の設定・変更の正常系/異常系 |
-| `/users/[id]` ページ（Server Component） | 相互フォロー時のみ詳細情報を表示する分岐 |
+| `/users/[id]` ページ（Server Component） | お気に入り著者・読んでいる本が相互フォローの有無に関わらず表示される、相互フォロー成立時のみ「相互フォロー」ラベルが表示される分岐 |
 
 ## 優先度C（低リスク・純粋関数、一部実施済み）
 
