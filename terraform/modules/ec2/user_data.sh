@@ -5,7 +5,7 @@ set -e
 # Docker インストール（Amazon Linux 2023）
 # ──────────────────────────────────────────────
 dnf update -y
-dnf install -y docker unzip
+dnf install -y docker unzip rsync
 
 systemctl enable docker
 systemctl start docker
@@ -63,14 +63,6 @@ sudo -u ec2-user bash -c "cd /opt/app/app && npm ci"
 sudo -u ec2-user bash -c "cd /opt/app/app && NODE_OPTIONS='--max-old-space-size=1536' npm run build"
 
 # ──────────────────────────────────────────────
-# standalone ビルドの static ファイルをコピー
-# Next.js standalone モードは static/ と public/ を自動で含まないため手動コピーが必要
-# （省略すると CSS・画像が読み込まれず画面が崩れる）
-# ──────────────────────────────────────────────
-cp -r /opt/app/app/.next/static  /opt/app/app/.next/standalone/.next/static
-cp -r /opt/app/app/public        /opt/app/app/.next/standalone/public
-
-# ──────────────────────────────────────────────
 # DBマイグレーション実行
 # prisma migrate deploy は未適用のマイグレーションだけを実行するため
 # 毎回実行しても安全（適用済みのものはスキップされる）
@@ -92,9 +84,20 @@ sudo -u ec2-user bash -c "
 # ──────────────────────────────────────────────
 cat > /opt/app/start.sh << 'EOF'
 #!/bin/bash
+set -e
+
 # standalone の static ファイルを再同期（再ビルド後に備えて毎回実行）
-cp -r /opt/app/app/.next/static  /opt/app/app/.next/standalone/.next/static
-cp -r /opt/app/app/public        /opt/app/app/.next/standalone/public
+# rsync -a --delete で ec2-user 権限のまま冪等に同期する（cp -r はネストコピーになるため不可）
+mkdir -p /opt/app/app/.next/standalone/.next/static
+mkdir -p /opt/app/app/.next/standalone/public
+
+rsync -a --delete \
+  /opt/app/app/.next/static/ \
+  /opt/app/app/.next/standalone/.next/static/
+
+rsync -a --delete \
+  /opt/app/app/public/ \
+  /opt/app/app/.next/standalone/public/
 
 # AWS Parameter Store から環境変数を取得
 REGION="ap-northeast-1"
