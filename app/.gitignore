@@ -71,3 +71,8 @@ next-env.d.ts
 /scripts/download-honya-history.mjs
 /scripts/build-honya-*.mjs
 /data/honya/
+
+# このミステリーがすごい！データ取り込み用の作業ファイル（コミット予定なし）
+/scripts/download-konomys-sources.mjs
+/scripts/build-konomys-csv.mjs
+/data/konomys/
