@@ -73,8 +73,8 @@ cd app
 npm install
 
 # 3. 環境変数を設定（初回のみ）
-cp .env.example .env
-# .env を編集して DATABASE_URL などを設定
+cp .env.local.example .env.local
+# .env.local を編集して DATABASE_URL などを設定
 
 # 4. データベースのマイグレーション（初回のみ）
 npx prisma migrate dev
@@ -108,11 +108,14 @@ MyBookLibrary/
 ## ドキュメント
 
 - [要件定義書](docs/requirements.md)
+- [機能別定義書一覧](docs/features/)
+- [API 仕様書](docs/api-spec.md)
 - [ER 図](docs/er-diagram.md)
 - [画面遷移図](docs/screen-transition.md)
 - [ワイヤーフレーム](docs/wireframes.md)
 - [AWS デプロイガイド](docs/aws-deploy-guide.md)
 - [テスト計画表](docs/test-plan.md)
+- [テスト依存関係マップ](docs/test-dependency-map.md)
 
 ## テスト
 
@@ -135,7 +138,7 @@ npm run test:integration
 
 ### E2E（Playwright）
 
-初回のみブラウザのインストールが必要（CIでの自動インストールは #446 で対応予定）。
+ローカルでは初回のみブラウザのインストールが必要（CIでは自動インストールされる）。
 
 ```bash
 cd app
