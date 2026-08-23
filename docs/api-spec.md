@@ -432,18 +432,29 @@ title,author,isbn,coverImageUrl,publishedAt,awardId,year,type
 ```json
 [
   {
+    "id": 11,
+    "type": "new_book",
+    "content": "東野圭吾 の新刊「新刊タイトル」が発売予定です",
+    "bookIsbn": "9784000000002",
+    "bookTitle": "新刊タイトル",
+    "isRead": false,
+    "createdAt": "2024-05-26T09:00:00.000Z"
+  },
+  {
     "id": 10,
     "type": "new_book",
-    "message": "東野圭吾が新刊を出しました",
+    "content": "東野圭吾 の新刊「発売済みタイトル」が発売されました",
     "bookIsbn": "9784000000001",
+    "bookTitle": "発売済みタイトル",
     "isRead": false,
     "createdAt": "2024-05-25T09:00:00.000Z"
   },
   {
     "id": 9,
     "type": "like",
-    "message": "あなたの感想にいいねがつきました",
+    "content": "あなたの感想にいいねがつきました",
     "bookIsbn": null,
+    "bookTitle": null,
     "isRead": true,
     "createdAt": "2024-05-24T15:30:00.000Z"
   }
