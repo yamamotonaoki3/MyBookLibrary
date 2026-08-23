@@ -11,7 +11,7 @@
 > | ロール | メール | パスワード | 秘密の言葉 |
 > | --- | --- | --- | --- |
 > | 一般ユーザー | `demo@example.com` | `Demo1234!` | `秘密の言葉` |
-> | 管理者 | `demoadmin@example.com` | `demoadmin1234` | `管理者` |
+> | 管理者 | `demoadmin@example.com` | `demoadmin1234` | `デモ管理者` |
 
 ## 主な機能
 

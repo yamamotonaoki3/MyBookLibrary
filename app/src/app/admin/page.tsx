@@ -35,6 +35,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AccountInfoCard } from "@/app/settings/_components/AccountInfoCard";
 import { LibrarySettings } from "@/app/settings/_components/LibrarySettings";
 import { FollowsTabs } from "@/app/settings/_components/FollowsTabs";
+import { SecretWordForm } from "@/app/settings/_components/SecretWordForm";
 import type { UserItem } from "@/lib/followsListData";
 import type { RecommendedUser } from "@/lib/userRecommendations";
 import { AuditLogsView } from "./audit-logs/AuditLogsView";
@@ -271,6 +272,9 @@ export default function AdminPage() {
   const [followRecommendations, setFollowRecommendations] = useState<RecommendedUser[]>([]);
   const [followsRefreshKey, setFollowsRefreshKey] = useState(0);
   const [accountInfoOpen, setAccountInfoOpen] = useState(false);
+  const [secretWordOpen, setSecretWordOpen] = useState(false);
+  const [hasPasswordLogin, setHasPasswordLogin] = useState(false);
+  const [hasSecretWord, setHasSecretWord] = useState(false);
   const [awardsOpen, setAwardsOpen] = useState(false);
   const [selectedAwardEntryForDetail, setSelectedAwardEntryForDetail] = useState<AwardEntry | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -342,6 +346,15 @@ export default function AdminPage() {
       .then((res) => res.json())
       .then((data: RecommendedUser[]) => setFollowRecommendations(data));
   }, [followsRefreshKey, adminFetch]);
+
+  useEffect(() => {
+    fetch("/api/user/secret-word")
+      .then((res) => res.json())
+      .then((data: { hasPasswordLogin: boolean; hasSecretWord: boolean }) => {
+        setHasPasswordLogin(data.hasPasswordLogin);
+        setHasSecretWord(data.hasSecretWord);
+      });
+  }, []);
 
   async function executeDeleteUser() {
     if (!deleteTargetUser) return;
@@ -916,6 +929,34 @@ export default function AdminPage() {
                 <LibrarySettings />
               </CardContent>
             </Card>
+
+            {/* 秘密の言葉 */}
+            {hasPasswordLogin && (
+              <Card className="mt-6">
+                <CardHeader className="pb-3">
+                  <CardTitle>
+                    <span className="hidden items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:flex">
+                      <KeyRound className="h-4 w-4" />秘密の言葉
+                    </span>
+                    <button
+                      onClick={() => setSecretWordOpen(!secretWordOpen)}
+                      className="flex w-full items-center justify-between text-sm font-semibold uppercase tracking-widest text-muted-foreground lg:hidden"
+                    >
+                      <span className="flex items-center gap-2">
+                        <KeyRound className="h-4 w-4" />秘密の言葉
+                      </span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${secretWordOpen ? "rotate-180" : ""}`} />
+                    </button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className={`${secretWordOpen ? "" : "hidden"} lg:block`}>
+                  <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+                    パスワードを忘れた際の本人確認に使用します。設定しない場合、パスワードリセットは行えません。
+                  </p>
+                  <SecretWordForm isSet={hasSecretWord} />
+                </CardContent>
+              </Card>
+            )}
 
             {/* このアプリについて */}
             <Link
