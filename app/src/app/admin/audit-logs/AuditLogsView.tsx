@@ -261,48 +261,56 @@ export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {})
             <>
               {/* PC幅: 表形式 */}
               <div className="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 lg:block">
-                <table className="w-full text-sm whitespace-nowrap">
+                <table className="w-full table-fixed text-sm">
                   <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                     <tr>
-                      <th className="px-4 py-3 text-left">日時</th>
-                      <th className="px-4 py-3 text-left">イベント</th>
-                      <th className="px-4 py-3 text-left">実行者</th>
-                      <th className="px-4 py-3 text-left">対象</th>
-                      <th className="px-4 py-3 text-left">IPアドレス</th>
-                      <th className="px-4 py-3 text-left">詳細</th>
+                      <th className="w-40 px-4 py-3 text-left">日時</th>
+                      <th className="w-48 px-4 py-3 text-left">イベント</th>
+                      <th className="w-40 px-4 py-3 text-left">実行者</th>
+                      <th className="w-32 px-4 py-3 text-left">対象</th>
+                      <th className="w-32 px-4 py-3 text-left">IPアドレス</th>
+                      <th className="w-20 px-4 py-3 text-left">詳細</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
-                    {items.map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                          {new Date(item.createdAt).toLocaleString("ja-JP", {
-                            year: "numeric",
-                            month: "2-digit",
-                            day: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
-                          {AUDIT_EVENT_LABEL[item.eventType as AuditEventType] ?? item.eventType}
-                        </td>
-                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                          {item.actorUser?.name ?? item.actorEmail ?? "-"}
-                        </td>
-                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                          {item.targetType ? `${item.targetType} #${item.targetId}` : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                          {item.ipAddress ?? "-"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Button size="sm" variant="outline" onClick={() => setSelectedId(item.id)}>
-                            詳細
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                    {items.map((item) => {
+                      const eventLabel = AUDIT_EVENT_LABEL[item.eventType as AuditEventType] ?? item.eventType;
+                      const actorLabel = item.actorUser?.name ?? item.actorEmail ?? "-";
+                      const targetLabel = item.targetType ? `${item.targetType} #${item.targetId}` : "-";
+                      return (
+                        <tr key={item.id}>
+                          <td className="whitespace-nowrap px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                            {new Date(item.createdAt).toLocaleString("ja-JP", {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </td>
+                          <td
+                            className="truncate px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50"
+                            title={eventLabel}
+                          >
+                            {eventLabel}
+                          </td>
+                          <td className="truncate px-4 py-3 text-zinc-600 dark:text-zinc-400" title={actorLabel}>
+                            {actorLabel}
+                          </td>
+                          <td className="truncate px-4 py-3 text-zinc-600 dark:text-zinc-400" title={targetLabel}>
+                            {targetLabel}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                            {item.ipAddress ?? "-"}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            <Button size="sm" variant="outline" onClick={() => setSelectedId(item.id)}>
+                              詳細
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

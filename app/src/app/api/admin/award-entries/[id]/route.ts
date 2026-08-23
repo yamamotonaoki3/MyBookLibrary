@@ -4,6 +4,7 @@ import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
+import { isBookIsbnConflictError, replaceIsbns } from "@/lib/bookIsbn";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -59,7 +60,7 @@ export async function PATCH(request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "ID が不正です。" }, { status: 400 });
     }
 
-    const { title, author, isbn, awardId, year, type } = await request.json();
+    const { title, author, isbns, awardId, year, type } = await request.json();
 
     if (type !== undefined && type !== "winner" && type !== "nominee") {
       return NextResponse.json(
@@ -82,42 +83,57 @@ export async function PATCH(request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "受賞登録が見つかりません。" }, { status: 404 });
     }
 
-    // 著者名が変更された場合は findOrCreate
-    if (author !== undefined) {
-      const normalizedAuthor = normalizeAuthorName(author);
-      let authorRecord = await prisma.author.findFirst({ where: { name: normalizedAuthor } });
-      if (!authorRecord) {
-        authorRecord = await prisma.author.create({ data: { name: normalizedAuthor } });
+    const updated = await prisma.$transaction(async (tx) => {
+      // 著者名が変更された場合は findOrCreate
+      if (author !== undefined) {
+        const normalizedAuthor = normalizeAuthorName(author);
+        let authorRecord = await tx.author.findFirst({ where: { name: normalizedAuthor } });
+        if (!authorRecord) {
+          authorRecord = await tx.author.create({ data: { name: normalizedAuthor } });
+        }
+        await tx.book.update({
+          where: { id: entry.bookId },
+          data: {
+            ...(title !== undefined && { title }),
+            authorId: authorRecord.id,
+          },
+        });
+      } else if (title !== undefined) {
+        await tx.book.update({
+          where: { id: entry.bookId },
+          data: { title },
+        });
       }
-      await prisma.book.update({
-        where: { id: entry.bookId },
-        data: {
-          ...(title !== undefined && { title }),
-          ...(isbn !== undefined && { isbn: isbn || null }),
-          authorId: authorRecord.id,
-        },
-      });
-    } else if (title !== undefined || isbn !== undefined) {
-      await prisma.book.update({
-        where: { id: entry.bookId },
-        data: {
-          ...(title !== undefined && { title }),
-          ...(isbn !== undefined && { isbn: isbn || null }),
-        },
-      });
-    }
 
-    const updated = await prisma.awardEntry.update({
-      where: { id: entryId },
-      data: {
-        ...(type !== undefined && { type }),
-        ...(year !== undefined && { year }),
-        ...(awardId !== undefined && { awardId }),
-      },
+      if (isbns !== undefined) {
+        await replaceIsbns(
+          tx,
+          entry.bookId,
+          (isbns as { isbn: string; isPrimary: boolean }[]).map((item) => ({
+            isbn: item.isbn,
+            isPrimary: item.isPrimary,
+          }))
+        );
+      }
+
+      return tx.awardEntry.update({
+        where: { id: entryId },
+        data: {
+          ...(type !== undefined && { type }),
+          ...(year !== undefined && { year }),
+          ...(awardId !== undefined && { awardId }),
+        },
+      });
     });
 
     return NextResponse.json(updated);
   } catch (error) {
+    if (isBookIsbnConflictError(error)) {
+      return NextResponse.json(
+        { error: "指定されたISBNは別の本にすでに登録されています。" },
+        { status: 409 }
+      );
+    }
     logger.error({ err: error }, "[PATCH /api/admin/award-entries/[id]]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
   }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma";
 
 // Prisma.PrismaClientKnownRequestErrorのinstanceof判定は、Next.js dev server の
 // ホットリロードで「@/generated/prisma」モジュールが多重ロードされた場合に、
@@ -81,4 +82,131 @@ export async function listIsbns(bookId: number) {
     where: { bookId },
     orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
   });
+}
+
+export type BookIsbnEntry = {
+  isbn: string;
+  isPrimary: boolean;
+};
+
+export class BookIsbnConflictError extends Error {
+  readonly code = "BOOK_ISBN_CONFLICT";
+
+  constructor(readonly isbns: string[]) {
+    super(`他のBookに登録済みのISBNが含まれています: ${isbns.join(", ")}`);
+    this.name = "BookIsbnConflictError";
+  }
+}
+
+export function isBookIsbnConflictError(error: unknown): error is BookIsbnConflictError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "BOOK_ISBN_CONFLICT"
+  );
+}
+
+/**
+ * 指定した Book のISBN一覧を、渡された一覧の内容で置き換える（追加・削除・代表ISBNの変更をまとめて反映する）。
+ * isPrimary が true の要素が複数ある場合は先頭のものを代表として扱う。
+ * 一覧が空の場合は Book.isbn を null にし、BookIsbn を全件削除する。
+ * 他Bookに既に紐づくISBNが含まれる場合は、変更前に例外を投げる。
+ */
+export async function replaceIsbns(
+  tx: Prisma.TransactionClient,
+  bookId: number,
+  isbns: BookIsbnEntry[]
+): Promise<void> {
+  const deduped = new Map<string, boolean>();
+  for (const { isbn, isPrimary } of isbns) {
+    const trimmed = isbn.trim();
+    if (!trimmed) continue;
+    deduped.set(trimmed, deduped.get(trimmed) === true || isPrimary);
+  }
+
+  const primaryIsbn = [...deduped.entries()].find(([, isPrimary]) => isPrimary)?.[0]
+    ?? [...deduped.keys()][0]
+    ?? null;
+
+  const targetIsbns = [...deduped.keys()];
+  const [bookIsbnConflicts, legacyBookConflicts] = await Promise.all([
+    tx.bookIsbn.findMany({
+      where: {
+        isbn: { in: targetIsbns },
+        bookId: { not: bookId },
+      },
+      select: { isbn: true },
+    }),
+    tx.book.findMany({
+      where: {
+        id: { not: bookId },
+        isbn: { in: targetIsbns },
+      },
+      select: { isbn: true },
+    }),
+  ]);
+  const conflictingIsbns = new Set<string>();
+  for (const { isbn } of bookIsbnConflicts) conflictingIsbns.add(isbn);
+  for (const { isbn } of legacyBookConflicts) {
+    if (isbn) conflictingIsbns.add(isbn);
+  }
+  if (conflictingIsbns.size > 0) {
+    throw new BookIsbnConflictError([...conflictingIsbns]);
+  }
+
+  const existing = await tx.bookIsbn.findMany({ where: { bookId } });
+  const keep = new Set(deduped.keys());
+  const savedIsbns = new Set<string>();
+
+  for (const row of existing) {
+    if (!keep.has(row.isbn)) {
+      await tx.bookIsbn.delete({ where: { isbn: row.isbn } });
+    }
+  }
+
+  for (const isbn of deduped.keys()) {
+    const current = await tx.bookIsbn.findUnique({ where: { isbn } });
+    if (current && current.bookId !== bookId) {
+      throw new BookIsbnConflictError([isbn]);
+    }
+    try {
+      if (current) {
+        await tx.bookIsbn.update({ where: { isbn }, data: { isPrimary: isbn === primaryIsbn } });
+      } else {
+        await tx.bookIsbn.create({
+          data: { bookId, isbn, isPrimary: isbn === primaryIsbn, source: "manual" },
+        });
+      }
+      savedIsbns.add(isbn);
+    } catch (err) {
+      // 事前検査後の同時登録による競合も、処理全体をロールバックする
+      if (isUniqueConstraintError(err)) throw new BookIsbnConflictError([isbn]);
+      throw err;
+    }
+  }
+
+  const savedPrimaryIsbn = primaryIsbn && savedIsbns.has(primaryIsbn)
+    ? primaryIsbn
+    : (savedIsbns.values().next().value ?? null);
+
+  await tx.bookIsbn.updateMany({
+    where: { bookId, isPrimary: true },
+    data: { isPrimary: false },
+  });
+  if (savedPrimaryIsbn) {
+    await tx.bookIsbn.update({
+      where: { isbn: savedPrimaryIsbn },
+      data: { isPrimary: true },
+    });
+  }
+
+  try {
+    await tx.book.update({ where: { id: bookId }, data: { isbn: savedPrimaryIsbn } });
+  } catch (err) {
+    if (isUniqueConstraintError(err) && savedPrimaryIsbn) {
+      throw new BookIsbnConflictError([savedPrimaryIsbn]);
+    }
+    throw err;
+  }
 }

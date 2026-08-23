@@ -13,7 +13,12 @@ export async function GET() {
   try {
     const entries = await prisma.awardEntry.findMany({
       include: {
-        book: { include: { author: true } },
+        book: {
+          include: {
+            author: true,
+            bookIsbns: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
+          },
+        },
         award: true,
       },
       orderBy: [{ award: { name: "asc" } }, { year: "desc" }],
