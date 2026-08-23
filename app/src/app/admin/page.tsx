@@ -75,6 +75,7 @@ type AwardEntry = {
     isbn: string | null;
     coverImageUrl: string | null;
     author: { id: number; name: string };
+    bookIsbns: { isbn: string; isPrimary: boolean }[];
   };
 };
 
@@ -229,10 +230,11 @@ export default function AdminPage() {
   const [editingYear, setEditingYear] = useState<number>(CURRENT_YEAR);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingAuthor, setEditingAuthor] = useState("");
-  const [editingIsbn, setEditingIsbn] = useState("");
+  const [editingIsbns, setEditingIsbns] = useState<{ isbn: string; isPrimary: boolean }[]>([]);
   const [editingAwardId, setEditingAwardId] = useState<number>(0);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -693,34 +695,79 @@ export default function AdminPage() {
   }
 
   function startEdit(entry: AwardEntry) {
+    const editingBookIsbns = entry.book.bookIsbns.map((bookIsbn) => ({ ...bookIsbn }));
+    if (entry.book.isbn && !editingBookIsbns.some((bookIsbn) => bookIsbn.isbn === entry.book.isbn)) {
+      editingBookIsbns.push({
+        isbn: entry.book.isbn,
+        isPrimary: !editingBookIsbns.some((bookIsbn) => bookIsbn.isPrimary),
+      });
+    }
+
     setEditingId(entry.id);
     setEditingType(entry.type as "winner" | "nominee");
     setEditingYear(entry.year);
     setEditingTitle(entry.book.title);
     setEditingAuthor(entry.book.author.name);
-    setEditingIsbn(entry.book.isbn ?? "");
+    setEditingIsbns(editingBookIsbns);
     setEditingAwardId(entry.award.id);
+    setEditError(null);
     setEditModalOpen(true);
+  }
+
+  function updateEditingIsbnValue(index: number, isbn: string) {
+    setEditingIsbns((prev) => prev.map((item, i) => (i === index ? { ...item, isbn } : item)));
+  }
+
+  function setEditingIsbnPrimary(index: number) {
+    setEditingIsbns((prev) => prev.map((item, i) => ({ ...item, isPrimary: i === index })));
+  }
+
+  function removeEditingIsbn(index: number) {
+    setEditingIsbns((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (next.length > 0 && !next.some((item) => item.isPrimary)) {
+        next[0] = { ...next[0], isPrimary: true };
+      }
+      return next;
+    });
+  }
+
+  function addEditingIsbn() {
+    setEditingIsbns((prev) => [...prev, { isbn: "", isPrimary: prev.length === 0 }]);
   }
 
   async function handleEditSave(id: number) {
     setEditSaving(true);
-    await adminFetch(`/api/admin/award-entries/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: editingTitle,
-        author: editingAuthor,
-        isbn: editingIsbn || null,
-        awardId: editingAwardId,
-        year: editingYear,
-        type: editingType,
-      }),
-    });
-    setEditSaving(false);
-    setEditingId(null);
-    setEditModalOpen(false);
-    refreshEntries();
+    setEditError(null);
+    const isbns = editingIsbns
+      .map((item) => ({ isbn: item.isbn.trim(), isPrimary: item.isPrimary }))
+      .filter((item) => item.isbn.length > 0);
+    try {
+      const response = await adminFetch(`/api/admin/award-entries/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editingTitle,
+          author: editingAuthor,
+          isbns,
+          awardId: editingAwardId,
+          year: editingYear,
+          type: editingType,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null) as { error?: string } | null;
+        setEditError(data?.error ?? "受賞登録の更新に失敗しました。");
+        return;
+      }
+      setEditingId(null);
+      setEditModalOpen(false);
+      refreshEntries();
+    } catch {
+      setEditError("通信エラーが発生しました。");
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   function handleTabKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -1230,31 +1277,41 @@ export default function AdminPage() {
                   </span>
                 </div>
               <div className="hidden overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 lg:block">
-                <table className="w-full text-sm whitespace-nowrap">
+                <table className="w-full table-fixed text-sm">
                   <thead className="bg-zinc-50 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                     <tr>
-                      <th className="px-4 py-3 text-left">文学賞</th>
-                      <th className="px-4 py-3 text-left">年度</th>
-                      <th className="px-4 py-3 text-left">タイトル</th>
-                      <th className="px-4 py-3 text-left">著者</th>
-                      <th className="px-4 py-3 text-left">種別</th>
-                      <th className="px-4 py-3 text-left">操作</th>
+                      <th className="w-32 px-4 py-3 text-left">文学賞</th>
+                      <th className="w-16 px-4 py-3 text-left">年度</th>
+                      <th className="w-auto px-4 py-3 text-left">タイトル</th>
+                      <th className="w-40 px-4 py-3 text-left">著者</th>
+                      <th className="w-24 px-4 py-3 text-left">種別</th>
+                      <th className="w-20 px-4 py-3 text-left">操作</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
                     {filteredEntries.map((entry) => (
                       <tr key={entry.id}>
-                        <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                        <td
+                          className="truncate px-4 py-3 text-zinc-700 dark:text-zinc-300"
+                          title={entry.award.name}
+                        >
                           {entry.award.name}
                         </td>
-                        <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{entry.year}年</td>
-                        <td className="px-4 py-3 text-zinc-900 dark:text-zinc-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-zinc-700 dark:text-zinc-300">{entry.year}年</td>
+                        <td
+                          className="cursor-pointer truncate px-4 py-3 text-zinc-900 hover:underline dark:text-zinc-50"
+                          onClick={() => setSelectedAwardEntryForDetail(entry)}
+                          title={entry.book.title}
+                        >
                           {entry.book.title}
                         </td>
-                        <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                        <td
+                          className="truncate px-4 py-3 text-zinc-700 dark:text-zinc-300"
+                          title={entry.book.author.name}
+                        >
                           {entry.book.author.name}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="whitespace-nowrap px-4 py-3">
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                               entry.type === "winner"
@@ -1265,7 +1322,7 @@ export default function AdminPage() {
                             {entry.type === "winner" ? "受賞作" : "ノミネート"}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="whitespace-nowrap px-4 py-3">
                           <Button
                             size="sm"
                             variant="outline"
@@ -2007,6 +2064,27 @@ export default function AdminPage() {
                 <dd className="text-zinc-800 dark:text-zinc-200">{selectedAwardEntryForDetail.book.author.name}</dd>
               </div>
               <div>
+                <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">ISBN</dt>
+                <dd className="text-zinc-800 dark:text-zinc-200">
+                  {selectedAwardEntryForDetail.book.bookIsbns.length > 0 ? (
+                    <ul className="flex flex-col gap-0.5">
+                      {selectedAwardEntryForDetail.book.bookIsbns.map((bi) => (
+                        <li key={bi.isbn}>
+                          {bi.isbn}
+                          {bi.isPrimary && (
+                            <span className="ml-1 rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                              代表
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    selectedAwardEntryForDetail.book.isbn ?? "未登録"
+                  )}
+                </dd>
+              </div>
+              <div>
                 <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">文学賞</dt>
                 <dd className="text-zinc-800 dark:text-zinc-200">{selectedAwardEntryForDetail.award.name}</dd>
               </div>
@@ -2281,14 +2359,43 @@ export default function AdminPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">ISBN（任意）</label>
-                <input
-                  type="text"
-                  value={editingIsbn}
-                  onChange={(e) => setEditingIsbn(e.target.value)}
-                  placeholder="例: 9784167110119"
-                  className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                />
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">ISBN（任意・複数登録可）</label>
+                <div className="flex flex-col gap-2">
+                  {editingIsbns.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <label className="flex shrink-0 items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        <input
+                          type="radio"
+                          name="editingIsbnPrimary"
+                          checked={item.isPrimary}
+                          onChange={() => setEditingIsbnPrimary(index)}
+                        />
+                        代表
+                      </label>
+                      <input
+                        type="text"
+                        value={item.isbn}
+                        onChange={(e) => updateEditingIsbnValue(index, e.target.value)}
+                        placeholder="例: 9784167110119"
+                        className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeEditingIsbn(index)}
+                        className="shrink-0 text-xs text-red-600 hover:underline dark:text-red-400"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addEditingIsbn}
+                    className="self-start text-xs font-medium text-zinc-600 hover:underline dark:text-zinc-400"
+                  >
+                    ＋ ISBNを追加
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">文学賞</label>
@@ -2333,6 +2440,11 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {editError && (
+              <p role="alert" className="mx-6 mt-4 text-sm text-red-600 dark:text-red-400">
+                {editError}
+              </p>
+            )}
             <div className="mt-6 flex shrink-0 justify-end gap-2 border-t border-zinc-200 p-6 pt-4 dark:border-zinc-800">
               <Button variant="outline" onClick={() => setEditModalOpen(false)}>
                 キャンセル
