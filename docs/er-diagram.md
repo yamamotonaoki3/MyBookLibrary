@@ -33,10 +33,21 @@ erDiagram
         int id PK
         int authorId FK
         string title
-        string isbn "nullable unique"
+        string isbn "nullable unique（レガシー。現在は BookIsbn で複数管理）"
         string coverImageUrl "nullable"
         date publishedAt
+        boolean publishedAtUnknown "出版日不明フラグ"
         string source "データ取得元（default: rakuten）"
+        int createdByUserId "nullable 手動登録したユーザー"
+    }
+
+    BookIsbn {
+        int id PK
+        int bookId FK
+        string isbn "unique"
+        boolean isPrimary "代表ISBNフラグ"
+        string source "ndl / rakuten / manual（default: rakuten）"
+        datetime createdAt
     }
 
     Award {
@@ -165,6 +176,33 @@ erDiagram
         datetime createdAt
     }
 
+    BookEnrichmentJob {
+        int id PK
+        string status "pending/running/completed/failed/cancelled"
+        string activeSlot "nullable unique"
+        int totalCount
+        int doneCount
+        int successCount
+        int failCount
+        int reviewCount
+        boolean cancelRequested
+        int startedByUserId "nullable"
+        datetime startedAt "nullable"
+        datetime finishedAt "nullable"
+        datetime lastTickAt "nullable"
+        datetime createdAt
+    }
+
+    BookEnrichmentItem {
+        int id PK
+        int jobId FK
+        int bookId FK
+        string status "pending/processing/done/error/needs_review/dismissed/cancelled"
+        string errorMessage "nullable"
+        json resultDetail "nullable"
+        datetime updatedAt
+    }
+
     User ||--o{ UserLibrary : "近隣図書館登録"
     User ||--o{ ContactInquiry : "お問い合わせ"
     User ||--o{ FavoriteAuthor : "お気に入り登録"
@@ -186,6 +224,10 @@ erDiagram
     User ||--o{ Follow : "フォローする（follower）"
     User ||--o{ Follow : "フォローされる（following）"
     User |o--o{ AuditLog : "操作履歴（actor、nullable）"
+    Book ||--o{ BookIsbn : "複数ISBN管理"
+    User |o--o{ Book : "手動登録（createdByUser、nullable）"
+    Book ||--o{ BookEnrichmentItem : "補完対象"
+    BookEnrichmentJob ||--o{ BookEnrichmentItem : "ジョブ内の個別処理項目"
 ```
 
 ## エンティティ説明
@@ -194,7 +236,8 @@ erDiagram
 | --- | --- |
 | User | アプリ利用者。`role` で一般ユーザーと管理者を区別する。`loginFailCount` と `lockedUntil` でアカウントロックを管理する |
 | Author | 著者情報 |
-| Book | 書籍情報。楽天ブックス API から取得。`isbn` で一意性を保証（ISBN なし書籍は title + authorId で管理） |
+| Book | 書籍情報。楽天ブックス API から取得。`isbn` はレガシーフィールド（現在は `BookIsbn` で複数ISBNを管理）。`createdByUserId` で管理者による手動登録元を記録する |
+| BookIsbn | 書籍に紐づく複数のISBNを管理する。`isPrimary` で代表ISBNを、`source` で取得元（ndl/rakuten/manual）を区別する |
 | Award | 文学賞（直木賞・芥川賞・本屋大賞・このミステリーがすごい！） |
 | AwardEntry | 書籍と文学賞の受賞・ノミネート関係。`type` で `winner`（受賞）/ `nominee`（ノミネート）を区別する |
 | FavoriteAuthor | ユーザーのお気に入り著者登録。`notify` で新刊通知 ON/OFF を管理する |
@@ -209,4 +252,6 @@ erDiagram
 | ContactInquiry | お問い合わせ。未ログインユーザーからの送信も可（`userId` は nullable） |
 | Follow | ユーザー間のフォロー関係。`followerId`（フォローする側）と `followingId`（フォローされる側）の組み合わせで一意 |
 | AuditLog | 管理者操作・合言葉更新などの監査ログ。`eventType` でイベント種別、`detail` に付随情報を JSON で保持 |
+| BookEnrichmentJob | 書籍情報一括補完バッチジョブの管理。`status` で進行状況を、`activeSlot` で同時実行の排他制御を行う |
+| BookEnrichmentItem | `BookEnrichmentJob` に紐づく書籍単位の補完処理結果。`status` で処理結果を、`resultDetail` に補完内容を JSON で保持 |
 | VerificationToken | NextAuth.js のメール認証用トークン管理テーブル（現状未使用） |
