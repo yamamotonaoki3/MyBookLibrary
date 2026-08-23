@@ -4,6 +4,21 @@ import { getAuthenticatedUserId } from "@/lib/session";
 import { SecretWordSchema } from "@/lib/validations";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
+export async function GET() {
+  const { userId, error } = await getAuthenticatedUserId();
+  if (error) return error;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { password: true, secretWordHash: true },
+  });
+
+  return Response.json({
+    hasPasswordLogin: !!user?.password,
+    hasSecretWord: !!user?.secretWordHash,
+  });
+}
+
 export async function POST(request: Request) {
   const { userId, error } = await getAuthenticatedUserId();
   if (error) return error;
