@@ -120,6 +120,8 @@ sudo journalctl -u mybooklibrary -n 50 --no-pager
 | `/mybooklibrary/CALIL_API_KEY` | カーリル図書館 API キー |
 | `/mybooklibrary/CRON_SECRET` | Cron 用シークレット |
 | `/mybooklibrary/NEXTAUTH_URL` | NextAuth の公開 URL |
+| `/mybooklibrary/SEED_ADMIN_EMAIL` | 管理者メールアドレス |
+| `/mybooklibrary/SEED_ADMIN_PASSWORD` | 管理者パスワード |
 
 ### 新しい環境変数を追加する場合
 
@@ -171,7 +173,7 @@ cat /opt/app/start.sh
 応急処置として直接 `start.sh` を編集してサービス再起動することも可能：
 
 ```bash
-sudo sed -i '/export CALIL_API_KEY/a export NEW_KEY=$(get_param NEW_KEY)' /opt/app/start.sh
+sudo sed -i '/export SEED_ADMIN_PASSWORD/a export NEW_KEY=$(get_param NEW_KEY)' /opt/app/start.sh
 sudo systemctl restart mybooklibrary
 ```
 

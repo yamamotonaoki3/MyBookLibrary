@@ -26,8 +26,7 @@
     "migration:dump-checksum": "tsx prisma/scripts/migration/dump-checksum.ts",
     "migration:restore": "tsx prisma/scripts/migration/restore-to-target.ts",
     "migration:verify": "tsx prisma/scripts/migration/verify-migration.ts",
-    "migration:backfill": "tsx prisma/scripts/backfill-book-owner.ts",
-    "security:remove-public-demo-admin": "tsx prisma/scripts/remove-public-demo-admin.ts"
+    "migration:backfill": "tsx prisma/scripts/backfill-book-owner.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
