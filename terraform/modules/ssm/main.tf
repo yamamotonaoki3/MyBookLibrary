@@ -46,15 +46,6 @@ variable "nextauth_url" {
   type = string
 }
 
-variable "seed_admin_email" {
-  type = string
-}
-
-variable "seed_admin_password" {
-  type      = string
-  sensitive = true
-}
-
 variable "calil_api_key" {
   type      = string
   sensitive = true
@@ -75,8 +66,6 @@ locals {
     CRON_SECRET            = var.cron_secret
     ENRICHMENT_TICK_SECRET = var.enrichment_tick_secret
     NEXTAUTH_URL           = var.nextauth_url
-    SEED_ADMIN_EMAIL       = var.seed_admin_email
-    SEED_ADMIN_PASSWORD    = var.seed_admin_password
   }
 }
 

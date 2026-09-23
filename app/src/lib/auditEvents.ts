@@ -20,6 +20,7 @@ export const AUDIT_EVENT = {
   ADMIN_BOOK_ENRICHMENT_CONFIRMED: "admin_book_enrichment_confirmed",
   ADMIN_BOOK_ENRICHMENT_DISMISSED: "admin_book_enrichment_dismissed",
   ADMIN_BOOK_ENRICHMENT_CANCELLED: "admin_book_enrichment_cancelled",
+  SECURITY_PUBLIC_DEMO_ADMIN_REMOVED: "security_public_demo_admin_removed",
 } as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT)[keyof typeof AUDIT_EVENT];
@@ -46,4 +47,5 @@ export const AUDIT_EVENT_LABEL: Record<AuditEventType, string> = {
   [AUDIT_EVENT.ADMIN_BOOK_ENRICHMENT_CONFIRMED]: "管理者: 書籍データ補完 候補確定",
   [AUDIT_EVENT.ADMIN_BOOK_ENRICHMENT_DISMISSED]: "管理者: 書籍データ補完 候補見送り",
   [AUDIT_EVENT.ADMIN_BOOK_ENRICHMENT_CANCELLED]: "管理者: 書籍データ補完 中断",
+  [AUDIT_EVENT.SECURITY_PUBLIC_DEMO_ADMIN_REMOVED]: "セキュリティ: 公開デモ管理者を削除",
 };

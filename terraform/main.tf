@@ -62,6 +62,4 @@ module "ssm" {
   cron_secret            = var.cron_secret
   enrichment_tick_secret = var.enrichment_tick_secret
   nextauth_url           = "https://${module.cloudfront.domain_name}"
-  seed_admin_email       = var.seed_admin_email
-  seed_admin_password    = var.seed_admin_password
 }

@@ -120,8 +120,6 @@ export RAKUTEN_APP_ID=$(get_param RAKUTEN_APP_ID)
 export RAKUTEN_ACCESS_KEY=$(get_param RAKUTEN_ACCESS_KEY)
 export CRON_SECRET=$(get_param CRON_SECRET)
 export NEXTAUTH_URL=$(get_param NEXTAUTH_URL)
-export SEED_ADMIN_EMAIL=$(get_param SEED_ADMIN_EMAIL)
-export SEED_ADMIN_PASSWORD=$(get_param SEED_ADMIN_PASSWORD)
 export CALIL_API_KEY=$(get_param CALIL_API_KEY)
 
 # AUTH_TRUST_HOST=true はリバースプロキシ（CloudFront等）越しの NextAuth に必要
