@@ -38,13 +38,14 @@ jobs:
       # 実DB統合テスト・E2E共通の .env.test（testDbGuard.ts の判定に合わせる）。
       # 外部APIキーはダミー値（docs/test-dependency-map.md の方針どおり、
       # CIには実キーを置かない）。
+      # CRON_SECRET は cron API 側で16文字以上必須（route.ts の MIN_CRON_SECRET_LENGTH）。
       CI_ENV_TEST_CONTENT: |
         DATABASE_URL="mysql://ci_test_user:ci_test_pw_7d4e8a63@localhost:3307/mybooklibrary_test"
         RAKUTEN_APP_ID=dummy
         RAKUTEN_ACCESS_KEY=dummy
         CALIL_API_KEY=dummy
         AUTH_SECRET=dummy-ci-secret-not-for-production
-        CRON_SECRET=dummy
+        CRON_SECRET=dummy-ci-cron-secret-not-for-production
 
     steps:
       - name: Checkout
