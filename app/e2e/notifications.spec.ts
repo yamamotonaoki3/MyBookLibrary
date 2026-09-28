@@ -4,6 +4,16 @@ import { seedE2e, E2E_USER } from "../prisma/seed.e2e";
 import { resetDb, testPrisma } from "../src/__tests__/helpers/dbTest";
 import { login } from "./fixtures/auth";
 
+function cronAuthHeader(): string {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || secret.length < 16) {
+    throw new Error(
+      "CRON_SECRET が未設定または16文字未満です。app/.env.test に16文字以上の値を設定してください（.env.test.example 参照）"
+    );
+  }
+  return `Bearer ${secret}`;
+}
+
 test.beforeEach(async () => {
   await resetDb();
   await seedE2e();
@@ -131,7 +141,7 @@ test("新刊通知(cron)：登録済みお気に入り著者の新刊がスタ�
 
   await login(page);
   const res = await page.request.get("/api/cron/check-new-books", {
-    headers: { Authorization: "Bearer dummy-test-cron-secret"},
+    headers: { Authorization: cronAuthHeader() },
   });
   const body = await res.json();
   expect(res.ok()).toBe(true);
@@ -145,8 +155,9 @@ test("新刊通知(cron)：登録済みお気に入り著者の新刊がスタ�
 
   // 同じ新刊に対して再度実行しても重複通知は作成されない
   const secondRes = await page.request.get("/api/cron/check-new-books", {
-    headers: { Authorization: "Bearer dummy-test-cron-secret"},
+    headers: { Authorization: cronAuthHeader() },
   });
+  expect(secondRes.ok()).toBe(true);
   const secondBody = await secondRes.json();
   expect(secondBody.created).toBe(0);
 });
@@ -157,8 +168,9 @@ test("CRON_SECRETが一致しない場合、401が返り通知は作成されな
   await testPrisma.favoriteAuthor.create({ data: { userId: me.id, authorId: author.id, notify: true } });
 
   await login(page);
+  cronAuthHeader();
   const res = await page.request.get("/api/cron/check-new-books", {
-    headers: { Authorization: "Bearer wrong-secret" },
+    headers: { Authorization: `${cronAuthHeader()}-wrong` },
   });
   expect(res.status()).toBe(401);
 
