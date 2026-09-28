@@ -96,7 +96,7 @@ function buildMysqlArgs(databaseUrl: string): { args: string[]; password: string
   const sslCert = url.searchParams.get("sslcert");
   if (sslCert) {
     // DATABASE_URLのsslcertはPrisma（schema.prismaの配置場所=app/prisma/を基準に相対解決）
-    // の慣例に合わせて指定される（例: "../certs/aiven-ca.pem" は app/certs/ を指す）。
+    // の慣例に合わせて指定される（例: "../certs/target-ca.pem" は app/certs/ を指す）。
     // 一方、ここで起動するmysqlクライアントは本スクリプトのプロセスのcwd基準で相対パスを
     // 解決するため、両者の基準が食い違う。本スクリプトは常に app ディレクトリで
     // 実行される前提（README参照）のため、process.cwd()/prisma を基準に絶対パス化する。
