@@ -101,9 +101,9 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| なぜ困難か | Vercel Cron から呼ばれる。Bearer トークン検証・外部API・複数ユーザーのループを含み、**1回の実行で楽天に数十〜数百リクエストを発生させる** |
-| どうテストするか | fetch をモックした結合テストのみ。観点は Bearer 検証（欠落／不正／正）と「1ユーザーの外部API失敗が他ユーザーを止めないこと」 |
-| 対象外 | **E2E の対象にしない。手動実行もしない**（外部API保護。3章参照）。スケジュール発火（`vercel.json`）は設定の目視確認のみ |
+| なぜ困難か | EventBridge ルール → Lambda から呼ばれる。Bearer トークン検証・外部API・複数ユーザーのループを含み、**1回の実行で楽天に数十〜数百リクエストを発生させる** |
+| どうテストするか | fetch をモックした結合テストのみ。観点は Bearer 検証（欠落／不正／正）と「1ユーザーの外部API失敗が他ユーザーを止めないこと」。E2E（`e2e/notifications.spec.ts`、スタブ楽天）でも検証済み |
+| 対象外 | **実楽天APIへの手動実行はしない**（外部API保護。3章参照）。スケジュール発火（EventBridge ルール）は自動テスト対象外 |
 | 状態 | 未対応（Phase 8 で実施） |
 
 ### 1-8. `lib/badge.ts`（PWAバッジ）
@@ -211,7 +211,7 @@
 | --- | --- | --- |
 | 1 | **Jest の fetch 禁止ガード** — `global.fetch` の既定実装を「呼ばれたら URL 付きで throw」にし、全 project に適用する。モック漏れが実リクエストではなく**テスト失敗**として即座に露見する | [#431](https://github.com/yamamotonaoki3/MyBookLibrary/issues/431) |
 | 2 | **E2E はローカルスタブサーバーへ向ける** — 外部 fetch は Route Handler＝**サーバー側**で発生するため、Playwright の `page.route()` では捕まえられない。ベースURLを環境変数化してスタブに差し替える | [#434](https://github.com/yamamotonaoki3/MyBookLibrary/issues/434) [#435](https://github.com/yamamotonaoki3/MyBookLibrary/issues/435) |
-| 3 | **cron は自動テストで実行しない** — 結合テスト（fetch モック）のみ。E2E・手動実行の対象外 | Phase 8 |
+| 3 | **cron は結合テスト（fetch モック）＋ E2E（`e2e/notifications.spec.ts`、スタブ楽天）で検証** — 実楽天APIへの手動実行はしない | Phase 8 |
 | 4 | **実APIへの疎通確認は任意実行・既定スキップ** — `npm run test:external` でのみ実行。1 APIにつきリクエスト1回、リトライ無効、**CIから完全除外** | 保留 |
 
 ### 3-3. 「飛んでいない」ことの証明方法

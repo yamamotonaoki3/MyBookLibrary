@@ -4,7 +4,7 @@
 
 ## 概要
 
-AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著者の新刊を自動検出してユーザーに通知する機能。
+AWS EventBridge ルール + Lambda で毎日定期実行し、お気に入り著者の新刊を自動検出してユーザーに通知する機能。
 
 ## 対象ユーザー
 
@@ -12,14 +12,14 @@ AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著
 
 ## 機能仕様
 
-- 定期実行（AWS EventBridge Scheduler + Lambda）でお気に入り著者の新刊（1週間以内）を楽天ブックス API で検索する
+- 定期実行（AWS EventBridge ルール + Lambda）でお気に入り著者の新刊（1週間以内）を楽天ブックス API で検索する
 - 新刊が見つかった場合、通知 ON のユーザーに通知を作成する
 - 同じ新刊で重複通知は作成しない（`Notification` テーブルに `@@unique([userId, type, bookId])` 制約）
 
 ### 実行フロー
 
 ```
-EventBridge Scheduler（毎日定時）
+EventBridge ルール（毎日 UTC 00:00 = JST 09:00）
   ↓
 Lambda 関数が起動
   ↓

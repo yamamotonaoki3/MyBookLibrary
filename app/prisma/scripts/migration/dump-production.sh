@@ -54,8 +54,8 @@ cleanup_tmp_file() {
 trap cleanup_tmp_file EXIT
 
 # --set-gtid-purged=OFF: RDS等GTIDが有効なソースの場合、既定の--set-gtid-purged=AUTOだと
-# dumpにGTID_PURGED/SQL_LOG_BIN文が出力される。今回は異なるインスタンス（Aiven）への
-# 論理移行であり、Aiven側の管理ユーザーは通常これらの文を実行する権限を持たないため、
+# dumpにGTID_PURGED/SQL_LOG_BIN文が出力される。今回は異なるインスタンス（移行先）への
+# 論理移行であり、移行先側の管理ユーザーは通常これらの文を実行する権限を持たないため、
 # 復元時（既にDROP済みの状態）にエラーになってしまう。GTID関連の文を出力しないようにする。
 SSL_ARGS=()
 if [ -n "${SOURCE_DB_SSL_CA:-}" ]; then
