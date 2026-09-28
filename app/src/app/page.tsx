@@ -2,10 +2,11 @@
 import { BookOpen, Star, TrendingUp, Clock, ThumbsUp } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { getRecentReads } from "@/backend/dashboard/recentReads";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { RecentReadCard } from "./_components/RecentReadCard";
+import { RecentReadCard } from "@/frontend/dashboard/RecentReadCard";
 import { CollapsibleCard } from "./_components/CollapsibleCard";
 
 export default async function Home() {
@@ -76,11 +77,7 @@ export default async function Home() {
   const othersPct = othersTotal > 0 ? Math.round((othersRead / othersTotal) * 100) : 0;
 
   const [recentReads, myReviews] = await Promise.all([
-    prisma.readingStatus.findMany({
-      where: { userId: userId, status: { in: ["reading", "read"] } },
-      orderBy: { updatedAt: "desc" },
-      include: { book: { include: { author: true } } },
-    }),
+    getRecentReads(userId),
     prisma.review.findMany({
       where: { userId: userId },
       select: { bookId: true },
@@ -201,16 +198,9 @@ export default async function Home() {
               {recentReads.map((rs) => (
                 <RecentReadCard
                   key={rs.id}
-                  book={{
-                    id: rs.bookId,
-                    title: rs.book.title,
-                    authorName: rs.book.author.name,
-                    isbn: rs.book.isbn,
-                    coverImageUrl: rs.book.coverImageUrl,
-                    publishedAt: rs.book.publishedAt.toISOString(),
-                  }}
-                  initialStatus={rs.status as "unread" | "want_to_read" | "reading" | "read"}
-                  hasReview={reviewedBookIds.has(rs.bookId)}
+                  book={rs.book}
+                  initialStatus={rs.status}
+                  hasReview={reviewedBookIds.has(rs.book.id)}
                 />
               ))}
             </ul>
@@ -356,16 +346,9 @@ export default async function Home() {
                   {recentReads.map((rs) => (
                     <RecentReadCard
                       key={rs.id}
-                      book={{
-                        id: rs.bookId,
-                        title: rs.book.title,
-                        authorName: rs.book.author.name,
-                        isbn: rs.book.isbn,
-                        coverImageUrl: rs.book.coverImageUrl,
-                        publishedAt: rs.book.publishedAt.toISOString(),
-                      }}
-                      initialStatus={rs.status as "unread" | "want_to_read" | "reading" | "read"}
-                      hasReview={reviewedBookIds.has(rs.bookId)}
+                      book={rs.book}
+                      initialStatus={rs.status}
+                      hasReview={reviewedBookIds.has(rs.book.id)}
                     />
                   ))}
                 </ul>

@@ -50,7 +50,13 @@ export default defineConfig({
       // .env.test のDB接続情報 + スタブサーバーのURLで next dev を起動する。
       command: "npm run dev -- -p " + APP_PORT,
       port: APP_PORT,
-      env: { ...testEnv, ...stubEnv(STUB_PORT) },
+      env: {
+        ...testEnv,
+        ...stubEnv(STUB_PORT),
+        // E2E does not need remote fonts. Avoid retrying Google Fonts when the
+        // test environment intentionally has no external network access.
+        NEXT_FONT_GOOGLE_MOCKED_RESPONSES: path.resolve(__dirname, "e2e/font-mocks.cjs"),
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
