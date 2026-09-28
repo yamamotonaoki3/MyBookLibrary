@@ -32,6 +32,62 @@ type CheckResponseBooks = Record<
   >
 >;
 
+type CheckResponse = {
+  continue?: number;
+  session?: string;
+  books?: CheckResponseBooks;
+};
+
+const POLL_INTERVAL_MS = 2000;
+const POLL_TIMEOUT_MS = 20000;
+
+async function pollCheck(
+  isbns: string[],
+  systemids: string[]
+): Promise<CheckResponse> {
+  const apiKey = process.env.CALIL_API_KEY;
+  if (!apiKey) throw new Error("CALIL_API_KEY is not set");
+
+  const params = new URLSearchParams({
+    appkey: apiKey,
+    isbn: isbns.join(","),
+    systemid: systemids.join(","),
+    format: "json",
+    callback: "no",
+  });
+
+  let url = `${CALIL_API_BASE}/check?${params}`;
+  const deadline = Date.now() + POLL_TIMEOUT_MS;
+
+  while (true) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("カーリルAPI貸出状況確認に失敗しました");
+
+    const data: CheckResponse = await res.json();
+
+    // continue が 0 になったら完了
+    if (!data.continue) {
+      return data;
+    }
+
+    // タイムアウトしたらその時点の結果を返す
+    if (Date.now() >= deadline) {
+      return data;
+    }
+
+    // ポーリング（2秒以上あける）
+    const sessionParams = new URLSearchParams({
+      appkey: apiKey,
+      session: data.session ?? "",
+      format: "json",
+      callback: "no",
+    });
+    url = `${CALIL_API_BASE}/check?${sessionParams}`;
+
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+  }
+}
+
 export async function searchLibraries(
   pref: string,
   city?: string
@@ -58,47 +114,8 @@ export async function checkAvailability(
   isbns: string[],
   systemids: string[]
 ): Promise<AvailabilityResult[]> {
-  const apiKey = process.env.CALIL_API_KEY;
-  if (!apiKey) throw new Error("CALIL_API_KEY is not set");
-
-  const params = new URLSearchParams({
-    appkey: apiKey,
-    isbn: isbns.join(","),
-    systemid: systemids.join(","),
-    format: "json",
-    callback: "no",
-  });
-
-  let url = `${CALIL_API_BASE}/check?${params}`;
-  const deadline = Date.now() + 20000;
-
-  while (true) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("カーリルAPI貸出状況確認に失敗しました");
-
-    const data = await res.json();
-
-    // continue が 0 になったら完了
-    if (!data.continue) {
-      return mergeResults(data, isbns, systemids);
-    }
-
-    // タイムアウトしたらその時点の結果を返す
-    if (Date.now() >= deadline) {
-      return mergeResults(data, isbns, systemids);
-    }
-
-    // ポーリング（2秒以上あける）
-    const sessionParams = new URLSearchParams({
-      appkey: apiKey,
-      session: data.session,
-      format: "json",
-      callback: "no",
-    });
-    url = `${CALIL_API_BASE}/check?${sessionParams}`;
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  }
+  const data = await pollCheck(isbns, systemids);
+  return mergeResults(data, isbns, systemids);
 }
 
 /**
@@ -109,48 +126,17 @@ export async function checkAvailabilityByIsbn(
   isbns: string[],
   systemids: string[]
 ): Promise<Record<string, AvailabilityResult[]>> {
-  const apiKey = process.env.CALIL_API_KEY;
-  if (!apiKey) throw new Error("CALIL_API_KEY is not set");
+  const data = await pollCheck(isbns, systemids);
 
-  const params = new URLSearchParams({
-    appkey: apiKey,
-    isbn: isbns.join(","),
-    systemid: systemids.join(","),
-    format: "json",
-    callback: "no",
-  });
-
-  let url = `${CALIL_API_BASE}/check?${params}`;
-  const deadline = Date.now() + 20000;
-
-  while (true) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("カーリルAPI貸出状況確認に失敗しました");
-
-    const data = await res.json();
-
-    if (!data.continue || Date.now() >= deadline) {
-      const grouped: Record<string, AvailabilityResult[]> = {};
-      for (const isbn of isbns) {
-        grouped[isbn] = extractResultsForIsbn(data, isbn, systemids);
-      }
-      return grouped;
-    }
-
-    const sessionParams = new URLSearchParams({
-      appkey: apiKey,
-      session: data.session,
-      format: "json",
-      callback: "no",
-    });
-    url = `${CALIL_API_BASE}/check?${sessionParams}`;
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+  const grouped: Record<string, AvailabilityResult[]> = {};
+  for (const isbn of isbns) {
+    grouped[isbn] = extractResultsForIsbn(data, isbn, systemids);
   }
+  return grouped;
 }
 
 function extractResultsForIsbn(
-  data: { books?: CheckResponseBooks },
+  data: CheckResponse,
   isbn: string,
   systemids: string[]
 ): AvailabilityResult[] {
@@ -181,7 +167,7 @@ function extractResultsForIsbn(
 
 // 複数ISBNの結果をマージし、systemid+libkeyごとに「蔵書なし」以外を優先する
 function mergeResults(
-  data: { books?: CheckResponseBooks },
+  data: CheckResponse,
   isbns: string[],
   systemids: string[]
 ): AvailabilityResult[] {
