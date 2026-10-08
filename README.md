@@ -8,15 +8,9 @@
 
 ## ライブデモ
 
-🌐 [ライブデモを試す](https://d29rpr1gfxxlgj.cloudfront.net)
-
-> **テストアカウント**
+> **現在、ライブデモは停止中です。**（AWS 無料枠の終了に伴い、本番環境を一時停止しています。）
 >
-> | ロール | メール | パスワード | 秘密の言葉 |
-> | --- | --- | --- | --- |
-> | 一般ユーザー | `demo@example.com` | `Demo1234!` | `秘密の言葉` |
-
-> 公開デモでは管理機能を利用できません。
+> 画面の様子は下記の「[デモ](#デモ)」のスクリーンショット／GIF をご覧ください。再開手順は [AWS デプロイガイド](docs/aws-deploy-guide.md#8-停止再開手順) に記載しています。
 
 ## 主な機能
 
@@ -121,6 +115,7 @@ MyBookLibrary/
 - [AWS デプロイガイド](docs/aws-deploy-guide.md)
 - [テスト計画表](docs/test-plan.md)
 - [テスト依存関係マップ](docs/test-dependency-map.md)
+- [未使用 API 監査記録（#611）](docs/unused-api-audit-611.md)
 
 ## テスト
 

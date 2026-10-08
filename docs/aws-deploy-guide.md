@@ -14,6 +14,7 @@
 5. [Terraform のファイル構造の解説](#5-terraform-のファイル構造の解説)
 6. [デプロイ手順の各ステップ解説](#6-デプロイ手順の各ステップ解説)
 7. [今回の構成の制約](#7-今回の構成の制約)
+8. [停止・再開手順](#8-停止再開手順)
 
 ---
 
@@ -606,3 +607,41 @@ docker run --rm --env-file /opt/app/.env <ECRのイメージ> npx prisma migrate
   本番運用では `multi_az = true` にすることを推奨します（コストは約2倍）。
 - **無料枠は12ヶ月**: AWS 無料枠の EC2・RDS は「アカウント作成から12ヶ月間」です。
   13ヶ月目以降は月約$23かかります。
+
+---
+
+## 8. 停止・再開手順
+
+無料枠終了に伴い、本番環境を `terraform destroy` で停止した際の記録と、再開手順です。
+
+### 停止時に行ったこと
+
+1. RDS の手動スナップショット `mybooklibrary-final-before-destroy-20261008` を取得（`available` を確認）
+2. `terraform destroy` で Terraform 管理下の 40 リソースを削除
+3. 古い手動スナップショットは、最終スナップショットを残して削除する（課金対象のため）
+4. 予算アラート（Zero-Spend Budget）で、意図しない課金を検知できる状態にした
+
+> `skip_final_snapshot = true` のため、destroy すると自動バックアップも消えます。
+> **destroy 前に必ず手動スナップショットを取得してください。**
+
+### 停止中に残る課金
+
+| 対象 | 内容 |
+| --- | --- |
+| RDS 手動スナップショット | 保存容量に応じて少額（不要になったら削除） |
+
+EC2・RDS・Elastic IP・CloudFront・Lambda は削除済みのため課金されません。
+
+### 再開手順
+
+1. ローカルの `terraform/terraform.tfvars` と state（いずれも gitignore 対象）が残っていることを確認する
+2. `modules/rds/main.tf` の `aws_db_instance.main` に、`snapshot_identifier = "mybooklibrary-final-before-destroy-20261008"` を追加する
+3. `terraform plan` で差分を確認し、`terraform apply` を実行する
+4. 復元後も `snapshot_identifier` を残す（削除すると DB の置換が計画され、`skip_final_snapshot = true` のため復元済み DB が最終スナップショットなしで削除される）。外す場合は事前に手動スナップショットを取り、`terraform plan` で置換（`forces replacement`）が出ないことを確認する
+5. CloudFront のドメインが変わるため、Google Cloud Console の OAuth クライアントに `https://<新ドメイン>/api/auth/callback/google` を追加する
+6. アプリのコンテナを起動し（EC2 の user_data が実行される）、CloudFront の URL で動作を確認する
+7. CloudFront のドメインが変わるため、README のライブデモ記載を更新する
+
+> 復元した DB のマスターパスワードはスナップショット取得時のまま引き継がれます。
+> `db_password` を変更する場合は、復元後にパスワードを更新してください。
+
