@@ -105,7 +105,7 @@ docs: 要件定義書を追加
 | コンテナ | Docker |
 | 認証 | 未定（NextAuth.js 候補） |
 | 外部API | 楽天ブックスAPI（候補） |
-| デプロイ | 未定（Vercel 候補） |
+| デプロイ | AWS（EC2（Next.js standalone を systemd で起動）/ RDS MySQL / CloudFront / Lambda + EventBridge ルール（cron）/ SSM Parameter Store、Terraform 管理） |
 
 ### 新しい技術選定が必要になったとき
 

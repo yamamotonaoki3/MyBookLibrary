@@ -4,8 +4,7 @@
 
 MyBookLibrary（Next.js 16 フルスタック + MySQL 8.4）を AWS にデプロイするため、  
 Terraform で IaC 管理しつつ AWS 無料枠の範囲内に収まる構成を設計する。  
-現在は Vercel デプロイ想定（vercel.json あり）だが、AWS への移行を計画中。  
-アプリの最終チェック後に実装予定のため、このプランは設計書として保持する。
+現在は AWS へのデプロイが完了している。このプランは設計時の記録として保持する。
 
 ---
 
@@ -25,9 +24,9 @@ Terraform で IaC 管理しつつ AWS 無料枠の範囲内に収まる構成を
      ▼
 [RDS db.t3.micro]  ← MySQL 8.4（プライベートサブネット）
 
-[Lambda + EventBridge Scheduler]
-  JST 00:00 毎日 → GET https://<CF>/api/cron/check-new-books
-  （Vercel Cron の代替。既存 API Route のコード変更不要）
+[Lambda + EventBridge ルール]
+  UTC 00:00（JST 09:00）毎日 → GET https://<CF>/api/cron/check-new-books
+  （既存 API Route のコード変更不要）
 
 [SSM Parameter Store]  ← 全シークレット管理（SecureString・無料）
 ```
@@ -53,7 +52,7 @@ terraform/          ← プロジェクトルートに新規作成
 │   ├── rds/          # RDS db.t3.micro MySQL 8.4, DB Subnet Group
 │   ├── cloudfront/   # CloudFront Distribution (SSR TTL=0, static TTL=1日)
 │   ├── secrets/      # SSM Parameter Store SecureString（8パラメータ）
-│   └── cron/         # Lambda (Node.js 22) + EventBridge Scheduler + IAM
+│   └── lambda/       # Lambda (Python 3.12) + EventBridge ルール + IAM
 │       └── lambda_src/index.mjs
 │
 └── scripts/
@@ -103,10 +102,10 @@ SSM Parameter Store SecureString（標準パラメータ・無料）に保存：
 ```
 EC2 起動・デプロイ時に `aws ssm get-parameters-by-path` で一括取得 → `.env` に書き出す
 
-### Cron Lambda (modules/cron)
-- Node.js 22 / timeout 300秒
-- EventBridge Scheduler: `cron(0 0 * * ? *)` Asia/Tokyo（JST 00:00）
-- Lambda が SSM から `CRON_SECRET` を取得し `Authorization: Bearer <secret>` ヘッダー付きで API を呼ぶ
+### Cron Lambda (modules/lambda)
+- Python 3.12（インライン実装） / timeout 60秒
+- EventBridge ルール: `cron(0 0 * * ? *)`（UTC 00:00 = JST 09:00）
+- Terraform が Lambda の環境変数として直接注入した `CRON_SECRET` を使い `Authorization: Bearer <secret>` ヘッダー付きで API を呼ぶ
 - **`/api/cron/check-new-books/route.ts` のコード変更不要**
 
 ---
@@ -115,8 +114,7 @@ EC2 起動・デプロイ時に `aws ssm get-parameters-by-path` で一括取得
 
 1. **`app/next.config.ts`**: `output: "standalone"` を追加（Docker イメージ軽量化）
 2. **`app/prisma/schema.prisma`**: DATABASE_URL に `?connection_limit=5` を付与（db.t3.micro の接続数上限対策）
-3. **`vercel.json`**: AWS 移行後に `crons` キーを削除（任意）
-4. **`terraform/scripts/Dockerfile`** を新規作成（本番用マルチステージビルド）
+3. **`terraform/scripts/Dockerfile`** を新規作成（本番用マルチステージビルド）
 
 ---
 

@@ -67,7 +67,7 @@ variable "calil_api_key" {
 
 variable "cron_secret" {
   type        = string
-  description = "Vercel Cron 用シークレットトークン"
+  description = "cron API（/api/cron/check-new-books）認証用シークレット（EventBridge → Lambda から Bearer トークンとして送信）"
   sensitive   = true
 }
 

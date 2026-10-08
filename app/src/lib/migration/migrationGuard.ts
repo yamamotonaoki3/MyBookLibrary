@@ -1,6 +1,6 @@
 /**
  * 移行・照合ツールが誤って本番DBへ接続・書き込みしないための安全装置。
- * 既存の `app/prisma/scripts/aivenDbGuard.ts`（ホスト名の厳密一致確認）と同じ考え方に加え、
+ * ホスト名の厳密一致確認に加え、
  * 許可リスト方式と本番ホスト名との一致検知の二重チェックで拒否する。
  *
  * - 許可リストに無いホストへは接続させない（fail closed）。
@@ -10,7 +10,7 @@
 
 export interface MigrationGuardParams {
   databaseUrl: string | undefined;
-  /** カンマ区切りの許可ホスト名一覧（例: "mybooklibrary-staging.aivencloud.com"） */
+  /** カンマ区切りの許可ホスト名一覧（例: "mybooklibrary-staging.example.com"） */
   allowedHostsCsv: string | undefined;
   /** 本番DBのホスト名（比較専用。この値を使って実際に接続することはない） */
   productionHost: string | undefined;

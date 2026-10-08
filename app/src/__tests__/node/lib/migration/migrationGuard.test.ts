@@ -1,6 +1,6 @@
 import { assertMigrationTargetAllowed } from "@/lib/migration/migrationGuard";
 
-const ALLOWED_HOST = "mybooklibrary-staging.example-aiven.com";
+const ALLOWED_HOST = "mybooklibrary-staging.example-target.com";
 const PRODUCTION_HOST = "mybooklibrary-prod.example-rds.com";
 const VALID_URL = `mysql://testuser_migration:dummy@${ALLOWED_HOST}:3306/testdb`;
 

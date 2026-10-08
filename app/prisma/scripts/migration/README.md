@@ -1,6 +1,8 @@
 # 移行・整合性照合ツール（Issue #478）
 
-本番DB（AWS RDS MySQL）から Vercel + Aiven MySQL Free への移行に使う、再実行可能な移行・照合ツール群。
+本番DB（AWS RDS MySQL）から新しい移行先 DB（MySQL→MySQL 前提）への移行に使う、再実行可能な移行・照合ツール群。
+
+> **注記（#609）**: D1/SQLite 等、MySQL 以外を移行先とする場合は restore/verify の改修が必要。
 
 前提となる仕様は [`docs/data-migration-spec-481.md`](../../../../docs/data-migration-spec-481.md) を参照。**ETL変換は行わない**。方式は「dump復元 → 未適用migrationを`prisma migrate deploy`で適用」のみ。
 
@@ -42,7 +44,7 @@ npx tsx prisma/scripts/migration/dump-checksum.ts ./prisma/scripts/migration/dum
 
 ## 3. restore
 
-**新しいAiven環境を使う場合、restore（dumpのCREATE TABLE実行）より前に、Aivenコンソールの Advanced configuration から `mysql.sql_require_primary_key` を無効化しておくこと。** `verification_tokens`テーブルは本番の12件のmigration時点から主キーを持たない設計（複合UNIQUE制約のみ）であり、この設定が有効なままだと`prisma migrate deploy`だけでなく、dumpの`CREATE TABLE`文をmysqlクライアントで実行する時点（下記コマンド）で既に失敗する（Issue #479の申し送り）。
+**新しい移行先環境を使う場合、restore（dumpのCREATE TABLE実行）より前に、移行先DBの管理コンソールから `mysql.sql_require_primary_key` を無効化しておくこと。** `verification_tokens`テーブルは本番の12件のmigration時点から主キーを持たない設計（複合UNIQUE制約のみ）であり、この設定が有効なままだと`prisma migrate deploy`だけでなく、dumpの`CREATE TABLE`文をmysqlクライアントで実行する時点（下記コマンド）で既に失敗する（Issue #479の申し送り）。
 
 ```bash
 # まず --dry-run で実行計画を確認する（DBへの書き込みは一切行わない）
@@ -57,7 +59,7 @@ npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/mig
 - 実行前に移行先DBを全テーブルDROPして初期化する（`_prisma_migrations`・`follows`・`audit_logs`も含む）。`--skip-reset`で初期化をスキップできる（再開用途のみ）。
 - 初期化後、`mysql`クライアントでdumpを復元する。`--stop-before-migrate`指定時はここで終了する。
 - `--stop-before-migrate`を省略すれば、従来どおり復元後に続けて`prisma migrate deploy`まで実行できる。
-- `DATABASE_URL`の`sslaccept`・`sslcert`は、mysqlクライアントのTLSオプションにも反映される。`sslcert`はPrismaの慣例に合わせて`app/prisma/`ディレクトリを基準に解決される（例: `sslcert=../certs/aiven-ca.pem` は `app/certs/aiven-ca.pem` を指す）。
+- `DATABASE_URL`の`sslaccept`・`sslcert`は、mysqlクライアントのTLSオプションにも反映される。`sslcert`はPrismaの慣例に合わせて`app/prisma/`ディレクトリを基準に解決される（例: `sslcert=../certs/ca.pem` は `app/certs/ca.pem` を指す）。
 
 ### 失敗時の切り分け
 

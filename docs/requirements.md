@@ -75,7 +75,7 @@
 
 ### 3.10 新刊チェック（Cron）
 
-AWS EventBridge Scheduler + Lambda で毎日定期実行し、お気に入り著者の新刊を自動検出してユーザーに通知する機能。
+AWS EventBridge ルール + Lambda で毎日定期実行し、お気に入り著者の新刊を自動検出してユーザーに通知する機能。
 
 → 詳細は [新刊チェック（Cron）機能定義書](./features/cron.md) を参照。
 

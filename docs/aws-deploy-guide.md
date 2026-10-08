@@ -13,7 +13,7 @@
 4. [各 AWS サービスの詳細解説](#4-各-aws-サービスの詳細解説)
 5. [Terraform のファイル構造の解説](#5-terraform-のファイル構造の解説)
 6. [デプロイ手順の各ステップ解説](#6-デプロイ手順の各ステップ解説)
-7. [Vercel との違い](#7-vercel-との違い)
+7. [今回の構成の制約](#7-今回の構成の制約)
 8. [停止・再開手順](#8-停止再開手順)
 
 ---
@@ -63,7 +63,7 @@ terraform destroy # 作ったリソースをすべて削除する
 | **Security Group** | ファイアウォール。「どこからのアクセスを許可するか」を定義する | 常時無料 |
 | **SSM Parameter Store** | 環境変数・パスワードなどのシークレットを安全に保管する場所 | 標準パラメータは常時無料 |
 | **Lambda** | サーバーなしで小さなプログラムを実行できるサービス | 月100万回まで常時無料 |
-| **EventBridge Scheduler** | 「毎日○時に Lambda を実行する」などのスケジュール管理 | 月100万回まで常時無料 |
+| **EventBridge ルール** | 「毎日○時に Lambda を実行する」などのスケジュール管理 | 月100万回まで常時無料 |
 | **ECR** | Docker イメージを保存する場所（AWS 版 Docker Hub） | 500MB/月 無料 |
 | **IAM** | 「誰が何をできるか」の権限管理 | 常時無料 |
 | **Elastic IP** | EC2 に固定の IP アドレスを割り当てる | 使用中は無料 |
@@ -86,8 +86,8 @@ terraform destroy # 作ったリソースをすべて削除する
      ▼
 [RDS db.t3.micro]  ← MySQL 8.4（プライベートサブネット）
 
-[Lambda + EventBridge Scheduler]
-  JST 00:00 毎日 → GET https://<CF>/api/cron/check-new-books
+[Lambda + EventBridge ルール]
+  UTC 00:00（JST 09:00）毎日 → GET https://<CF>/api/cron/check-new-books
 ```
 
 ### 矢印の意味
@@ -114,7 +114,7 @@ EC2 からしか繋がりません。
 ```
 Lambda → CloudFront → EC2
 ```
-毎日0時になると EventBridge Scheduler が Lambda を起動し、
+毎日 UTC 00:00（JST 09:00）になると EventBridge ルールが Lambda を起動し、
 Lambda が新刊チェックの API を呼び出します。
 この通信は外から見ると「普通のHTTPリクエスト」と同じです。
 
@@ -198,7 +198,7 @@ VPC とインターネットを繋ぐ「出入り口」です。
 #### EC2 とは
 
 AWS が提供する「仮想サーバー（クラウドのパソコン）」です。
-Vercel では「サーバーの管理を Vercel が全部やってくれる」のに対し、
+PaaS（サーバーの管理をプラットフォーム側が全部やってくれるサービス）と異なり、
 EC2 では「自分でサーバーの OS を管理する必要があります」。
 
 #### 今回の設定
@@ -346,53 +346,37 @@ aws ssm get-parameters-by-path \
 
 ---
 
-### 4-6. Lambda + EventBridge Scheduler（Cron の代替）
+### 4-6. Lambda + EventBridge ルール（定期実行）
 
-#### Vercel Cron との比較
+#### 定期実行の仕組み
 
-現在の `vercel.json` には以下の設定があります：
-
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/check-new-books",
-      "schedule": "0 0 * * *"
-    }
-  ]
-}
-```
-
-これは「毎日0時に `/api/cron/check-new-books` を呼び出す」という設定です。
-Vercel 環境ではこれが自動で動きますが、AWS 環境では Vercel Cron が使えないため、
-**Lambda + EventBridge Scheduler** で同じことを実現します。
+新刊チェック（`/api/cron/check-new-books`）は、**Lambda + EventBridge ルール**による
+定期実行で呼び出します。
 
 #### Lambda とは
 
 「サーバーを常時起動しておかなくても、必要なときだけプログラムを実行できる」サービスです。
-月100万回まで永続的に無料です。今回は「API を HTTP で叩くだけ」という小さなプログラムを
-Lambda として登録します。
+月100万回まで永続的に無料です。今回は「API を HTTP で叩くだけ」という小さなプログラム
+（Python 3.12 のインラインコード）を Lambda として登録します。
+`CRON_SECRET` は Terraform が Lambda の環境変数として直接注入します（SSM からの取得はしません）。
 
-#### EventBridge Scheduler とは
+#### EventBridge ルールとは
 
 「○○時に Lambda を実行する」というスケジュール設定をするサービスです。
-`cron(0 0 * * ? *)` という cron 記法で「毎日0時（JST）」を指定します。
+`cron(0 0 * * ? *)`（UTC 00:00 = JST 09:00）という cron 記法でスケジュールを指定します。
 
 #### 全体の流れ
 
 ```
-毎日 JST 00:00
-  → EventBridge Scheduler が Lambda を起動
-  → Lambda が SSM から CRON_SECRET を取得
+毎日 UTC 00:00（JST 09:00）
+  → EventBridge ルールが Lambda を起動
+  → Lambda が環境変数から CRON_SECRET を取得
   → Lambda が以下のリクエストを送信:
       GET https://<CloudFrontドメイン>/api/cron/check-new-books
       Authorization: Bearer <CRON_SECRET>
-  → Next.js の API Route が処理を実行（コード変更不要）
+  → Next.js の API Route が処理を実行
   → お気に入り著者の新刊チェック完了
 ```
-
-**重要**: `/api/cron/check-new-books/route.ts` のコードは変更不要です。
-Lambda がリクエストを送る相手が「Vercel のサーバー」から「CloudFront 経由の EC2」に変わるだけです。
 
 ---
 
@@ -614,34 +598,7 @@ docker run --rm --env-file /opt/app/.env <ECRのイメージ> npx prisma migrate
 
 ---
 
-## 7. Vercel との違い
-
-### なぜ AWS は構成が複雑になるか
-
-| 項目 | Vercel | AWS（今回の構成） |
-|---|---|---|
-| HTTPS 設定 | 自動 | CloudFront で設定 |
-| サーバー管理 | 不要 | EC2 の OS・Docker を自分で管理 |
-| DB | 別途用意が必要（PlanetScale など） | RDS を自分で構築 |
-| 環境変数 | Vercel ダッシュボードで設定 | SSM Parameter Store で管理 |
-| Cron | vercel.json に書くだけ | Lambda + EventBridge を設定 |
-| デプロイ | git push で自動 | deploy-app.sh を実行 |
-| コスト（小規模） | 無料〜$20/月 | $0（12ヶ月）→ 約$23/月（13ヶ月以降） |
-
-### Vercel の方が向いているケース
-
-- 個人開発・小規模アプリ
-- インフラ管理に時間をかけたくない
-- 無料枠が終わってもコストを最小化したい
-
-### AWS の方が向いているケース
-
-- インフラを細かくコントロールしたい
-- CI/CD パイプラインや監視を自前で整備したい
-- 将来的にスケールアップしたい（EC2 → ECS Fargate、RDS マルチAZ など）
-- 企業の要件でクラウドサービスに制約がある
-
-### 今回の構成の制約
+## 7. 今回の構成の制約
 
 - **t2.micro は非力**: メモリ 1GB のため、Next.js SSR + MySQL クライアント接続が同居すると
   メモリが圧迫される可能性があります。本番トラフィックが増えたら `t3.small`（2GB）への
@@ -678,11 +635,12 @@ EC2・RDS・Elastic IP・CloudFront・Lambda は削除済みのため課金さ�
 ### 再開手順
 
 1. ローカルの `terraform/terraform.tfvars` と state（いずれも gitignore 対象）が残っていることを確認する
-2. `modules/rds/main.tf` の `aws_db_instance.main` に、一時的に `snapshot_identifier = "mybooklibrary-final-before-destroy-20261008"` を追加する
+2. `modules/rds/main.tf` の `aws_db_instance.main` に、`snapshot_identifier = "mybooklibrary-final-before-destroy-20261008"` を追加する
 3. `terraform plan` で差分を確認し、`terraform apply` を実行する
-4. 復元後は `snapshot_identifier` を削除する（残すと次回以降の apply で差分の原因になる）
-5. アプリのコンテナを起動し（EC2 の user_data が実行される）、CloudFront の URL で動作を確認する
-6. CloudFront のドメインが変わるため、README のライブデモ記載を更新する
+4. 復元後も `snapshot_identifier` を残す（削除すると DB の置換が計画され、`skip_final_snapshot = true` のため復元済み DB が最終スナップショットなしで削除される）。外す場合は事前に手動スナップショットを取り、`terraform plan` で置換（`forces replacement`）が出ないことを確認する
+5. CloudFront のドメインが変わるため、Google Cloud Console の OAuth クライアントに `https://<新ドメイン>/api/auth/callback/google` を追加する
+6. アプリのコンテナを起動し（EC2 の user_data が実行される）、CloudFront の URL で動作を確認する
+7. CloudFront のドメインが変わるため、README のライブデモ記載を更新する
 
 > 復元した DB のマスターパスワードはスナップショット取得時のまま引き継がれます。
 > `db_password` を変更する場合は、復元後にパスワードを更新してください。

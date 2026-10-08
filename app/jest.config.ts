@@ -11,6 +11,7 @@ const shared = {
   preset: "ts-jest",
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
+    "^server-only$": "<rootDir>/src/__tests__/helpers/serverOnly.ts",
   },
   // 呼び出し履歴のみをクリアする。resetMocks は使わない。Prisma モックの
   // $transaction に持たせた既定実装（コールバックへ同じモックを渡す）まで
