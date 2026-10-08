@@ -402,29 +402,6 @@ title,author,isbn,coverImageUrl,publishedAt,awardId,year,type
 
 ---
 
-### GET /api/awards/progress
-
-**レスポンス（200）**
-
-```json
-[
-  {
-    "awardId": 1,
-    "awardName": "直木賞",
-    "total": 50,
-    "read": 12
-  },
-  {
-    "awardId": 2,
-    "awardName": "芥川賞",
-    "total": 40,
-    "read": 8
-  }
-]
-```
-
----
-
 ### GET /api/notifications
 
 **レスポンス（200）**

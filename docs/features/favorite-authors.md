@@ -42,7 +42,6 @@
 | POST | `/api/favorite-authors` | 著者をお気に入り登録 |
 | PATCH | `/api/favorite-authors/[authorId]` | 新刊通知 ON/OFF 切り替え |
 | DELETE | `/api/favorite-authors/[authorId]` | お気に入りから削除 |
-| GET | `/api/favorite-authors/[authorId]/books` | 著者の書籍一覧 |
 
 ## 関連ドキュメント
 

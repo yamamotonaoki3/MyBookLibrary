@@ -39,8 +39,6 @@
 | メソッド | パス | 説明 |
 | --- | --- | --- |
 | GET | `/api/awards` | 文学賞一覧 |
-| GET | `/api/awards/[id]/books` | 賞の受賞作一覧 |
-| GET | `/api/awards/progress` | 読書進捗 |
 
 ## 関連ドキュメント
 

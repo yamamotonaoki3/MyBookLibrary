@@ -1,6 +1,6 @@
 # 未使用 API 監査記録（#611）
 
-使用されていない Route Handler を、静的解析と読み取り専用のブラウザ通信確認で判定するための記録。削除は [#612](https://github.com/yamamotonaoki3/MyBookLibrary/issues/612) で行う。
+使用されていない Route Handler を、静的解析と読み取り専用のブラウザ通信確認で判定するための記録。確定した 6 件は [#612](https://github.com/yamamotonaoki3/MyBookLibrary/issues/612) で削除済み。
 
 > **方針変更（2026-10-08）**: AWS 無料枠の終了に伴い本番環境を停止したため、通信確認は現行 AWS 本番ではなく、**main 最新（`2d3a4ae`）をローカル起動した環境**で実施した。削除対象のコードそのものを検証できる。Cloudflare 移行 [#609](https://github.com/yamamotonaoki3/MyBookLibrary/issues/609) の完了は待たない。
 
@@ -17,12 +17,12 @@
 
 | 候補 API | 現行画面のデータ取得 | アプリ本体・テストの Route 呼び出し | 仕様・計画上の参照 | 仮判定 |
 | --- | --- | --- | --- | --- |
-| `GET /api/awards/[id]/books` | `app/src/app/awards/_components/BookList.tsx` が Prisma から受賞作と読書状態を取得 | なし | `requirements.md`、`features/awards.md`、`test-plan.md` | 削除可（通信確認済み） |
-| `GET /api/awards/progress` | `app/src/app/page.tsx` が Prisma から読書進捗を計算 | なし | `requirements.md`、`api-spec.md`、`features/awards.md`、`test-plan.md` | 削除可（通信確認済み） |
-| `GET /api/favorite-authors/[authorId]/books` | `app/src/app/favorite-authors/[authorId]/page.tsx` が `searchBooks` と Prisma を直接利用 | なし | `requirements.md`、`features/favorite-authors.md`、`test-plan.md` | 削除可（通信確認済み） |
-| `GET /api/favorite-authors/recommendations` | `app/src/app/favorite-authors/page.tsx` が `getRecommendedAuthors` を直接利用 | なし | `requirements.md` | 削除可（通信確認済み） |
-| `GET /api/follows/recommendations` | `app/src/app/settings/follows/page.tsx` が `getRecommendedUsers` を直接利用 | なし | `requirements.md`、`features/follow.md`、`test-plan.md` | 削除可（通信確認済み） |
-| `GET /api/reviews/stats` | `app/src/app/page.tsx` が Prisma から受領いいね数を直接取得 | なし | `requirements.md`、`features/reviews.md`、`test-plan.md` | 削除可（通信確認済み） |
+| `GET /api/awards/[id]/books` | `app/src/app/awards/_components/BookList.tsx` が Prisma から受賞作と読書状態を取得 | なし | `requirements.md`、`features/awards.md`、`test-plan.md` | 削除済み（#612） |
+| `GET /api/awards/progress` | `app/src/app/page.tsx` が Prisma から読書進捗を計算 | なし | `requirements.md`、`api-spec.md`、`features/awards.md`、`test-plan.md` | 削除済み（#612） |
+| `GET /api/favorite-authors/[authorId]/books` | `app/src/app/favorite-authors/[authorId]/page.tsx` が `searchBooks` と Prisma を直接利用 | なし | `requirements.md`、`features/favorite-authors.md`、`test-plan.md` | 削除済み（#612） |
+| `GET /api/favorite-authors/recommendations` | `app/src/app/favorite-authors/page.tsx` が `getRecommendedAuthors` を直接利用 | なし | `requirements.md` | 削除済み（#612） |
+| `GET /api/follows/recommendations` | `app/src/app/settings/follows/page.tsx` が `getRecommendedUsers` を直接利用 | なし | `requirements.md`、`features/follow.md`、`test-plan.md` | 削除済み（#612） |
+| `GET /api/reviews/stats` | `app/src/app/page.tsx` が Prisma から受領いいね数を直接取得 | なし | `requirements.md`、`features/reviews.md`、`test-plan.md` | 削除済み（#612） |
 
 `app/src/app/api/**/route.ts` 自身を除外した完全パス検索では、`app/src/` に候補 API を呼ぶコードは見つからなかった。`app/src/__tests__/` と `app/e2e/` にも候補 API の完全パス参照はない。
 
