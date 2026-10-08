@@ -53,7 +53,6 @@
 | POST | `/api/reviews` | レビュー作成 |
 | PATCH | `/api/reviews/[id]` | レビュー編集 |
 | DELETE | `/api/reviews/[id]` | レビュー削除 |
-| GET | `/api/reviews/stats` | レビュー統計 |
 
 ## 関連ドキュメント
 

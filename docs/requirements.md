@@ -293,7 +293,6 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 | DELETE | `/api/reviews/[id]/likes` | いいね解除 |
 | POST | `/api/reviews/[id]/report` | レビュー通報 |
 | DELETE | `/api/reviews/[id]/report` | 通報取り消し |
-| GET | `/api/reviews/stats` | レビュー統計 |
 
 ### 著者・お気に入り著者
 
@@ -305,8 +304,6 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 | POST | `/api/favorite-authors` | 著者をお気に入り登録 |
 | PATCH | `/api/favorite-authors/[authorId]` | 新刊通知 ON/OFF 切り替え |
 | DELETE | `/api/favorite-authors/[authorId]` | お気に入りから削除 |
-| GET | `/api/favorite-authors/[authorId]/books` | 著者の書籍一覧 |
-| GET | `/api/favorite-authors/recommendations` | 著者ベースのおすすめ著者候補 |
 | GET | `/api/users/[id]/favorite-authors` | 指定ユーザーのお気に入り著者・読書中の本一覧（ユーザー詳細画面用） |
 
 ### フォロー
@@ -315,7 +312,6 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 | --- | --- | --- |
 | POST | `/api/follows` | ユーザーをフォロー |
 | DELETE | `/api/follows` | フォロー解除 |
-| GET | `/api/follows/recommendations` | おすすめフォロー候補の取得 |
 | GET | `/api/admin/follows` | 管理者自身のフォロー中・フォロワー一覧取得 |
 | GET | `/api/admin/follows/recommendations` | 管理者向けおすすめフォロー候補の取得 |
 
@@ -324,8 +320,6 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 | メソッド | パス | 説明 |
 | --- | --- | --- |
 | GET | `/api/awards` | 文学賞一覧 |
-| GET | `/api/awards/[id]/books` | 賞の受賞作一覧 |
-| GET | `/api/awards/progress` | 読書進捗 |
 
 ### 通知
 

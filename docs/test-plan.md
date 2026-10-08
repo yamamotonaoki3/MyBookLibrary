@@ -29,13 +29,13 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 
 | 対象 | 観点 |
 |---|---|
-| `app/api/favorite-authors`, `favorite-authors/[authorId]`, `favorite-authors/[authorId]/books` | 登録・解除の正常系、複合ユニーク制約違反（重複登録）の異常系 |
-| `app/api/reviews/[id]/report`, `reviews/stats` | 通報重複、統計集計値の正確性 |
-| `app/api/awards`, `awards/[id]/books`, `awards/progress` | 受賞歴に紐づく本の一覧、進捗計算ロジック |
+| `app/api/favorite-authors`, `favorite-authors/[authorId]` | 登録・解除の正常系、複合ユニーク制約違反（重複登録）の異常系 |
+| `app/api/reviews/[id]/report` | 通報重複 |
+| `app/api/awards` | 文学賞一覧 |
 | `app/api/user-libraries`, `calil/check`, `calil/libraries` | 外部API（カーリル）モック時の正常系・タイムアウト/エラー系 |
 | `app/api/user/delete` | 退会時の関連データ削除（カスケード）の確認 |
 | `app/api/admin/award-entries`, `admin/award-entries/[id]`, `admin/reported-reviews`, `admin/reviews/[id]`, `admin/ndl-search`, `admin/import-csv`, `admin/award-entries/export` | 権限チェック・CRUD正常系/異常系 |
-| `app/api/follows`, `follows/recommendations` | フォロー/解除の正常系、自分自身のフォロー・重複フォローの異常系、おすすめ候補の算出（共通お気に入り著者数） |
+| `app/api/follows` | フォロー/解除の正常系、自分自身のフォロー・重複フォローの異常系 |
 | `app/api/admin/audit-logs` | 権限チェック、`AuditLogQuerySchema` のフィルタ（eventType/actorUserId/期間）・ページングの正常系/異常系 |
 | `app/api/admin/manual-books`, `admin/manual-books/[id]`, `admin/manual-books/merge` | 権限チェック、手動登録本の一覧・編集・削除、マージ時の関連データ（読書ステータス・レビュー・受賞登録）の付け替え |
 | `app/api/user/secret-word` | 現在のパスワード確認、合言葉の設定・変更の正常系/異常系 |
