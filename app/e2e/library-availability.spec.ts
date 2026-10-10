@@ -75,6 +75,44 @@ test.describe("図書館登録（設定画面）", () => {
     await expect(page.getByText("図書館を検索して追加")).not.toBeVisible();
   });
 
+  test("同一 systemid で libkey の異なる2館を登録しても警告が出ず、片方の削除で他方が残る", async ({
+    page,
+  }) => {
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+
+    await login(page);
+    const user = await testPrisma.user.findUniqueOrThrow({
+      where: { email: "e2e-test@example.com" },
+    });
+    await testPrisma.userLibrary.createMany({
+      data: ["中央館", "分館"].map((libkey) => ({
+        userId: user.id,
+        systemid: "Stub_Same_System",
+        libkey,
+        name: `[E2E_TEST] スタブ${libkey}`,
+        pref: "東京都",
+        city: null,
+      })),
+    });
+
+    await page.goto("/settings");
+    await expect(page.getByText("[E2E_TEST] スタブ中央館")).toBeVisible();
+    await expect(page.getByText("[E2E_TEST] スタブ分館")).toBeVisible();
+
+    await page
+      .locator("li")
+      .filter({ hasText: "[E2E_TEST] スタブ中央館" })
+      .getByLabel("削除")
+      .click();
+    await expect(page.getByText("[E2E_TEST] スタブ中央館")).not.toBeVisible();
+    await expect(page.getByText("[E2E_TEST] スタブ分館")).toBeVisible();
+
+    expect(consoleErrors.filter((e) => e.includes("same key"))).toEqual([]);
+  });
+
   test("カーリル図書館検索APIがエラーを返す場合、検索失敗のメッセージが表示される", async ({
     page,
   }) => {
