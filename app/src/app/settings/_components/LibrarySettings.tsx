@@ -39,7 +39,7 @@ export function LibrarySettings() {
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchedLibrary[]>([]);
   const [adding, setAdding] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -94,11 +94,11 @@ export function LibrarySettings() {
   }
 
   async function handleDelete(lib: UserLibrary) {
-    setDeleting(lib.systemid);
+    setDeleting(lib.id);
     await fetch(`/api/user-libraries?systemid=${encodeURIComponent(lib.systemid)}&libkey=${encodeURIComponent(lib.libkey)}`, {
       method: "DELETE",
     });
-    setRegistered((prev) => prev.filter((l) => l.systemid !== lib.systemid));
+    setRegistered((prev) => prev.filter((l) => l.id !== lib.id));
     setDeleting(null);
   }
 
@@ -117,7 +117,7 @@ export function LibrarySettings() {
           <ul className="flex flex-col gap-2">
             {registered.map((lib) => (
               <li
-                key={lib.systemid}
+                key={lib.id}
                 className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800"
               >
                 <div className="flex items-center gap-2 text-sm">
@@ -129,7 +129,7 @@ export function LibrarySettings() {
                 </div>
                 <button
                   onClick={() => handleDelete(lib)}
-                  disabled={deleting === lib.systemid}
+                  disabled={deleting === lib.id}
                   className="text-zinc-400 hover:text-red-500 disabled:opacity-50"
                   aria-label="削除"
                 >
