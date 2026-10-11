@@ -185,3 +185,30 @@ test.describe("受賞一覧の本カード", () => {
     await expect(card.getByRole("button", { name: "未読" })).toHaveAttribute("aria-pressed", "true");
   });
 });
+
+test.describe("本詳細のステータスボタン", () => {
+  test("保存中の表示が出て、失敗するとエラー表示とともに元のステータスへ戻る", async ({ page }) => {
+    const author = await testPrisma.author.create({ data: { name: "testuser_detail_author" } });
+    const book = await testPrisma.book.create({
+      data: { title: "[E2E_TEST] 詳細本", authorId: author.id, publishedAt: new Date("2023-01-01") },
+    });
+    await login(page);
+    await page.goto(`/books/${book.id}`);
+    const group = page.getByRole("group", { name: "読書ステータス" });
+    await expect(group).toBeVisible();
+
+    await delayReadingStatusApi(page, 800);
+    await group.getByRole("button", { name: "読書中" }).click();
+    await expect(page.getByText("保存中…")).toBeVisible();
+    await expect(group.getByRole("button", { name: "読書中" })).toHaveAttribute("aria-busy", "true");
+    await expect(page.getByText("保存中…")).toBeHidden({ timeout: 15_000 });
+
+    await page.unroute("**/api/reading-status");
+    await page.route("**/api/reading-status", (route) =>
+      route.fulfill({ status: 500, json: { error: "Internal Server Error" } })
+    );
+    await group.getByRole("button", { name: "読了" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "保存に失敗しました" })).toBeVisible();
+    await expect(group.getByRole("button", { name: "読書中" })).toHaveAttribute("aria-pressed", "true");
+  });
+});
