@@ -231,4 +231,46 @@ test.describe("本の検索結果カード（未登録の本）", () => {
     await expect(card.getByText("本の情報を取得中")).toBeHidden();
     expectSameLayout(before, await layoutOf(card, STUB_TITLE));
   });
+
+  test("未登録の本のタイトルをクリックすると、本詳細へ移動するまで取得中の表示が出る", async ({ page }) => {
+    await login(page);
+    await page.goto(`/books/search?q=${encodeURIComponent("吾輩")}&type=title`);
+    const card = cardOf(page, STUB_TITLE);
+    await expect(card).toBeVisible();
+    await page.waitForLoadState("networkidle");
+
+    // 本詳細側の登録（楽天・NDL 取得）が遅い状況を再現する
+    await page.route("**/books/isbn/**", async (route) => {
+      await new Promise((r) => setTimeout(r, 1500));
+      await route.continue();
+    });
+    await card.getByText(STUB_TITLE, { exact: true }).click();
+    await expect(card.getByText("本の情報を取得中")).toBeVisible();
+    await expect(page).toHaveURL(/\/books\/\d+/, { timeout: 20_000 });
+  });
+});
+
+test.describe("著者詳細の書影・タイトルクリック（未登録の本）", () => {
+  test("クリックすると取得中の表示が出て、本詳細へ移動する", async ({ page }) => {
+    await seedFavoriteAuthorPage(page);
+    await delayReadingStatusApi(page, 1500);
+    const card = cardOf(page, STUB_TITLE);
+
+    await card.getByText(STUB_TITLE, { exact: true }).click();
+    await expect(card.getByText("本の情報を取得中")).toBeVisible();
+    await expect(page).toHaveURL(/\/books\/\d+/, { timeout: 20_000 });
+  });
+
+  test("登録に失敗するとエラーが表示され、再度クリックできる", async ({ page }) => {
+    await seedFavoriteAuthorPage(page);
+    await page.route("**/api/reading-status", (route) =>
+      route.fulfill({ status: 500, json: { error: "Internal Server Error" } })
+    );
+    const card = cardOf(page, STUB_TITLE);
+
+    await card.getByText(STUB_TITLE, { exact: true }).click();
+    await expect(card.getByRole("alert")).toContainText("取得できませんでした");
+    await expect(card.getByText("本の情報を取得中")).toBeHidden();
+    await expect(card.getByText(STUB_TITLE, { exact: true })).toBeEnabled();
+  });
 });

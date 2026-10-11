@@ -28,6 +28,8 @@ type Props = {
   busy: boolean;
   /** busy 中に下段へ表示する文言（例: 「保存中…」） */
   busyMessage: string;
+  /** 本の登録・取得など、busy 以外の処理中に下段へ表示する文言（指定時は busyMessage より優先） */
+  notice?: string | null;
   error: string | null;
   onChange: (status: ReadingStatusValue) => void;
   /** ボタンの余白・文字サイズ（例: "px-3 py-1 text-xs"） */
@@ -44,6 +46,7 @@ export function ReadingStatusControls({
   status,
   busy,
   busyMessage,
+  notice,
   error,
   onChange,
   buttonClassName,
@@ -86,9 +89,14 @@ export function ReadingStatusControls({
           <span role="alert" className="block truncate text-red-600 dark:text-red-400">
             {error}
           </span>
-        ) : busy ? (
-          <span className="block truncate text-zinc-500 dark:text-zinc-400">{busyMessage}</span>
-        ) : null}
+        ) : (
+          (notice ?? (busy ? busyMessage : null)) && (
+            <span className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400">
+              <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden="true" />
+              <span className="truncate">{notice ?? busyMessage}</span>
+            </span>
+          )
+        )}
       </div>
     </div>
   );

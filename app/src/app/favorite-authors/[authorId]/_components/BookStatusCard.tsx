@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthorBook } from "@/types/author";
 import { LibraryAvailability } from "@/components/ui/library-availability";
+import { CoverLoadingOverlay } from "@/frontend/readingStatus/CoverLoadingOverlay";
 import { ReadingStatusControls } from "@/frontend/readingStatus/ReadingStatusControls";
 import { useReadingStatus } from "@/frontend/readingStatus/useReadingStatus";
 
@@ -30,26 +32,37 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
       publishedAt: book.salesDate,
     }),
   });
-  // 未登録の本は初回の保存中に楽天・NDL から本の情報を取得するため、完了まで時間がかかることがある
-  const preparing = localBookId == null && busy;
+  // 書影・タイトルのクリックで未登録の本を登録し、詳細へ移動している間
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
+  // 未登録の本は登録時に楽天・NDL から本の情報を取得するため、完了まで時間がかかることがある
+  const preparing = localBookId == null && (busy || opening);
 
   async function handleBookClick() {
     if (preparing) return;
-    const res = await fetch("/api/reading-status", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        isbn: book.isbn,
-        title: book.title,
-        author: canonicalAuthorName,
-        coverImageUrl: book.coverImageUrl,
-        publishedAt: book.salesDate,
-        status: "unread",
-      }),
-    });
-    const data = await res.json();
-    if (data.bookId != null) {
+    setOpening(true);
+    setOpenError(null);
+    try {
+      const res = await fetch("/api/reading-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isbn: book.isbn,
+          title: book.title,
+          author: canonicalAuthorName,
+          coverImageUrl: book.coverImageUrl,
+          publishedAt: book.salesDate,
+          status: "unread",
+        }),
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = await res.json();
+      if (data.bookId == null) throw new Error("bookId がありません");
+      // 移動が完了するまで取得中表示を維持する（ここでは opening を解除しない）
       router.push(`/books/${data.bookId}`);
+    } catch {
+      setOpening(false);
+      setOpenError("本の情報を取得できませんでした。もう一度お試しください");
     }
   }
 
@@ -79,9 +92,10 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
           onClick={handleBookClick}
           disabled={preparing}
           aria-busy={preparing}
-          className={`block flex-shrink-0 ${preparing ? "cursor-wait opacity-70" : "cursor-pointer"}`}
+          className={`relative block flex-shrink-0 ${preparing ? "cursor-wait" : "cursor-pointer"}`}
         >
           {coverImage}
+          {preparing && <CoverLoadingOverlay />}
         </button>
       )}
 
@@ -133,8 +147,12 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
           status={status}
           busy={busy}
           busyMessage={preparing ? "本の情報を取得中…" : "保存中…"}
-          error={error}
-          onChange={changeStatus}
+          notice={opening ? "本の情報を取得中…" : null}
+          error={error ?? openError}
+          onChange={(nextStatus) => {
+            setOpenError(null);
+            changeStatus(nextStatus);
+          }}
           buttonClassName="px-3 py-1 text-xs"
         >
           {localBookId != null && (status === "reading" || status === "read") && (

@@ -9,6 +9,7 @@ import type { SearchResult, SearchResponse } from "@/app/api/books/search/route"
 import BarcodeScannerModal from "./_components/BarcodeScannerModal";
 import ManualBookRegisterModal from "./_components/ManualBookRegisterModal";
 import { LibraryAvailability } from "@/components/ui/library-availability";
+import { CoverLoadingOverlay } from "@/frontend/readingStatus/CoverLoadingOverlay";
 import { ReadingStatusControls } from "@/frontend/readingStatus/ReadingStatusControls";
 import { useReadingStatus } from "@/frontend/readingStatus/useReadingStatus";
 
@@ -39,12 +40,20 @@ function SearchResultCard({ book }: { book: SearchResult }) {
     }),
   });
   // 未登録の本は初回の保存中に楽天・NDL から本の情報を取得するため、完了まで時間がかかることがある
-  const preparing = bookId == null && busy;
+  // 未登録の本の書影・タイトルをクリックすると、詳細ページ側で登録されるまで時間がかかる
+  const [opening, setOpening] = useState(false);
+  const preparing = bookId == null && (busy || opening);
+  const handleOpenClick = (e: React.MouseEvent) => {
+    // 別タブで開く操作などでは、このページに留まるため取得中表示にしない
+    if (book.id || !book.isbn || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    setOpening(true);
+  };
 
   return (
     <div className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
       <Link
         href={book.id ? `/books/${book.id}` : book.isbn ? `/books/isbn/${book.isbn}` : "#"}
+        onClick={handleOpenClick}
         className="shrink-0"
       >
         <div className="relative h-32 w-20 overflow-hidden rounded">
@@ -61,12 +70,16 @@ function SearchResultCard({ book }: { book: SearchResult }) {
               No Image
             </div>
           )}
+          {preparing && <CoverLoadingOverlay />}
         </div>
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
         <div>
-          <Link href={book.id ? `/books/${book.id}` : book.isbn ? `/books/isbn/${book.isbn}` : "#"}>
+          <Link
+            href={book.id ? `/books/${book.id}` : book.isbn ? `/books/isbn/${book.isbn}` : "#"}
+            onClick={handleOpenClick}
+          >
             <h3 className="font-semibold leading-tight text-zinc-900 hover:underline dark:text-zinc-50">
               {book.title}
             </h3>
@@ -109,6 +122,7 @@ function SearchResultCard({ book }: { book: SearchResult }) {
           status={status}
           busy={busy}
           busyMessage={preparing ? "本の情報を取得中…" : "保存中…"}
+          notice={opening ? "本の情報を取得中…" : null}
           error={error}
           onChange={changeStatus}
           buttonClassName="px-2 py-0.5 text-xs"
