@@ -1,5 +1,6 @@
 import { logger } from "@/lib/logger";
 import { isPlausibleMatch } from "@/lib/matchUtils";
+import { buildRequestSignal, type RequestOptions } from "@/lib/requestSignal";
 
 // E2Eテストではローカルのスタブサーバーへ向ける（未指定時は本番エンドポイント）。
 // 詳細は docs/test-dependency-map.md「外部APIへの配慮」を参照。
@@ -151,7 +152,8 @@ function buildNdlQuery(params: NdlSearchParams): string {
 
 /** NDL SRU APIへ問い合わせ、生XMLと総件数を返す共通処理。 */
 async function fetchNdlXml(
-  params: NdlSearchParams
+  params: NdlSearchParams,
+  options?: RequestOptions
 ): Promise<{ xml: string; total: number } | null> {
   const query = buildNdlQuery(params);
   const startRecord = (params.page - 1) * HITS_PER_PAGE + 1;
@@ -164,7 +166,7 @@ async function fetchNdlXml(
   });
 
   try {
-    const res = await fetch(`${NDL_SRU_BASE}?${urlParams}`);
+    const res = await fetch(`${NDL_SRU_BASE}?${urlParams}`, { signal: buildRequestSignal(options) });
     if (!res.ok) return null;
     const xml = await res.text();
     const totalMatch = xml.match(/<numberOfRecords>(\d+)<\/numberOfRecords>/);
@@ -176,9 +178,10 @@ async function fetchNdlXml(
 }
 
 export async function searchBooksNdl(
-  params: NdlSearchParams
+  params: NdlSearchParams,
+  options?: RequestOptions
 ): Promise<{ items: NdlSearchBook[]; totalPages: number }> {
-  const result = await fetchNdlXml(params);
+  const result = await fetchNdlXml(params, options);
   if (!result) return { items: [], totalPages: 0 };
   const totalPages = Math.ceil(result.total / HITS_PER_PAGE);
   return { items: parseNdlRecords(result.xml), totalPages };
@@ -191,11 +194,14 @@ export type NdlHardcoverCandidate = NdlSearchBook & { isLikelyHardcover: boolean
  * 単行本らしさ（isLikelyHardcoverByExtent）→出版日（最古）の順に並べて返す。
  * 重複排除しないため、単行本・文庫等の複数版がそのまま候補として残る。
  */
-export async function searchNdlHardcoverCandidates(params: {
-  title: string;
-  author: string;
-}): Promise<NdlHardcoverCandidate[]> {
-  const result = await fetchNdlXml({ type: "titleAndAuthor", title: params.title, author: params.author, page: 1 });
+export async function searchNdlHardcoverCandidates(
+  params: { title: string; author: string },
+  options?: RequestOptions
+): Promise<NdlHardcoverCandidate[]> {
+  const result = await fetchNdlXml(
+    { type: "titleAndAuthor", title: params.title, author: params.author, page: 1 },
+    options
+  );
   if (!result) return [];
 
   return parseNdlRecordsAll(result.xml)
@@ -208,11 +214,11 @@ export async function searchNdlHardcoverCandidates(params: {
 }
 
 /** searchNdlHardcoverCandidatesのうち単行本らしい最古の1件のみを返す（1件確定が必要な呼び出し元向け）。 */
-export async function searchNdlPreferHardcover(params: {
-  title: string;
-  author: string;
-}): Promise<NdlHardcoverCandidate | null> {
-  const candidates = await searchNdlHardcoverCandidates(params);
+export async function searchNdlPreferHardcover(
+  params: { title: string; author: string },
+  options?: RequestOptions
+): Promise<NdlHardcoverCandidate | null> {
+  const candidates = await searchNdlHardcoverCandidates(params, options);
   return candidates.find((c) => c.isLikelyHardcover) ?? null;
 }
 
