@@ -26,6 +26,11 @@ function getCredentials() {
   return { appId, accessKey };
 }
 
+type RakutenSearchResponse = {
+  Items?: RakutenBook[];
+  pageCount?: number;
+};
+
 const RAKUTEN_MAX_ATTEMPTS = 3;
 
 export type RakutenRequestOptions = RequestOptions & {
@@ -50,13 +55,13 @@ function sleepUnlessAborted(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
- * 楽天APIへのfetchを、一時的な失敗（429・5xx等のres.ok=false、またはfetch自体の例外）に対して
+ * 楽天APIへのfetchを、一時的な失敗（429・5xx等のres.ok=false、またはfetch・JSON本文読み取りの例外）に対して
  * リトライする共通ヘルパー。429は指数的に待機時間を伸ばして再試行し、それ以外の失敗
  * （5xxやネットワークエラー）は短い固定待機で再試行する。全て失敗した場合はnullを返す。
  * options 指定時は、1試行ごとのタイムアウト（timeoutMs）と、リトライ全体の上限
  * （totalTimeoutMs）・呼び出し元の中断（signal）を守る。全体の上限を超えたら再試行せずnullを返す。
  */
-async function fetchRakutenWithRetry(url: string, options?: RakutenRequestOptions): Promise<Response | null> {
+async function fetchRakutenWithRetry(url: string, options?: RakutenRequestOptions): Promise<RakutenSearchResponse | null> {
   const totalSignal = anySignal(
     options?.signal,
     options?.totalTimeoutMs !== undefined ? AbortSignal.timeout(options.totalTimeoutMs) : undefined
@@ -66,12 +71,31 @@ async function fetchRakutenWithRetry(url: string, options?: RakutenRequestOption
     if (totalSignal?.aborted) return null;
     const isLastAttempt = attempt >= RAKUTEN_MAX_ATTEMPTS - 1;
 
-    let res: Response;
     try {
-      res = await fetch(url, {
+      const res = await fetch(url, {
         next: { revalidate: 3600 },
         signal: buildRequestSignal({ signal: totalSignal, timeoutMs: options?.timeoutMs }),
       });
+
+      if (res.status === 429) {
+        if (!isLastAttempt) {
+          await sleepUnlessAborted(1000 * (attempt + 1), totalSignal);
+          continue;
+        }
+        logger.error("楽天API 429: リトライ上限に達しました");
+        return null;
+      }
+
+      if (!res.ok) {
+        if (!isLastAttempt) {
+          await sleepUnlessAborted(500 * (attempt + 1), totalSignal);
+          continue;
+        }
+        logger.error({ status: res.status, statusText: res.statusText }, "楽天API エラー: リトライ上限に達しました");
+        return null;
+      }
+
+      return await res.json() as RakutenSearchResponse;
     } catch (err) {
       if (totalSignal?.aborted) return null;
       if (!isLastAttempt) {
@@ -81,26 +105,6 @@ async function fetchRakutenWithRetry(url: string, options?: RakutenRequestOption
       logger.error({ err }, "楽天API 通信エラー: リトライ上限に達しました");
       return null;
     }
-
-    if (res.status === 429) {
-      if (!isLastAttempt) {
-        await sleepUnlessAborted(1000 * (attempt + 1), totalSignal);
-        continue;
-      }
-      logger.error("楽天API 429: リトライ上限に達しました");
-      return null;
-    }
-
-    if (!res.ok) {
-      if (!isLastAttempt) {
-        await sleepUnlessAborted(500 * (attempt + 1), totalSignal);
-        continue;
-      }
-      logger.error({ status: res.status, statusText: res.statusText }, "楽天API エラー: リトライ上限に達しました");
-      return null;
-    }
-
-    return res;
   }
 
   return null;
@@ -124,10 +128,9 @@ export async function fetchBookPage(params: {
   if (params.author) url.searchParams.set("author", params.author);
   if (params.title) url.searchParams.set("title", params.title);
 
-  const res = await fetchRakutenWithRetry(url.toString(), options);
-  if (!res) return { items: [], pageCount: 0 };
+  const data = await fetchRakutenWithRetry(url.toString(), options);
+  if (!data) return { items: [], pageCount: 0 };
 
-  const data = await res.json();
   return {
     items: (data.Items ?? []) as RakutenBook[],
     pageCount: data.pageCount ?? 1,
@@ -255,10 +258,9 @@ export async function searchBooksByIsbn(isbn: string, options?: RakutenRequestOp
   url.searchParams.set("formatVersion", "2");
   url.searchParams.set("isbn", isbn);
 
-  const res = await fetchRakutenWithRetry(url.toString(), options);
-  if (!res) return null;
+  const data = await fetchRakutenWithRetry(url.toString(), options);
+  if (!data) return null;
 
-  const data = await res.json();
   const items = (data.Items ?? []) as RakutenBook[];
   return items[0] ?? null;
 }

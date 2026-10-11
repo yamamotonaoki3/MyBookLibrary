@@ -1,5 +1,5 @@
 import { resolvePreferringHardcover, USER_FACING_RESOLVE_OPTIONS } from "@/lib/editionResolver";
-import { searchBooksByIsbn } from "@/lib/rakuten";
+import { fetchBookPage, searchBooksByIsbn } from "@/lib/rakuten";
 import { searchNdlHardcoverCandidates } from "@/lib/ndl";
 import { restoreFetch } from "../../helpers/fetchMock";
 
@@ -26,6 +26,19 @@ const hang: Handler = (init) =>
     if (signal?.aborted) return reject(new DOMException("aborted", "AbortError"));
     signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
   });
+
+/** Headers arrive immediately, but the JSON body stalls until aborted. */
+const hangBody: Handler = async (init) => new Response(
+  new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode('{"Items":['));
+      const abort = () => controller.error(new DOMException("aborted", "AbortError"));
+      if (init?.signal?.aborted) abort();
+      else init?.signal?.addEventListener("abort", abort, { once: true });
+    },
+  }),
+  { status: 200, headers: { "Content-Type": "application/json" } }
+);
 
 const sruXml = (records: string, n: number) =>
   `<?xml version="1.0"?><searchRetrieveResponse><numberOfRecords>${n}</numberOfRecords><records>${records}</records></searchRetrieveResponse>`;
@@ -71,6 +84,49 @@ describe("NDL のタイムアウト", () => {
 });
 
 describe("楽天のタイムアウト", () => {
+  it("retries a body timeout after receiving headers and returns the next successful response", async () => {
+    let attempt = 0;
+    const calls = installFetch({
+      ndl: hang,
+      rakuten: (init) => ++attempt === 1 ? hangBody(init) : rakutenOk("9784309027180", "単行本")(init),
+    });
+    const result = await searchBooksByIsbn("9784309027180", { timeoutMs: 50, totalTimeoutMs: 2000 });
+    expect(result?.isbn).toBe("9784309027180");
+    expect(calls.rakuten).toHaveLength(2);
+    expect(calls.rakuten[0]?.signal?.aborted).toBe(true);
+  });
+
+  it("returns null without retrying when the total timeout interrupts the body", async () => {
+    const calls = installFetch({ ndl: hang, rakuten: hangBody });
+    const result = await searchBooksByIsbn("9784309027180", { timeoutMs: 1000, totalTimeoutMs: 50 });
+    expect(result).toBeNull();
+    expect(calls.rakuten).toHaveLength(1);
+  });
+
+  it("returns an empty page without retrying when the caller aborts during body reading", async () => {
+    const controller = new AbortController();
+    const calls = installFetch({ ndl: hang, rakuten: hangBody });
+    const pending = fetchBookPage({ page: 1, hits: 30 }, { signal: controller.signal });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    controller.abort();
+    await expect(pending).resolves.toEqual({ items: [], pageCount: 0 });
+    expect(calls.rakuten).toHaveLength(1);
+  });
+
+  it("retries JSON parse failures and returns the next successful page", async () => {
+    let attempt = 0;
+    const calls = installFetch({
+      ndl: hang,
+      rakuten: (init) => ++attempt === 1
+        ? Promise.resolve(new Response("invalid JSON", { status: 200 }))
+        : rakutenOk("9784309027180", "単行本")(init),
+    });
+    const result = await fetchBookPage({ page: 1, hits: 30 });
+    expect(result.items[0]?.isbn).toBe("9784309027180");
+    expect(result.pageCount).toBe(1);
+    expect(calls.rakuten).toHaveLength(2);
+  });
+
   it("リトライ全体の上限（totalTimeoutMs）を超えたら再試行せず null を返す", async () => {
     const calls = installFetch({ ndl: hang, rakuten: async () => new Response("", { status: 500 }) });
     const started = Date.now();
