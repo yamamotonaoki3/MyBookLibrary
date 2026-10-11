@@ -1,5 +1,5 @@
 import { resolvePreferringHardcover, USER_FACING_RESOLVE_OPTIONS } from "@/lib/editionResolver";
-import { fetchBookPage, searchBooksByIsbn } from "@/lib/rakuten";
+import { fetchBookPage, searchBooks, searchBooksByIsbn } from "@/lib/rakuten";
 import { searchNdlHardcoverCandidates } from "@/lib/ndl";
 import { restoreFetch } from "../../helpers/fetchMock";
 
@@ -84,6 +84,34 @@ describe("NDL のタイムアウト", () => {
 });
 
 describe("楽天のタイムアウト", () => {
+  it("searchBooks shares one total timeout across pages and stops after an unresponsive second page", async () => {
+    let page = 0;
+    const calls = installFetch({
+      ndl: hang,
+      rakuten: async (init) => {
+        if (++page > 1) return hang(init);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const response = await rakutenOk("9784309027180", "単行本")(init);
+        const data = await response.json();
+        return Response.json({ ...data, pageCount: 10 });
+      },
+    });
+    const timeout = jest.spyOn(AbortSignal, "timeout");
+    try {
+      const started = Date.now();
+      const result = await searchBooks({ title: "しき" }, { totalTimeoutMs: 200 });
+      expect(result.map((book) => book.isbn)).toEqual(["9784309027180"]);
+      expect(calls.rakuten).toHaveLength(2);
+      expect(calls.rakuten[0]?.signal).toBe(calls.rakuten[1]?.signal);
+      expect(calls.rakuten[1]?.signal?.aborted).toBe(true);
+      expect(timeout).toHaveBeenCalledTimes(1);
+      expect(timeout).toHaveBeenCalledWith(200);
+      expect(Date.now() - started).toBeLessThan(800);
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+
   it("retries a body timeout after receiving headers and returns the next successful response", async () => {
     let attempt = 0;
     const calls = installFetch({

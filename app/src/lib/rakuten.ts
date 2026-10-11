@@ -146,7 +146,12 @@ export async function searchBooks(params: {
   dedupe?: boolean;
 }, options?: RakutenRequestOptions): Promise<RakutenBook[]> {
   const { maxPages = 100, dedupe = true, ...fetchParams } = params;
-  const { items, pageCount } = await fetchBookPage({ ...fetchParams, page: 1, hits: 30 }, options);
+  const signal = anySignal(
+    options?.signal,
+    options?.totalTimeoutMs !== undefined ? AbortSignal.timeout(options.totalTimeoutMs) : undefined
+  );
+  const pageOptions = { signal, timeoutMs: options?.timeoutMs };
+  const { items, pageCount } = await fetchBookPage({ ...fetchParams, page: 1, hits: 30 }, pageOptions);
 
   if (pageCount <= 1) return dedupe ? deduplicateByTitle(items) : items;
 
@@ -155,8 +160,8 @@ export async function searchBooks(params: {
   const maxPage = Math.min(pageCount, maxPages);
 
   for (let page = 2; page <= maxPage; page++) {
-    if (options?.signal?.aborted) break;
-    const { items: pageItems } = await fetchBookPage({ ...fetchParams, page, hits: 30 }, options);
+    if (signal?.aborted) break;
+    const { items: pageItems } = await fetchBookPage({ ...fetchParams, page, hits: 30 }, pageOptions);
     allItems.push(...pageItems);
   }
 
