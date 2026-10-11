@@ -9,6 +9,9 @@ import type { SearchResult, SearchResponse } from "@/app/api/books/search/route"
 import BarcodeScannerModal from "./_components/BarcodeScannerModal";
 import ManualBookRegisterModal from "./_components/ManualBookRegisterModal";
 import { LibraryAvailability } from "@/components/ui/library-availability";
+import { CoverLoadingOverlay } from "@/frontend/readingStatus/CoverLoadingOverlay";
+import { ReadingStatusControls } from "@/frontend/readingStatus/ReadingStatusControls";
+import { useReadingStatus } from "@/frontend/readingStatus/useReadingStatus";
 
 type SearchType = "title" | "author";
 type ReadingStatus = "unread" | "want_to_read" | "reading" | "read";
@@ -24,44 +27,33 @@ function dedupeKey(book: SearchResult): string {
   return book.isbn ? `isbn:${book.isbn}` : `title-author:${book.title}::${book.author}`;
 }
 
-const STATUS_LABELS: Record<ReadingStatus, string> = {
-  unread: "未読",
-  want_to_read: "読みたい",
-  reading: "読書中",
-  read: "読了",
-};
-
 function SearchResultCard({ book }: { book: SearchResult }) {
-  const router = useRouter();
-  const [status, setStatus] = useState<ReadingStatus>((book.status as ReadingStatus) ?? "unread");
-  const [saving, setSaving] = useState(false);
-  const [bookId, setBookId] = useState<number | null>(null);
-
-  async function handleStatusChange(newStatus: ReadingStatus) {
-    setSaving(true);
-    setStatus(newStatus);
-    const res = await fetch("/api/reading-status", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        isbn: book.isbn,
-        title: book.title,
-        author: book.author,
-        coverImageUrl: book.coverImageUrl,
-        publishedAt: book.salesDate,
-        status: newStatus,
-      }),
-    });
-    const data = await res.json();
-    if (data.bookId) setBookId(data.bookId);
-    setSaving(false);
-    router.refresh();
-  }
+  const { status, bookId, busy, error, changeStatus } = useReadingStatus({
+    initialStatus: (book.status as ReadingStatus) ?? "unread",
+    initialBookId: book.id ?? null,
+    buildBody: () => ({
+      isbn: book.isbn,
+      title: book.title,
+      author: book.author,
+      coverImageUrl: book.coverImageUrl,
+      publishedAt: book.salesDate,
+    }),
+  });
+  // 未登録の本は初回の保存中に楽天・NDL から本の情報を取得するため、完了まで時間がかかることがある
+  // 未登録の本の書影・タイトルをクリックすると、詳細ページ側で登録されるまで時間がかかる
+  const [opening, setOpening] = useState(false);
+  const preparing = bookId == null && (busy || opening);
+  const handleOpenClick = (e: React.MouseEvent) => {
+    // 別タブで開く操作などでは、このページに留まるため取得中表示にしない
+    if (book.id || !book.isbn || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    setOpening(true);
+  };
 
   return (
     <div className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
       <Link
         href={book.id ? `/books/${book.id}` : book.isbn ? `/books/isbn/${book.isbn}` : "#"}
+        onClick={handleOpenClick}
         className="shrink-0"
       >
         <div className="relative h-32 w-20 overflow-hidden rounded">
@@ -78,12 +70,16 @@ function SearchResultCard({ book }: { book: SearchResult }) {
               No Image
             </div>
           )}
+          {preparing && <CoverLoadingOverlay />}
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col justify-between gap-2">
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
         <div>
-          <Link href={book.id ? `/books/${book.id}` : book.isbn ? `/books/isbn/${book.isbn}` : "#"}>
+          <Link
+            href={book.id ? `/books/${book.id}` : book.isbn ? `/books/isbn/${book.isbn}` : "#"}
+            onClick={handleOpenClick}
+          >
             <h3 className="font-semibold leading-tight text-zinc-900 hover:underline dark:text-zinc-50">
               {book.title}
             </h3>
@@ -122,36 +118,24 @@ function SearchResultCard({ book }: { book: SearchResult }) {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-1">
-          {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => handleStatusChange(s)}
-              disabled={saving}
-              className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
-                status === s
-                  ? s === "read"
-                    ? "bg-green-600 text-white"
-                    : s === "reading"
-                      ? "bg-blue-600 text-white"
-                      : s === "want_to_read"
-                        ? "bg-orange-500 text-white"
-                        : "bg-zinc-600 text-white"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
-              }`}
-            >
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
+        <ReadingStatusControls
+          status={status}
+          busy={busy}
+          busyMessage={preparing ? "本の情報を取得中…" : "保存中…"}
+          notice={opening ? "本の情報を取得中…" : null}
+          error={error}
+          onChange={changeStatus}
+          buttonClassName="px-2 py-0.5 text-xs"
+        >
           {bookId != null && (status === "reading" || status === "read") && (
             <Link
               href={`/books/${bookId}/reviews/new`}
-              className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="shrink-0 rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               感想を書く
             </Link>
           )}
-        </div>
+        </ReadingStatusControls>
       </div>
     </div>
   );
