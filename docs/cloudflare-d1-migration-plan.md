@@ -158,6 +158,18 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 | 向かないケース | Workers の **CPU 時間（Free 10ms）が問題の場合**は、DB を替えても解決しない（Paid が必要）。また接続ドライバ分の CPU が加わる可能性がある |
 | 検証 | #645（G2 不合格時のみ実施） |
 
+### 4-6. Phase 0 の検証結果（#639: G0・G1）
+
+実際の Cloudflare アカウントへ、本アプリのコピー（使い捨て）を OpenNext でデプロイして計測した（詳細は #639 のコメント）。
+
+| 項目 | 結果 |
+| --- | --- |
+| **G1 ビルド・サイズ・PWA** | ✅ ビルド成功（約 35 秒）。Worker は**非圧縮 約 11.5 MiB／gzip 約 2.3 MiB**でデプロイ成功、PWA（`sw.js`・`manifest.json`）も配信される。`proxy.ts`（Node ミドルウェア）は Workers 上で動作（OpenNext は experimental と警告）。**ただし最新の OpenNext アダプタ（1.20.10）は Next.js ≥ 16.3.8 が必須**（現行 16.2.6 は更新が必要）。Windows では「完全には互換でない」警告があるため、ビルド・デプロイは CI（Linux）で行う |
+| **G0 CPU 時間** | ❌ **Workers Free の 10 ms/リクエストでは動かせない**。コールドスタート 158〜286 ms、ログインの bcrypt（cost 12）305〜800 ms、`/login` の描画 13〜178 ms（中央値 99）、D1 直接アクセス 4〜16 ms。**Workers Paid（月 $5〜）が必須**。Paid の含有量（月 3,000 万 CPU ms）は、平均 100 ms/リクエストで**約 30 万リクエスト/月**に相当し、個人利用の規模では**月 $5 の固定費のみ**になる見込み |
+| 追加の課題 | `createMany({ skipDuplicates })` は SQLite で不可（2 箇所）。Prisma を OpenNext（webpack）でバンドルする wasm 設定が**未解決**（#640 の続き）。bcrypt が最大の CPU 消費のため、WebCrypto 系への段階移行（ログイン時の再ハッシュ）を検討 |
+
+**結論（G0）**: 案 A・E のどちらも **Workers Paid が前提**になる（CPU 制限は DB を替えても変わらない）。D1 は費用面で有利だが、費用の最小値は「Workers Paid 月 $5」で、案 E でも同額。したがって **§11 の D1 は「月 $5 を許容するか」の判断が実質の分岐点**になる。
+
 ---
 
 ## 5. コード・スキーマの変換（MySQL → D1/SQLite）
