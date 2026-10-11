@@ -2,51 +2,39 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthorBook } from "@/types/author";
 import { LibraryAvailability } from "@/components/ui/library-availability";
+import { ReadingStatusControls } from "@/frontend/readingStatus/ReadingStatusControls";
+import { useReadingStatus } from "@/frontend/readingStatus/useReadingStatus";
 
 type Props = {
   book: AuthorBook;
   canonicalAuthorName: string;
 };
 
-const STATUS_LABELS: Record<AuthorBook["status"], string> = {
-  unread: "未読",
-  want_to_read: "読みたい",
-  reading: "読書中",
-  read: "読了",
-};
+// リンク／ボタンのどちらでも同じ見た目・サイズになるよう、クラスを共通化する
+const TITLE_CLASS =
+  "block min-h-[2.5rem] text-left font-semibold text-gray-900 hover:underline dark:text-gray-100 line-clamp-2";
 
 export function BookStatusCard({ book, canonicalAuthorName }: Props) {
   const router = useRouter();
-  const [status, setStatus] = useState<AuthorBook["status"]>(book.status);
-  const [localBookId, setLocalBookId] = useState<number | null>(book.bookId);
-  const [saving, setSaving] = useState(false);
-
-  async function handleStatusChange(newStatus: AuthorBook["status"]) {
-    setSaving(true);
-    setStatus(newStatus);
-    const res = await fetch("/api/reading-status", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        isbn: book.isbn,
-        title: book.title,
-        author: canonicalAuthorName,
-        coverImageUrl: book.coverImageUrl,
-        publishedAt: book.salesDate,
-        status: newStatus,
-      }),
-    });
-    const data = await res.json();
-    if (data.bookId != null) setLocalBookId(data.bookId);
-    setSaving(false);
-    router.refresh();
-  }
+  const { status, bookId: localBookId, busy, error, changeStatus } = useReadingStatus({
+    initialStatus: book.status,
+    initialBookId: book.bookId,
+    buildBody: () => ({
+      isbn: book.isbn,
+      title: book.title,
+      author: canonicalAuthorName,
+      coverImageUrl: book.coverImageUrl,
+      publishedAt: book.salesDate,
+    }),
+  });
+  // 未登録の本は初回の保存中に楽天・NDL から本の情報を取得するため、完了まで時間がかかることがある
+  const preparing = localBookId == null && busy;
 
   async function handleBookClick() {
+    if (preparing) return;
     const res = await fetch("/api/reading-status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -82,28 +70,36 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
   return (
     <div className="flex h-full gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
       {localBookId != null ? (
-        <Link href={`/books/${localBookId}`} className="flex-shrink-0">
+        <Link href={`/books/${localBookId}`} className="block flex-shrink-0">
           {coverImage}
         </Link>
       ) : (
-        <button onClick={handleBookClick} className="flex-shrink-0 cursor-pointer">
+        <button
+          type="button"
+          onClick={handleBookClick}
+          disabled={preparing}
+          aria-busy={preparing}
+          className={`block flex-shrink-0 ${preparing ? "cursor-wait opacity-70" : "cursor-pointer"}`}
+        >
           {coverImage}
         </button>
       )}
 
-      <div className="flex flex-1 flex-col justify-between gap-2">
+      <div className="flex min-w-0 flex-1 flex-col justify-between gap-2">
         <div>
           {localBookId != null ? (
             <Link
               href={`/books/${localBookId}`}
-              className="min-h-[2.5rem] font-semibold text-gray-900 hover:underline dark:text-gray-100 line-clamp-2"
+              className={TITLE_CLASS}
             >
               {book.title}
             </Link>
           ) : (
             <button
+              type="button"
               onClick={handleBookClick}
-              className="min-h-[2.5rem] cursor-pointer text-left font-semibold text-gray-900 hover:underline dark:text-gray-100 line-clamp-2"
+              disabled={preparing}
+              className={`${TITLE_CLASS} ${preparing ? "cursor-wait" : "cursor-pointer"}`}
             >
               {book.title}
             </button>
@@ -133,42 +129,29 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => handleStatusChange(s)}
-              disabled={saving}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                status === s
-                  ? s === "read"
-                    ? "bg-green-600 text-white"
-                    : s === "reading"
-                      ? "bg-blue-600 text-white"
-                      : s === "want_to_read"
-                        ? "bg-orange-500 text-white"
-                        : "bg-gray-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              }`}
-            >
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
+        <ReadingStatusControls
+          status={status}
+          busy={busy}
+          busyMessage={preparing ? "本の情報を取得中…" : "保存中…"}
+          error={error}
+          onChange={changeStatus}
+          buttonClassName="px-3 py-1 text-xs"
+        >
           {localBookId != null && (status === "reading" || status === "read") && (
             book.hasReview ? (
-              <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+              <span className="shrink-0 rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
                 感想投稿済み
               </span>
             ) : (
               <Link
                 href={`/books/${localBookId}/reviews/new`}
-                className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="shrink-0 rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 感想を書く
               </Link>
             )
           )}
-        </div>
+        </ReadingStatusControls>
       </div>
     </div>
   );

@@ -2,46 +2,28 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import type { BookWithAwardEntry, ReadingStatus } from "@/types/award";
+import type { BookWithAwardEntry } from "@/types/award";
 import LibraryAvailabilityButton from "@/components/ui/LibraryAvailabilityButton";
+import { ReadingStatusControls } from "@/frontend/readingStatus/ReadingStatusControls";
+import { useReadingStatus } from "@/frontend/readingStatus/useReadingStatus";
 
 type Props = {
   entry: BookWithAwardEntry;
 };
 
-const STATUS_LABELS: Record<ReadingStatus, string> = {
-  unread: "未読",
-  want_to_read: "読みたい",
-  reading: "読書中",
-  read: "読了",
-};
-
 export function BookCard({ entry }: Props) {
-  const router = useRouter();
   const { book, type, year, status: initialStatus } = entry;
-  const [status, setStatus] = useState<ReadingStatus>(initialStatus);
-  const [saving, setSaving] = useState(false);
-
-  async function handleStatusChange(newStatus: ReadingStatus) {
-    setSaving(true);
-    setStatus(newStatus);
-    await fetch("/api/reading-status", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        isbn: book.isbn ?? null,
-        title: book.title,
-        author: book.author.name,
-        coverImageUrl: book.coverImageUrl,
-        publishedAt: book.publishedAt,
-        status: newStatus,
-      }),
-    });
-    setSaving(false);
-    router.refresh();
-  }
+  const { status, busy, error, changeStatus } = useReadingStatus({
+    initialStatus,
+    initialBookId: book.id,
+    buildBody: () => ({
+      isbn: book.isbn ?? null,
+      title: book.title,
+      author: book.author.name,
+      coverImageUrl: book.coverImageUrl,
+      publishedAt: book.publishedAt,
+    }),
+  });
 
   return (
     <div className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
@@ -97,42 +79,29 @@ export function BookCard({ entry }: Props) {
           <LibraryAvailabilityButton bookId={book.id} bookTitle={book.title} />
         </div>
 
-        <div className="flex flex-wrap gap-1">
-          {(["unread", "want_to_read", "reading", "read"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => handleStatusChange(s)}
-              disabled={saving}
-              className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
-                status === s
-                  ? s === "read"
-                    ? "bg-green-600 text-white"
-                    : s === "reading"
-                      ? "bg-blue-600 text-white"
-                      : s === "want_to_read"
-                        ? "bg-orange-500 text-white"
-                        : "bg-zinc-600 text-white"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
-              }`}
-            >
-              {STATUS_LABELS[s]}
-            </button>
-          ))}
+        <ReadingStatusControls
+          status={status}
+          busy={busy}
+          busyMessage="保存中…"
+          error={error}
+          onChange={changeStatus}
+          buttonClassName="px-2 py-0.5 text-xs"
+        >
           {(status === "reading" || status === "read") && (
             entry.hasReview ? (
-              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+              <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
                 感想投稿済み
               </span>
             ) : (
               <Link
                 href={`/books/${book.id}/reviews/new`}
-                className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="shrink-0 rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 感想を書く
               </Link>
             )
           )}
-        </div>
+        </ReadingStatusControls>
       </div>
     </div>
   );
