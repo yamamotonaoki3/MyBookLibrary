@@ -212,6 +212,10 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 - ❌ **`$transaction` の配列形式は、エラーにならず非原子的に実行される**（2 文目が失敗しても 1 文目が残る。警告ログのみ）。**無警告でデータ不整合になる**ため、置換が済むまで本流に混ぜない。
 - ✅ D1 ネイティブの `batch` は**原子的**。ただし Prisma アダプタからは呼べない。✅ 条件付き単一 `UPDATE`（`WHERE ... AND (SELECT COUNT(*) ...) > 1`）で最後の管理者の降格防止を原子化できた。
 - ⚠️ 整数除算（`3/5` が `0`）、`GROUP_CONCAT ... SEPARATOR` の構文エラー、`email` の完全一致が大文字小文字を区別する点は、§5-2・§5-4 のとおり。
+- ✅（第 2 報）`createMany`（500 行）・`IN`（150 件）は Prisma が自動分割して成功。**生 SQL・D1 バインディング直接は 100 個超で失敗**するため、`IN (...)` は 100 個以内に分割する。明示 ID の挿入後も自動採番は最大 ID + 1 から続く。
+- ✅（第 2 報）マイグレーションは `prisma migrate diff --from-schema-datamodel 旧 --to-schema-datamodel 新 --script` → `wrangler d1 migrations apply` で運用でき、**Prisma 6.19.3 のまま可能**。
+- ✅（第 2 報）MySQL 用と D1 用の Prisma クライアントは同じコードベースで 2 つ生成できるが、**型は相互に代入できない**（`$transaction`・`createManyAndReturn` の差）。共通の型は `prisma.ts` の 1 か所で明示的にキャストして揃え、モデル定義の同一性はドリフト検査で担保する。
+- 結論: G2 は**条件付きで合格**（`$transaction` 11 箇所の置換が必須。D1 バインディングを直接使う Repository が必要）。併存の保守コストと案 E（`$transaction` がそのまま使える）を #644 で比較して決める。詳細は #640 のコメント。
 - 補足: 本スキーマは 12 の関係が `ON DELETE RESTRICT`（MySQL でも同じ）。ユーザー削除で関連行を手動削除しているのはこのため。「カスケード整理」（#1・#11）は、**MySQL 側のスキーマ変更（マイグレーション）を伴う**。
 
 ### 5-4. `$queryRaw`（MySQL 方言）の書き換え
