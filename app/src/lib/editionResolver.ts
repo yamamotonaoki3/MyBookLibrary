@@ -52,6 +52,16 @@ export const USER_FACING_RESOLVE_OPTIONS: ResolveOptions = {
   parallelRakuten: true,
 };
 
+/**
+ * 応答後（バックグラウンド）で版ISBNを収集するときの時間制限。ユーザーを待たせない処理のため
+ * 保存前の処理より長めにするが、NDLが数十秒〜応答しない場合に処理が残り続けないよう上限を設ける。
+ */
+export const BACKGROUND_COLLECT_OPTIONS = {
+  ndlTimeoutMs: 20000,
+  rakutenTimeoutMs: 10000,
+  rakutenTotalTimeoutMs: 20000,
+};
+
 export type ResolveOptions = {
   /** NDL 1リクエストあたりのタイムアウト（ms）。未指定なら無制限 */
   ndlTimeoutMs?: number;
@@ -184,15 +194,18 @@ export type EditionCandidate = {
  * 管理者が確認・選択できるようにする（重複排除は同一ISBNのみで行う）。
  * NDL・楽天それぞれ1回ずつ呼び出すため、呼び出し後にQPS制御のsleepを行う。
  */
-export async function collectEditionCandidates(params: {
-  title: string;
-  author: string;
-}): Promise<EditionCandidate[]> {
+export async function collectEditionCandidates(
+  params: { title: string; author: string },
+  options: Pick<ResolveOptions, "ndlTimeoutMs" | "rakutenTimeoutMs" | "rakutenTotalTimeoutMs"> = {}
+): Promise<EditionCandidate[]> {
   const target = { title: params.title, author: params.author };
 
-  const ndlCandidates = await searchNdlHardcoverCandidates(target);
+  const ndlCandidates = await searchNdlHardcoverCandidates(target, { timeoutMs: options.ndlTimeoutMs });
   await sleep(NDL_WAIT_MS);
-  const rakutenResults = await searchBooks({ title: params.title, author: params.author, dedupe: false });
+  const rakutenResults = await searchBooks(
+    { title: params.title, author: params.author, dedupe: false },
+    { timeoutMs: options.rakutenTimeoutMs, totalTimeoutMs: options.rakutenTotalTimeoutMs }
+  );
   await sleep(RAKUTEN_WAIT_MS);
 
   const merged: EditionCandidate[] = [];
