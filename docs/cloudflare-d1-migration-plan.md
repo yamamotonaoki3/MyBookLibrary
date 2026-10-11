@@ -288,13 +288,13 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 | # | 後続 Issue（案） | 内容 | 受け入れ基準 |
 | --- | --- | --- | --- |
-| P0-1 | Workers 最小構成の実測（G0・G1） | OpenNext で本アプリ（または最小ページ＋bcrypt）をデプロイし、CPU 時間・サイズ・PWA 配信を Free/Paid で実測 | 実測表と、Free で可否・Paid 前提かの判定が文書化 |
-| P0-2 | Prisma D1 アダプタの検証（G2） | CRUD・upsert・createMany・Json・日時、`batch` の可否、§5-3 の置換方針の確定 | 11 箇所の置換方針表。Prisma 7 更新の要否を確定 |
-| P0-3 | 認証と proxy の検証（G3） | Credentials・Google OAuth・JWT・保護ルートを Workers で確認 | 動作可否と必要な変更が文書化 |
-| P0-4 | Cron の検証（G4） | Cron Trigger → API 内部呼び出し | スケジュール実行で通知作成 |
-| P0-5 | vinext の比較検証（任意） | 同じ最小構成を vinext で試し、OpenNext との比較を記録 | 比較表と最終選定 |
+| P0-1（#639） | Workers 最小構成の実測（G0・G1） | OpenNext で本アプリ（または最小ページ＋bcrypt）をデプロイし、CPU 時間・サイズ・PWA 配信を Free/Paid で実測 | 実測表と、Free で可否・Paid 前提かの判定が文書化 |
+| P0-2（#640） | Prisma D1 アダプタの検証（G2） | CRUD・upsert・createMany・Json・日時、`batch` の可否、§5-3 の置換方針の確定 | 11 箇所の置換方針表。Prisma 7 更新の要否を確定 |
+| P0-3（#641） | 認証と proxy の検証（G3） | Credentials・Google OAuth・JWT・保護ルートを Workers で確認 | 動作可否と必要な変更が文書化 |
+| P0-4（#642） | Cron の検証（G4） | Cron Trigger → API 内部呼び出し | スケジュール実行で通知作成 |
+| P0-5（#643） | vinext の比較検証（任意） | 同じ最小構成を vinext で試し、OpenNext との比較を記録 | 比較表と最終選定 |
 
-→ **Phase 0 の結果で、本計画の採用案（A/B/C）と Free/Paid を確定し、本書を更新**する（Go/No-Go）。
+→ **Phase 0 の結果で、本計画の採用案（A/B/C）と Free/Paid を確定し、本書を更新**する（Go/No-Go。#644）。
 
 ### Phase 1: MySQL のまま準備（本番に影響しない／D1 非依存で価値がある変更）
 
