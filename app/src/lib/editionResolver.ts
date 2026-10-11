@@ -1,6 +1,7 @@
 import { searchBooks, getSizePriority, type RakutenBook } from "@/lib/rakuten";
 import { searchBooksNdl, searchNdlPreferHardcover, searchNdlHardcoverCandidates } from "@/lib/ndl";
 import { isPlausibleMatch } from "@/lib/matchUtils";
+import { anySignal } from "@/lib/requestSignal";
 
 // 楽天・NDLとも実質的にQPS1程度が上限のため、呼び出し間に待機を挿入する。
 // NDLサーチAPIの利用規約でも多重アクセス（同時並行アクセス）は避けるよう明記されている。
@@ -38,22 +39,85 @@ type EditionFallback = {
 };
 
 /**
+ * ユーザー操作の経路（ステータス変更・本詳細への直接アクセス）で使う時間制限・並行実行の設定。
+ * 計測（#634）では、NDLサーチSRUが通常は約2.4秒以内だが、混雑時は数十秒かかる／504を返すことがあり、
+ * 楽天は約0.1〜0.25秒で安定していた。そのため、NDLを短いタイムアウトで打ち切り、
+ * 楽天はNDLと同時に先行して取得する。一括補完（bookEnrichmentWorker）は従来どおり無制限で呼ぶ。
+ */
+export const USER_FACING_RESOLVE_OPTIONS: ResolveOptions = {
+  ndlTimeoutMs: 4000,
+  rakutenTimeoutMs: 3000,
+  rakutenTotalTimeoutMs: 5000,
+  budgetMs: 6000,
+  parallelRakuten: true,
+};
+
+/**
+ * 応答後（バックグラウンド）で版ISBNを収集するときの時間制限。ユーザーを待たせない処理のため
+ * 保存前の処理より長めにするが、NDLが数十秒〜応答しない場合に処理が残り続けないよう上限を設ける。
+ */
+export const BACKGROUND_COLLECT_OPTIONS = {
+  ndlTimeoutMs: 20000,
+  rakutenTimeoutMs: 10000,
+  rakutenTotalTimeoutMs: 20000,
+};
+
+export type ResolveOptions = {
+  /** NDL 1リクエストあたりのタイムアウト（ms）。未指定なら無制限 */
+  ndlTimeoutMs?: number;
+  /** 楽天 1試行あたりのタイムアウト（ms）。未指定なら無制限 */
+  rakutenTimeoutMs?: number;
+  /** 楽天のリトライを含めた1回の呼び出し全体のタイムアウト（ms）。未指定なら無制限 */
+  rakutenTotalTimeoutMs?: number;
+  /** 解決処理全体の時間予算（ms）。超えたら残りのステップを打ち切り、fallback へ切り替える */
+  budgetMs?: number;
+  /** NDLの単行本検索と同時に楽天検索を開始するか（NDLが単行本を返せばそちらを優先する） */
+  parallelRakuten?: boolean;
+};
+
+/**
  * NDL単行本 → 楽天単行本 → 呼び出し元が渡したfallback → NDLの元データ、の優先順で
  * 「1件」の版情報を解決する。新規Book登録時（reading-status経路、books/isbn直指定）に、
  * 絶版等で楽天に単行本が無い場合でも可能な限り単行本を優先して登録するために使う。
  * 各ステップは独立してtry/catchし、外部APIの失敗が全体を失敗させない。
+ * options で時間制限を指定した場合、タイムアウト・予算超過したステップはスキップし、
+ * 残りの優先順（楽天→fallback）で解決する。
  */
-export async function resolvePreferringHardcover(params: {
-  title: string;
-  author: string;
-  fallback: EditionFallback;
-}): Promise<ResolvedEdition> {
+export async function resolvePreferringHardcover(
+  params: {
+    title: string;
+    author: string;
+    fallback: EditionFallback;
+  },
+  options: ResolveOptions = {}
+): Promise<ResolvedEdition> {
   const target = { title: params.title, author: params.author };
+  const budgetSignal =
+    options.budgetMs !== undefined ? AbortSignal.timeout(options.budgetMs) : undefined;
+  const ndlOptions = { signal: budgetSignal, timeoutMs: options.ndlTimeoutMs };
+
+  // 楽天検索。parallelRakuten 指定時はNDLの待ち時間と重ねるため先行して開始する。
+  // 失敗・打ち切りは null（このステップをスキップ）として扱う。
+  const rakutenAbort = new AbortController();
+  const startRakutenSearch = (): Promise<RakutenBook[] | null> =>
+    searchBooks(
+      { title: params.title, author: params.author, dedupe: false },
+      {
+        signal: anySignal(budgetSignal, rakutenAbort.signal),
+        timeoutMs: options.rakutenTimeoutMs,
+        totalTimeoutMs: options.rakutenTotalTimeoutMs,
+      }
+    ).catch(() => null);
+  let rakutenSearch: Promise<RakutenBook[] | null> | null = options.parallelRakuten
+    ? startRakutenSearch()
+    : null;
 
   // 1. NDL単行本
   try {
-    const ndlHardcover = await searchNdlPreferHardcover(target);
+    const ndlHardcover = await searchNdlPreferHardcover(target, ndlOptions);
     if (ndlHardcover?.isbn) {
+      // 先行していた楽天検索は不要になったため中断する
+      rakutenAbort.abort();
       return {
         title: ndlHardcover.title,
         author: ndlHardcover.author,
@@ -68,8 +132,9 @@ export async function resolvePreferringHardcover(params: {
   }
 
   // 2. 楽天単行本
-  try {
-    const rakutenResults = await searchBooks({ title: params.title, author: params.author, dedupe: false });
+  rakutenSearch ??= startRakutenSearch();
+  const rakutenResults = await rakutenSearch;
+  if (rakutenResults) {
     const rakutenHardcover = rakutenResults
       .filter((r): r is RakutenBook & { isbn: string } => Boolean(r.isbn) && isPlausibleMatch(r, target) && isHardcoverSize(r.size))
       .sort((a, b) => getSizePriority(a.size) - getSizePriority(b.size))[0];
@@ -84,8 +149,6 @@ export async function resolvePreferringHardcover(params: {
         source: "rakuten_hardcover",
       };
     }
-  } catch {
-    // 次のステップへフォールバック
   }
 
   // 3. fallback（呼び出し元が既に持っている候補）
@@ -95,7 +158,10 @@ export async function resolvePreferringHardcover(params: {
 
   // 4. NDLの元データ（単行本判定なし、ISBNさえ取れれば採用）
   try {
-    const { items } = await searchBooksNdl({ type: "titleAndAuthor", title: params.title, author: params.author, page: 1 });
+    const { items } = await searchBooksNdl(
+      { type: "titleAndAuthor", title: params.title, author: params.author, page: 1 },
+      ndlOptions
+    );
     const ndlAny = items.find((item) => item.isbn && isPlausibleMatch(item, target));
     if (ndlAny?.isbn) {
       return {
@@ -128,15 +194,18 @@ export type EditionCandidate = {
  * 管理者が確認・選択できるようにする（重複排除は同一ISBNのみで行う）。
  * NDL・楽天それぞれ1回ずつ呼び出すため、呼び出し後にQPS制御のsleepを行う。
  */
-export async function collectEditionCandidates(params: {
-  title: string;
-  author: string;
-}): Promise<EditionCandidate[]> {
+export async function collectEditionCandidates(
+  params: { title: string; author: string },
+  options: Pick<ResolveOptions, "ndlTimeoutMs" | "rakutenTimeoutMs" | "rakutenTotalTimeoutMs"> = {}
+): Promise<EditionCandidate[]> {
   const target = { title: params.title, author: params.author };
 
-  const ndlCandidates = await searchNdlHardcoverCandidates(target);
+  const ndlCandidates = await searchNdlHardcoverCandidates(target, { timeoutMs: options.ndlTimeoutMs });
   await sleep(NDL_WAIT_MS);
-  const rakutenResults = await searchBooks({ title: params.title, author: params.author, dedupe: false });
+  const rakutenResults = await searchBooks(
+    { title: params.title, author: params.author, dedupe: false },
+    { timeoutMs: options.rakutenTimeoutMs, totalTimeoutMs: options.rakutenTotalTimeoutMs }
+  );
   await sleep(RAKUTEN_WAIT_MS);
 
   const merged: EditionCandidate[] = [];

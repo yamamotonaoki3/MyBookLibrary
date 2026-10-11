@@ -1,6 +1,9 @@
 jest.mock("@/lib/prisma");
 jest.mock("@/auth");
+// 応答後に実行する版ISBN収集（外部API・待機を含む）はここでは実行せず、登録の有無だけ検証する
+jest.mock("@/lib/afterResponse");
 
+import { runAfterResponse } from "@/lib/afterResponse";
 import { prismaMock } from "../../helpers/prismaMock";
 import { signedIn, signedOut } from "../../helpers/authMock";
 import {
@@ -42,6 +45,8 @@ describe("POST /api/reading-status", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.status).toBe("reading");
+    // 新規登録した本の他版ISBN収集は、応答後の処理として登録される
+    expect(runAfterResponse).toHaveBeenCalledTimes(1);
   });
 
   it("5-2: 既存書籍の更新（upsert）— 既存の著者・書籍がある場合はそのまま使う", async () => {
@@ -56,6 +61,7 @@ describe("POST /api/reading-status", () => {
     expect(res.status).toBe(200);
     expect(prismaMock.author.create).not.toHaveBeenCalled();
     expect(prismaMock.book.create).not.toHaveBeenCalled();
+    expect(runAfterResponse).not.toHaveBeenCalled();
   });
 });
 

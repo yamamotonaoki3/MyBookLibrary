@@ -8,6 +8,8 @@
  *
  * フィクスチャは `e2e/fixtures/external/` の固定ファイルを返すのみで、
  * クエリパラメータによる出し分けは行わない（E2Eの検索結果を安定させるため）。
+ * 外部APIが遅い状況を再現したいテストのため、NDL・楽天の応答遅延だけ
+ * `/__stub/delay` で設定できる（`/__stub/reset` で戻す）。
  */
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
@@ -24,22 +26,54 @@ function send(res: import("node:http").ServerResponse, status: number, contentTy
   res.end(body);
 }
 
+// 外部APIが遅い状況を再現するための応答遅延（ms）。E2Eから `/__stub/delay` で設定し、`/__stub/reset` で戻す。
+const delays = { ndl: 0, rakuten: 0 };
+
+function sendAfterDelay(
+  res: import("node:http").ServerResponse,
+  delayMs: number,
+  status: number,
+  contentType: string,
+  body: string
+) {
+  if (delayMs <= 0) return send(res, status, contentType, body);
+  setTimeout(() => {
+    // クライアントが先に切断（タイムアウト）していたら何もしない
+    if (!res.destroyed && !res.writableEnded) send(res, status, contentType, body);
+  }, delayMs);
+}
+
 export function createStubServer() {
   return createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
 
     switch (url.pathname) {
+      // E2E用の制御: 例 /__stub/delay?target=ndl&ms=8000
+      case "/__stub/delay": {
+        const target = url.searchParams.get("target");
+        const ms = Number(url.searchParams.get("ms") ?? 0);
+        if ((target !== "ndl" && target !== "rakuten") || !Number.isFinite(ms) || ms < 0) {
+          return send(res, 400, "text/plain", "invalid target or ms");
+        }
+        delays[target] = ms;
+        return send(res, 200, "text/plain", "ok");
+      }
+      case "/__stub/reset":
+        delays.ndl = 0;
+        delays.rakuten = 0;
+        return send(res, 200, "text/plain", "ok");
+
       // 楽天ブックス書籍検索API
       case "/services/api/BooksBook/Search/20170404":
-        return send(res, 200, "application/json; charset=utf-8", readFixture("rakuten-search.json"));
+        return sendAfterDelay(res, delays.rakuten, 200, "application/json; charset=utf-8", readFixture("rakuten-search.json"));
 
       // NDLサーチ OpenSearch
       case "/api/opensearch":
-        return send(res, 200, "application/xml; charset=utf-8", readFixture("ndl-opensearch.xml"));
+        return sendAfterDelay(res, delays.ndl, 200, "application/xml; charset=utf-8", readFixture("ndl-opensearch.xml"));
 
       // NDLサーチ SRU
       case "/api/sru":
-        return send(res, 200, "application/xml; charset=utf-8", readFixture("ndl-sru.xml"));
+        return sendAfterDelay(res, delays.ndl, 200, "application/xml; charset=utf-8", readFixture("ndl-sru.xml"));
 
       // カーリル 図書館検索
       case "/library":
