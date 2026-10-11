@@ -212,3 +212,23 @@ test.describe("本詳細のステータスボタン", () => {
     await expect(group.getByRole("button", { name: "読書中" })).toHaveAttribute("aria-pressed", "true");
   });
 });
+
+test.describe("本の検索結果カード（未登録の本）", () => {
+  test("保存中に「本の情報を取得中…」が出て、完了後に感想を書くリンクが表示される", async ({ page }) => {
+    await login(page);
+    await page.goto(`/books/search?q=${encodeURIComponent("吾輩")}&type=title`);
+    const card = cardOf(page, STUB_TITLE);
+    await expect(card).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    const before = await layoutOf(card, STUB_TITLE);
+
+    await delayReadingStatusApi(page, 1000);
+    await card.getByRole("button", { name: "読了" }).click();
+    await expect(card.getByText("本の情報を取得中")).toBeVisible();
+    expectSameLayout(before, await layoutOf(card, STUB_TITLE));
+
+    await expect(card.getByRole("link", { name: "感想を書く" })).toBeVisible({ timeout: 15_000 });
+    await expect(card.getByText("本の情報を取得中")).toBeHidden();
+    expectSameLayout(before, await layoutOf(card, STUB_TITLE));
+  });
+});
