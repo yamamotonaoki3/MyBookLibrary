@@ -210,7 +210,7 @@
 | # | 対策 | 実施 |
 | --- | --- | --- |
 | 1 | **Jest の fetch 禁止ガード** — `global.fetch` の既定実装を「呼ばれたら URL 付きで throw」にし、全 project に適用する。モック漏れが実リクエストではなく**テスト失敗**として即座に露見する | [#431](https://github.com/yamamotonaoki3/MyBookLibrary/issues/431) |
-| 2 | **E2E はローカルスタブサーバーへ向ける** — 外部 fetch は Route Handler＝**サーバー側**で発生するため、Playwright の `page.route()` では捕まえられない。ベースURLを環境変数化してスタブに差し替える | [#434](https://github.com/yamamotonaoki3/MyBookLibrary/issues/434) [#435](https://github.com/yamamotonaoki3/MyBookLibrary/issues/435) |
+| 2 | **E2E はローカルスタブサーバーへ向ける** — 外部 fetch は Route Handler＝**サーバー側**で発生するため、Playwright の `page.route()` では捕まえられない。ベースURLを環境変数化してスタブに差し替える | 外部APIが遅い状況を再現したいテストは、スタブサーバーの `/__stub/delay?target=ndl|rakuten&ms=…`（`/__stub/reset` で戻す）で応答遅延を設定する（例: `e2e/reading-status-slow-api.spec.ts`）。 [#434](https://github.com/yamamotonaoki3/MyBookLibrary/issues/434) [#435](https://github.com/yamamotonaoki3/MyBookLibrary/issues/435) |
 | 3 | **cron は結合テスト（fetch モック）＋ E2E（`e2e/notifications.spec.ts`、スタブ楽天）で検証** — 実楽天APIへの手動実行はしない | Phase 8 |
 | 4 | **実APIへの疎通確認は任意実行・既定スキップ** — `npm run test:external` でのみ実行。1 APIにつきリクエスト1回、リトライ無効、**CIから完全除外** | 保留 |
 
