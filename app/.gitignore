@@ -71,3 +71,9 @@ next-env.d.ts
 /scripts/download-konomys-sources.mjs
 /scripts/build-konomys-csv.mjs
 /data/konomys/
+
+# OpenNext / Wrangler（Cloudflare Workers）のビルド成果物とローカル状態
+/.open-next
+/.wrangler
+.dev.vars
+.dev.vars.*

@@ -36,6 +36,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // OpenNext / Wrangler（Cloudflare Workers）のビルド成果物とローカル状態（.gitignore の /.open-next, /.wrangler と対応）:
+    ".open-next/**",
+    ".wrangler/**",
     // Prisma auto-generated files:
     "src/generated/**",
     // next-pwa auto-generated service worker files:

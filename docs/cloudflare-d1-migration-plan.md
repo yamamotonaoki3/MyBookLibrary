@@ -176,6 +176,10 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **実装メモ（#679: Next.js の更新）**: OpenNext（`@opennextjs/cloudflare` 1.20.x）の要件（Next.js 16.3.8 以上）のため、`next` と `eslint-config-next` を 16.2.6 から **16.3.8** に更新した（固定バージョン）。リリースノート（16.3.0〜16.3.8）に本アプリへ影響する破壊的変更はなく（TypeScript 設定の既定値・実験的設定の非推奨が中心。`middleware` の非推奨警告は、本アプリが `proxy` を使うため該当しない）、単体・結合（MySQL・D1）・E2E（77 件）・本番ビルドがすべて通ることを確認した。E2E は 1 回目に 1 件が失敗（読書ステータスの検索結果カード。単独実行 3 回と全体の再実行は成功のため、負荷時の不安定さと判断）。`next dev` が生成する `AGENTS.md` の注意書きの更新を含む。
 
+**実装メモ（#669・B8: Worker のビルド）**: `npm run build:worker`（`scripts/build-worker.mjs`）が、`DB_PROVIDER=d1`・`D1_RUNTIME=workers` で OpenNext（`open-next.config.ts`）によるビルドを行い、Prisma の wasm を Worker に同梱する後処理をする。①`next.config.ts` の webpack `externals` が `*.wasm` を処理対象から外す（D1 ビルドのみ。MySQL 向けのビルドは変わらない）。②ビルド後に `handler.mjs` の wasm への絶対パスの import を相対パスに書き換え、`query_compiler_bg.wasm` を同じ場所へコピーする。③wrangler（`wrangler.jsonc` の `main` = `worker/index.mjs`、`assets` = `.open-next/assets`）が `CompiledWasm` として同梱する。書き換え対象がなければビルドを失敗させる（OpenNext の出力形式が変わったときに気づくため）。サイズは約 13.7 MiB（gzip 約 3.0 MiB）で、Paid の上限（10 MiB）に収まる（Free の 3 MiB は超える）。
+
+**スモークテスト（`npm run smoke:worker`）**: ビルドした Worker をローカルの D1（miniflare）と `wrangler dev --local` で起動し、画面の表示、proxy による未認証のリダイレクト、Prisma（D1 アダプタ + wasm）経由の Credentials ログイン・セッション・保護ページ、失敗時の D1 への書き込み、Cron Trigger → 新刊チェック API、ログに秘密情報が出ないこと（計 10 項目）を確認する。認証情報は実行ごとにランダムに生成する。ローカルの http でも `AUTH_URL` を https にして Cookie の種類をそろえる（Workers は常に https として扱われ、OpenNext の proxy がセッションの Cookie 名を https で決めるため）。CI に `worker` ジョブ（ビルド → サイズ確認 → スモークテスト）を追加した。Windows でのビルドは OpenNext が公式にはサポートしないため、CI（Linux）で検証する（ローカルの Windows でも動作は確認済み）。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |

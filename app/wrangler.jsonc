@@ -1,9 +1,17 @@
-// Cloudflare Workers / D1 の設定。現時点では D1 のマイグレーション管理用の最小構成。
-// Worker 本体（main・assets 等）は Phase 3（P3-1）で追加する。docs/cloudflare-d1-migration-plan.md §6 を参照。
+// Cloudflare Workers / D1 の設定。docs/cloudflare-d1-migration-plan.md §6 を参照。
+// Worker のビルドは npm run build:worker（OpenNext + Prisma の wasm の同梱。scripts/build-worker.mjs）。
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mybooklibrary",
+  // OpenNext の Worker に Cron の scheduled ハンドラを足したカスタムエントリ（ビルド後の .open-next/worker.js を使う）
+  "main": "worker/index.mjs",
   "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
   // 新刊チェックの Cron（毎日 UTC 00:00 = JST 09:00。AWS の EventBridge と同じ）。
   // scheduled ハンドラは worker/index.mjs。CRON_SECRET は Worker の secret（wrangler secret put）で設定する。
   "triggers": { "crons": ["0 0 * * *"] },

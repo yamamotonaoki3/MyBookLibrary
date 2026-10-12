@@ -31,6 +31,20 @@ const nextConfig: NextConfig = {
     D1_RUNTIME: process.env.D1_RUNTIME ?? "workers",
   },
   output: "standalone",
+  // D1 向け（Cloudflare Workers）のビルドでは、Prisma の wasm を webpack に処理させず、実行時の ESM import として
+  // そのまま残す。wrangler が CompiledWasm として同梱する（import 先の書き換えと wasm のコピーは
+  // scripts/build-worker.mjs。webpack に処理させると `fs` で読む形に変換され、Workers で失敗する）。
+  webpack: (config) => {
+    if (process.env.DB_PROVIDER === "d1") {
+      const previous = config.externals ?? [];
+      config.externals = [
+        ...(Array.isArray(previous) ? previous : [previous]),
+        ({ request }: { request?: string }, callback: (error?: Error | null, result?: string) => void) =>
+          request?.endsWith(".wasm") ? callback(null, "module ./query_compiler_bg.wasm") : callback(),
+      ];
+    }
+    return config;
+  },
   devIndicators: false,
   turbopack: {},
   images: {

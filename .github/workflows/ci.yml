@@ -158,3 +158,40 @@ jobs:
 
       - name: Integration test (D1)
         run: npm run test:integration:d1
+
+  # Cloudflare Workers 向けの Worker をビルドし、ローカル（wrangler dev --local）で起動して動作を確認する。
+  # OpenNext は Windows を公式にはサポートしないため、ビルドはここ（Linux）で検証する。
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # postinstall が MySQL 用・D1 用の Prisma クライアントを生成する。
+      - name: Install dependencies
+        run: npm ci
+
+      # DB_PROVIDER=d1 の本番ビルド → OpenNext の Worker → Prisma の wasm の同梱（scripts/build-worker.mjs）。
+      - name: Build Worker
+        run: npm run build:worker
+
+      # Worker のサイズ（圧縮後）が Workers Paid の上限（10 MiB）に収まることを確認する。
+      - name: Check Worker size
+        run: |
+          npx wrangler deploy --dry-run --outdir "$RUNNER_TEMP/worker-dist" 2>&1 | tee "$RUNNER_TEMP/dry-run.log"
+          gzip_kib=$(grep -oE 'gzip: [0-9.]+' "$RUNNER_TEMP/dry-run.log" | grep -oE '[0-9.]+' | head -1)
+          echo "Worker size (gzip): ${gzip_kib} KiB" | tee -a "$GITHUB_STEP_SUMMARY"
+          awk -v size="$gzip_kib" 'BEGIN { exit !(size > 0 && size < 10240) }'
+
+      # ローカルの D1 + Worker で、ログイン・保護ページ・Cron まで確認する（認証情報は実行ごとに生成）。
+      - name: Smoke test Worker
+        run: npm run smoke:worker
