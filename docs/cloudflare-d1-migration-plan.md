@@ -146,6 +146,8 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **トレードオフ**: スキーマ変更・テスト・CI の負荷が増え、機能追加のたびに 2 つの DB での動作確認が必要になる。軽減策は、(1) スキーマの正を 1 つにして生成する、(2) CI で自動検査する、(3) DB 依存を Repository に閉じ込める、の 3 点。**併存の保守負荷が過大になった場合は、併存を見直すかをユーザーと再検討する**（見直しのトリガー: 両 DB 対応が原因の開発遅延が続く、D1 のみで運用できる実績が十分に積み上がった、など）。
 
+**実装メモ（#661・B1）**: MySQL 版は従来の場所（`prisma/schema.prisma`）のまま正とし、D1 版は `prisma/d1/schema.prisma` に生成する（計画の `prisma/mysql/` への移動は、設定・CI・文書への影響が大きく利点が小さいため行わない）。生成は `npm run schema:d1`、検査は `npm run schema:d1:check`（生成結果との一致と `prisma validate`。CI で実行）。変換は `@db.*` の除去と generator／datasource の差し替えのみで、D1 で使えない記述（enum・`@@fulltext`・`Unsupported`・`Decimal`・`BigInt`）が MySQL 版に入ると生成が失敗する。**スキーマを変えるときは MySQL 版を編集し、`npm run schema:d1` を実行して D1 版もコミットする。D1 版を直接編集しない。** D1 用クライアントの出力先は `src/generated/prisma-d1`（`npx prisma generate --schema prisma/d1/schema.prisma`）。注意: `@db.Date`（`books.published_at`）は D1 では日時の文字列になるため、日付だけを扱う比較は B5 の結合テストで確認する。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
