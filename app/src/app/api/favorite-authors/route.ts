@@ -4,6 +4,7 @@ import { FavoriteAuthorSchema } from "@/lib/validations";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { getMutualFollowerIds } from "@/lib/mutualFollows";
 import { logger } from "@/lib/logger";
+import { createNotificationsInChunks } from "@/repositories/notificationRepository";
 
 async function notifyMutualFollowersOfFavoriteAuthor(
   userId: number,
@@ -19,14 +20,14 @@ async function notifyMutualFollowersOfFavoriteAuthor(
     });
     if (!me) return;
 
-    await prisma.notification.createMany({
-      data: mutualFollowerIds.map((partnerId) => ({
+    await createNotificationsInChunks(
+      mutualFollowerIds.map((partnerId) => ({
         userId: partnerId,
         type: "mutual_favorite_author",
         content: `${me.name}さんがお気に入り著者に「${authorName}」を追加しました。`,
         actorId: userId,
-      })),
-    });
+      }))
+    );
   } catch (error) {
     logger.error(
       { err: error },

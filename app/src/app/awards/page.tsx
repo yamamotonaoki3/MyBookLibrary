@@ -1,5 +1,6 @@
 ﻿import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
+import { countReadBooks } from "@/lib/readingProgress";
 import { auth } from "@/auth";
 import { AwardTabs } from "./_components/AwardTabs";
 import { YearFilter } from "./_components/YearFilter";
@@ -73,13 +74,7 @@ export default async function AwardsPage({ searchParams }: PageProps) {
   const uniqueBookIds = bookIdsRaw.map((e) => e.bookId);
   const totalEntries = uniqueBookIds.length;
 
-  const readCount = await prisma.readingStatus.count({
-    where: {
-      userId: userId,
-      status: "read",
-      bookId: { in: uniqueBookIds },
-    },
-  });
+  const readCount = await countReadBooks(userId, uniqueBookIds);
 
   const pct = totalEntries > 0 ? Math.round((readCount / totalEntries) * 100) : 0;
 

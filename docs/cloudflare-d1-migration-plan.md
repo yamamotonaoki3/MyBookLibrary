@@ -180,6 +180,8 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **スモークテスト（`npm run smoke:worker`）**: ビルドした Worker をローカルの D1（miniflare）と `wrangler dev --local` で起動し、画面の表示、proxy による未認証のリダイレクト、Prisma（D1 アダプタ + wasm）経由の Credentials ログイン・セッション・保護ページ、失敗時の D1 への書き込み、Cron Trigger → 新刊チェック API、ログに秘密情報が出ないこと（計 10 項目）を確認する。認証情報は実行ごとにランダムに生成する。ローカルの http でも `AUTH_URL` を https にして Cookie の種類をそろえる（Workers は常に https として扱われ、OpenNext の proxy がセッションの Cookie 名を https で決めるため）。CI に `worker` ジョブ（ビルド → サイズ確認 → スモークテスト）を追加した。Windows でのビルドは OpenNext が公式にはサポートしないため、CI（Linux）で検証する（ローカルの Windows でも動作は確認済み）。
 
+**実装メモ（#678: バインドパラメータ上限）**: D1 は 1 クエリのバインドパラメータが 100 個まで。Prisma（`@prisma/adapter-d1`）は上限を 98 として、**単純な `findMany` の `IN`・`createMany`・リレーションの読み込みは自動で分割する**が、①`count` / `deleteMany` の `IN`、②`OR` の中の `IN`、③`notIn` は分割されず失敗することを、150 件規模の D1 結合テストで確認した（手書きの SQL〔`atomically` の `d1`〕も分割されないため、同様に扱った）。そのため、件数に比例する次の箇所だけを直した（共通ヘルパーは `src/lib/chunk.ts`、既定 50 件ずつ）。CSV インポート（著者・本の検索。`OR` を ISBN とタイトルの別クエリにして統合）、ダッシュボードと受賞一覧の読了数（`countReadBooks`）、お気に入り著者ページ（`OR` の分割）、相互フォローの検索、通知の一括作成（`createNotificationsInChunks`。新刊チェック・読みたい本・お気に入り著者・通報）、本の削除時のいいね・通報の削除、手動登録本の統合（受賞登録の `OR` を 30 組ずつの削除に分割）、ISBN の衝突検査。`notIn`（お気に入り著者以外の本）は取得してから除外する形にした。MySQL の挙動は変えていない。判断して**直さなかった箇所**: 検索 API の `OR`（楽天・NDL の 1 ページ分で ISBN とタイトルが各 30 件前後のため上限内）、固定数の `IN`（ステータス・通知種別など）、おすすめ（上限は `limit`=5）。D1 の結合テストは `bind-limit.itest.ts`（MySQL でも同じテストを実行）。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
