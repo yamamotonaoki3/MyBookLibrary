@@ -226,6 +226,20 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - **状態**: 有効
 - **根拠**: Issue #664
 
+### 2026-10-12: テスト用の secret 風の値は、リテラルで書かず実行時に生成する（Gitleaks の誤検知を避ける）
+
+- **種別**: 手直し（CI の Gitleaks が失敗して発覚）
+- **対象領域・関連ファイル**: infra・テスト / `app/src/__tests__/node/lib/cronScheduler.test.ts`, `app/src/__tests__/integration/cron-check-new-books.itest.ts`
+- **何が起きたか**:
+  - 「secret」という名前の定数に、英数字とハイフンからなる長めの文字列リテラルを代入したテストが、Gitleaks の `generic-api-key` ルールに検出され、PR の CI が失敗した（履歴のスキャンのため、後続のコミットで直しても履歴に残る）。
+- **対応**:
+  - テスト用の値は `randomBytes(...)` で実行時に生成する形に変え、PR のコミットを作り直した（未マージの自分のブランチのみ）。
+- **次回の行動規則**:
+  - `secret`・`token`・`key` といった名前の変数に、長い英数字のリテラルを代入するテストを書かない。実行時に生成するか、短く明らかにダミーと分かる値にする（短い値は検出されない）。
+  - 検出された後にコミットを足しても履歴から消えないため、未マージの間に作り直す。
+- **状態**: 有効
+- **根拠**: Issue #668
+
 デバッグ手法として有効だったもの（参考）:
 - `window.fetch`をモンキーパッチして実際に飛んだリクエストのURL/methodをログする。chrome-devtools MCPの`navigate_page`の`initScript`パラメータを使うとページ読み込み前・アプリコードより先に仕込める。
 - `console.log`を一時的に仕込み、`list_console_messages`に`includePreservedMessages: true`を付けて確認する（reloadやSPA遷移でconsoleがクリアされるため、これを付けないと過去のログが消えて見えない）。

@@ -34,6 +34,10 @@ GET /api/cron/check-new-books（Bearer 認証）
 重複チェック（同 userId・type・bookId の通知が既存なら作成しない）
 ```
 
+### Cloudflare Workers での実行（移行後・併存）
+
+AWS の EventBridge + Lambda に加えて、Cloudflare Workers の Cron Trigger（`0 0 * * *` UTC）でも同じ API を実行できる。`scheduled` ハンドラ（`src/lib/cronScheduler.ts`、エントリは `app/worker/index.mjs`）が、Worker の secret `CRON_SECRET` を Bearer にして `GET /api/cron/check-new-books` を内部呼び出しする。失敗（secret 未設定・2xx 以外）は実行の失敗として記録される。ローカルでの手動実行は `wrangler dev --test-scheduled`。詳細は [移行計画](../cloudflare-d1-migration-plan.md) §4-4 の実装メモ（#668）を参照。
+
 ### セキュリティ
 
 - `/api/cron/check-new-books` は Bearer トークン認証必須

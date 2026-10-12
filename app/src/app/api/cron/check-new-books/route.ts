@@ -12,6 +12,9 @@ function isWithinOneWeek(date: Date): boolean {
 
 const MIN_CRON_SECRET_LENGTH = 16;
 
+// D1 は 1 回のクエリのバインドパラメータが 100 個までで、通知 1 件あたり約 5 個を使うため、余裕を持って 10 件ずつ登録する
+const NOTIFICATION_CREATE_CHUNK_SIZE = 10;
+
 function isUpcomingRelease(
   rawSalesDate: string | null | undefined,
   salesDate: Date | null,
@@ -88,22 +91,26 @@ export async function GET(req: NextRequest) {
       ),
     );
 
-    await prisma.notification.createMany({
-      data: toCreate.map((book) => {
-        const salesDate = parseSalesDateToUtcDate(book.salesDate);
-        const releaseMessage =
-          isUpcomingRelease(book.salesDate, salesDate, today)
-            ? "が発売予定です"
-            : "が発売されました";
+    // D1 は 1 回のクエリのバインドパラメータが 100 個までのため、少数ずつに分けて登録する
+    for (let start = 0; start < toCreate.length; start += NOTIFICATION_CREATE_CHUNK_SIZE) {
+      const batch = toCreate.slice(start, start + NOTIFICATION_CREATE_CHUNK_SIZE);
+      await prisma.notification.createMany({
+        data: batch.map((book) => {
+          const salesDate = parseSalesDateToUtcDate(book.salesDate);
+          const releaseMessage =
+            isUpcomingRelease(book.salesDate, salesDate, today)
+              ? "が発売予定です"
+              : "が発売されました";
 
-        return {
-          userId: fav.userId,
-          type: "new_book",
-          content: `${fav.author.name} の新刊「${book.title}」${releaseMessage}`,
-          bookIsbn: book.isbn,
-        };
-      }),
-    });
+          return {
+            userId: fav.userId,
+            type: "new_book",
+            content: `${fav.author.name} の新刊「${book.title}」${releaseMessage}`,
+            bookIsbn: book.isbn,
+          };
+        }),
+      });
+    }
     createdCount += toCreate.length;
   }
 
