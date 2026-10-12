@@ -257,6 +257,8 @@ Phase 1 の Issue を起票する（P1-2 email 正規化、P1-3 生 SQL の DB �
 | 整数除算 | `/` は小数を返す | `/` は整数除算 | `recommendations.ts` の `co_cnt / (ac_a.cnt + ...)` は `CAST(... AS REAL)` が必要（スコアが 0 になる） |
 | `COUNT` の型 | bigint 等で返る | 整数 | 既存の `Number()` 変換は維持できる |
 
+**対応済み（#651）**: `normalizeEmail`（`src/lib/email.ts`）で、登録・ログイン・パスワード再設定・残り試行回数・Google ログイン（アダプタ含む）・シードの全入口を小文字に統一した。既存データはマイグレーション `20261012000000_lowercase_user_emails` で小文字化する（MySQL では大文字小文字違いの重複は一意制約で防がれているため、更新は衝突しない）。事前検査用に読み取り専用の `npm run audit:email-normalization`（件数のみ出力。前後の空白だけが違う重複も検出する）を追加した。D1 への ETL（P4-1）でも同じ正規化を適用すること。
+
 ### 5-3. `$transaction` の棚卸し（11 箇所）— 置換方針は G2 で確定
 
 | # | ファイル | 内容 | 想定する置換方針（要確認） |

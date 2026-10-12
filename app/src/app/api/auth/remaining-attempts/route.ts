@@ -1,3 +1,4 @@
+import { normalizeEmail } from "@/lib/email";
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizeEmail(email) },
     select: { loginFailCount: true },
   });
 

@@ -1,3 +1,4 @@
+import { normalizeEmail } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   };
 
   if (body.step === "check") {
-    const email = body.email?.trim();
+    const email = body.email ? normalizeEmail(body.email) : undefined;
     if (!email) {
       return NextResponse.json({ error: "メールアドレスを入力してください" }, { status: 400 });
     }
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.step === "verifySecretWord" || body.step === "reset") {
-    const email = body.email?.trim();
+    const email = body.email ? normalizeEmail(body.email) : undefined;
     const secretWord = body.secretWord?.trim();
     if (!email || !secretWord) {
       return NextResponse.json({ error: "秘密の言葉を入力してください" }, { status: 400 });
