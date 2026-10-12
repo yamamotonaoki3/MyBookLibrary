@@ -10,7 +10,7 @@ export type RecommendedAuthor = {
 type RecommendedAuthorRow = {
   authorId: number;
   name: string;
-  // MySQLのDECIMAL演算結果は $queryRaw で number/string/Prisma.Decimal のいずれかで返りうる
+  // MySQLのDECIMAL演算結果は $queryRaw で number/string/Prisma.Decimal のいずれか、SQLiteでは number で返りうる
   score: number | string | Prisma.Decimal;
 };
 
@@ -59,7 +59,8 @@ export async function getRecommendedAuthors(
     SELECT
       co.author_b AS authorId,
       a.name AS name,
-      MAX(co.co_cnt / (ac_a.cnt + ac_b.cnt - co.co_cnt)) AS score
+      -- 整数同士の除算は SQLite（D1）で切り捨てられるため、1.0 を掛けて小数の除算にする
+      MAX(co.co_cnt * 1.0 / (ac_a.cnt + ac_b.cnt - co.co_cnt)) AS score
     FROM co_occurrence co
     JOIN author_counts ac_a ON ac_a.author_id = co.author_a
     JOIN author_counts ac_b ON ac_b.author_id = co.author_b
