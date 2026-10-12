@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeEmail } from "@/lib/email";
 import { authConfig } from "./auth.config";
 import { recordAuditEvent, AUDIT_EVENT } from "@/lib/auditLog";
-import type { Adapter, AdapterUser } from "next-auth/adapters";
+import type { Adapter, AdapterAccount, AdapterUser } from "next-auth/adapters";
 
 export const LOCK_THRESHOLD = 10;
 export const LOCK_DURATION_MS = 15 * 60 * 1000;
@@ -60,7 +60,7 @@ export async function authorizeCredentials(
 }
 
 // PrismaAdapterはString IDを想定しているため、Int型のUserIdに対応するラッパー
-function createAdapter(): Adapter {
+export function createAdapter(): Adapter {
   const base = PrismaAdapter(prisma) as Adapter;
   return {
     ...base,
@@ -75,6 +75,10 @@ function createAdapter(): Adapter {
       const user = await (base.getUserByEmail as (e: string) => Promise<AdapterUser | null>)(
         normalizeEmail(email)
       );
+      return user ? { ...user, id: String(user.id) } : null;
+    },
+    getUserByAccount: async (account: Pick<AdapterAccount, "provider" | "providerAccountId">) => {
+      const user = await (base.getUserByAccount as (a: unknown) => Promise<AdapterUser | null>)(account);
       return user ? { ...user, id: String(user.id) } : null;
     },
     getUser: async (id: string) => {

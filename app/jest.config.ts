@@ -24,6 +24,16 @@ const shared = {
   // setupFilesAfterEnv: jest/expect が使える状態になった後に実行される。
   // jest.fn() を使う外部通信ガードはここに置く。
   setupFilesAfterEnv: ["<rootDir>/jest.setup.network.ts"],
+  // @auth/prisma-adapter は ESM 専用で、Jest（CommonJS）のままでは読み込めない。
+  // 認証アダプタを実 DB で検証する結合テストのために、このパッケージだけ CommonJS へ変換する。
+  // パスの区切りは Windows（\）と Linux（/）の両方に対応させる。
+  transform: {
+    "node_modules[\\\\/]@auth[\\\\/]prisma-adapter[\\\\/].+\\.js$": [
+      "ts-jest",
+      { tsconfig: { allowJs: true, module: "commonjs" } },
+    ],
+  },
+  transformIgnorePatterns: ["[\\\\/]node_modules[\\\\/](?!@auth[\\\\/]prisma-adapter[\\\\/])"],
 };
 
 const config: Config = {
