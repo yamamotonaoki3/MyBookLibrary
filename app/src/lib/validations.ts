@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeEmail } from "@/lib/email";
 
 export const ReviewSchema = z.object({
   body: z
@@ -34,13 +35,13 @@ export const FavoriteAuthorSchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  email: z.email("有効なメールアドレスを入力してください"),
+  email: z.email("有効なメールアドレスを入力してください").transform(normalizeEmail),
   password: z.string().min(1, "パスワードを入力してください"),
 });
 
 export const ResetPasswordSchema = z
   .object({
-    email: z.email("有効なメールアドレスを入力してください"),
+    email: z.email("有効なメールアドレスを入力してください").transform(normalizeEmail),
     secretWord: z.string().min(1, "秘密の言葉を入力してください"),
     password: z
       .string()
@@ -92,7 +93,7 @@ export const RegisterSchema = z
       .trim()
       .min(1, "名前を入力してください")
       .max(50, "名前は50文字以内で入力してください"),
-    email: z.email("有効なメールアドレスを入力してください"),
+    email: z.email("有効なメールアドレスを入力してください").transform(normalizeEmail),
     password: z
       .string()
       .min(8, "パスワードは8文字以上で入力してください")

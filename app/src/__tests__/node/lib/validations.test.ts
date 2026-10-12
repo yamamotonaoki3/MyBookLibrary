@@ -146,6 +146,36 @@ describe("ReadingStatusSchema", () => {
   });
 });
 
+// ─── メールアドレスの正規化 ──────────────────────────────────────────────────
+
+describe("メールアドレスは検証後に小文字へ正規化される", () => {
+  it("RegisterSchema", () => {
+    const result = RegisterSchema.safeParse({
+      name: "テスト",
+      email: "Mixed.Case@Example.COM",
+      password: "password123",
+      confirmPassword: "password123",
+      secretWord: "ひみつ",
+    });
+    expect(result.success && result.data.email).toBe("mixed.case@example.com");
+  });
+
+  it("LoginSchema", () => {
+    const result = LoginSchema.safeParse({ email: "User@Example.com", password: "x" });
+    expect(result.success && result.data.email).toBe("user@example.com");
+  });
+
+  it("ResetPasswordSchema", () => {
+    const result = ResetPasswordSchema.safeParse({
+      email: "User@Example.com",
+      secretWord: "ひみつ",
+      password: "password123",
+      confirmPassword: "password123",
+    });
+    expect(result.success && result.data.email).toBe("user@example.com");
+  });
+});
+
 // ─── RegisterSchema ──────────────────────────────────────────────────────────
 
 describe("RegisterSchema", () => {

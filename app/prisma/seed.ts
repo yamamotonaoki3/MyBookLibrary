@@ -34,7 +34,7 @@ async function main() {
   console.log("文学賞を登録しました");
 
   // 管理者ユーザー
-  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminEmail = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
   const adminRawPassword = process.env.SEED_ADMIN_PASSWORD;
   if (!adminEmail || !adminRawPassword) {
     throw new Error(

@@ -68,6 +68,14 @@ describe("authorizeCredentials", () => {
     expect(result).not.toBeNull();
   });
 
+  it("大文字を含むメールアドレスで入力されても、小文字に正規化して検索する", async () => {
+    mockFindUnique.mockResolvedValue(null);
+
+    await authorizeCredentials("  Mixed.Case@Example.COM ", "password123");
+
+    expect(mockFindUnique).toHaveBeenCalledWith({ where: { email: "mixed.case@example.com" } });
+  });
+
   it("パスワード不一致（failCount 9→10未満） → 失敗カウントを加算しロックしない", async () => {
     mockFindUnique.mockResolvedValue({
       id: 1,

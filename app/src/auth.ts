@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { normalizeEmail } from "@/lib/email";
 import { authConfig } from "./auth.config";
 import { recordAuditEvent, AUDIT_EVENT } from "@/lib/auditLog";
 import type { Adapter, AdapterUser } from "next-auth/adapters";
@@ -17,7 +18,7 @@ export async function authorizeCredentials(
 ) {
   if (!email || !password) return null;
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email: normalizeEmail(email) } });
   if (!user || !user.password) return null;
 
   if (user.lockedUntil && user.lockedUntil > new Date()) {
@@ -64,8 +65,17 @@ function createAdapter(): Adapter {
   return {
     ...base,
     createUser: async (data: Omit<AdapterUser, "id">) => {
-      const user = await (base.createUser as (d: unknown) => Promise<AdapterUser>)(data);
+      const user = await (base.createUser as (d: unknown) => Promise<AdapterUser>)({
+        ...data,
+        email: normalizeEmail(data.email),
+      });
       return { ...user, id: String(user.id) };
+    },
+    getUserByEmail: async (email: string) => {
+      const user = await (base.getUserByEmail as (e: string) => Promise<AdapterUser | null>)(
+        normalizeEmail(email)
+      );
+      return user ? { ...user, id: String(user.id) } : null;
     },
     getUser: async (id: string) => {
       const user = await (base.getUser as (id: unknown) => Promise<AdapterUser | null>)(Number(id));
@@ -146,7 +156,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Google OAuth: DBからid・role・nameを取得
       if (account?.provider === "google" && token.email) {
         const dbUser = await prisma.user.findUnique({
-          where: { email: token.email },
+          where: { email: normalizeEmail(token.email) },
           select: { id: true, name: true, role: true, mustChangePassword: true },
         });
         if (dbUser) {
