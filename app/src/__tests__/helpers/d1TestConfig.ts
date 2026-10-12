@@ -24,3 +24,19 @@ export function getD1TestPersistDir(): string {
  */
 export const getD1TestConfigDir = () => path.join(getD1TestPersistDir(), "config");
 export const getD1TestConfigPath = () => path.join(getD1TestConfigDir(), "wrangler.jsonc");
+
+export const D1_TEST_DATABASE_NAME = "mybooklibrary-db";
+
+/** テスト用の wrangler 設定。リポジトリの wrangler.jsonc と同じ D1 のバインディングだけを持つ（migrations_dir は絶対パス）。 */
+export const D1_TEST_WRANGLER_CONFIG = {
+  name: "mybooklibrary-test",
+  compatibility_date: "2026-10-01",
+  d1_databases: [
+    {
+      binding: "DB",
+      database_name: D1_TEST_DATABASE_NAME,
+      database_id: "00000000-0000-0000-0000-000000000000",
+      migrations_dir: path.resolve(process.cwd(), "prisma/d1/migrations"),
+    },
+  ],
+};
