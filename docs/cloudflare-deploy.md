@@ -30,7 +30,9 @@ npx wrangler d1 create mybooklibrary-staging-db
 npx wrangler d1 create mybooklibrary-db
 ```
 
-それぞれの出力に `database_id`（UUID）が表示される。**`database_id` は秘密情報ではない**ため、`app/wrangler.jsonc` に書いてコミットしてよい。2 つの ID を Claude Code に伝えると、設定ファイルへ反映する。自分で直す場合は、`wrangler.jsonc` の該当箇所の `00000000-0000-0000-0000-000000000000` を置き換える。
+作成後に「設定ファイルへ追加しますか（Would you like Wrangler to add it on your behalf?）」と聞かれたら、**No（追加しない）** を選ぶ。Yes にすると、`wrangler.jsonc` が整形し直され、コメントが消え、バインディング名が `DB` ではない余計な D1 の項目が追加される（このアプリのコードはバインディング名 `DB` を前提にしている）。聞かれた場合は `git checkout app/wrangler.jsonc` で戻す。
+
+それぞれの出力に `database_id`（UUID）が表示される。**`database_id` は秘密情報ではない**ため、`app/wrangler.jsonc` に書いてコミットしてよい。`wrangler.jsonc` の本番（トップレベル）とステージング（`env.staging`）の `database_id` に、それぞれ書く（反映済み）。
 
 ### 3. マイグレーションの適用（リモートの D1）
 

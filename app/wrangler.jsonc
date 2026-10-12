@@ -35,9 +35,8 @@
     {
       "binding": "DB",
       "database_name": "mybooklibrary-db",
-      // 実環境の ID は wrangler d1 create mybooklibrary-db で作成して設定する（docs/cloudflare-deploy.md）。
-      // 作成前の値のままデプロイするとエラーになる。ローカル実行（--local）では使われない。
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // wrangler d1 create mybooklibrary-db で作成した D1 の ID（秘密情報ではない）。ローカル実行（--local）では使われない。
+      "database_id": "dd2f0ed7-5d12-4d7d-8722-97765ff4089b",
       "migrations_dir": "prisma/d1/migrations"
     }
   ],
@@ -57,8 +56,8 @@
         {
           "binding": "DB",
           "database_name": "mybooklibrary-staging-db",
-          // wrangler d1 create mybooklibrary-staging-db で作成して設定する（docs/cloudflare-deploy.md）。
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          // wrangler d1 create mybooklibrary-staging-db で作成した D1 の ID（秘密情報ではない）。
+          "database_id": "e788d5bf-9174-44f7-8ac0-934e81c08f32",
           "migrations_dir": "prisma/d1/migrations"
         }
       ]
