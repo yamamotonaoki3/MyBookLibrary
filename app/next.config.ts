@@ -29,28 +29,9 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   turbopack: {},
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-      // E2E（#435）でのみ設定される。ローカルのスタブサーバーが返す書影URLを
-      // next/image が最適化できるようにする。本番・開発では STUB_SERVER_PORT を
-      // 設定しないため、この項目は追加されない。
-      ...(process.env.STUB_SERVER_PORT
-        ? [
-            {
-              protocol: "http" as const,
-              hostname: "localhost",
-              port: process.env.STUB_SERVER_PORT,
-            },
-          ]
-        : []),
-    ],
-    // Next.js 16 の既定では、画像URLの解決先がプライベートIPだと
-    // SSRF対策でブロックされる。E2Eのスタブサーバー（localhost）向けの
-    // 書影のみ、STUB_SERVER_PORT が設定されているときに限って許可する。
-    dangerouslyAllowLocalIP: !!process.env.STUB_SERVER_PORT,
+    // Next.js の画像最適化（sharp）に依存しない。Cloudflare Workers では動かせないため、
+    // 書影は外部の URL（楽天等）をそのまま <img> で表示する（docs/cloudflare-d1-migration-plan.md §3）。
+    unoptimized: true,
   },
 };
 
