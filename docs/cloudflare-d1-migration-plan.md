@@ -441,7 +441,7 @@ Phase 1 の Issue を起票する（P1-2 email 正規化、P1-3 生 SQL の DB �
 | P1-2 | `email` の小文字正規化 | 保存・検索の正規化と既存データの重複検査スクリプト |
 | P1-3 | 生 SQL の DB 非依存化 | `recommendations` / `userRecommendations` の方言依存（整数除算・`GROUP_CONCAT`）を解消。MySQL・SQLite 双方で同結果の結合テスト |
 | P1-4 | トランザクションの置換（§5-3） | 方針に従い、条件付き単一文／`batch` 可能な形へ（MySQL でも動作する形で先に入れる） |
-| P1-5 | logger の抽象化 | `pino` 依存を薄いラッパーに閉じ込め、実装差し替え可能に |
+| P1-5 | logger の抽象化（**#652 で対応済み**） | `Logger` 型（`src/lib/logging/types.ts`）にアプリを依存させ、pino 実装と `console` 実装（`LOG_DRIVER=console`、伏せ字・Error 整形つき）を差し替え可能にした。Workers 向けビルドで pino をバンドルから除く切替（ビルド時の alias 等）は Phase 3 で行う |
 | P1-6 | 画像表示の最適化依存を外す | `sharp`／`next/image` の最適化に依存しない構成（`unoptimized`）と見た目の回帰確認 |
 
 ### Phase 2: D1 対応（バックエンド）
