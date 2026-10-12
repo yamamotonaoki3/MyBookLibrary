@@ -70,6 +70,10 @@ jobs:
       - name: D1 schema drift check
         run: npm run schema:d1:check
 
+      # D1 のマイグレーションを順に適用した結果が D1 版スキーマと一致するか（追加漏れの検出）。
+      - name: D1 migrations check
+        run: npm run d1:migration:check
+
       - name: Typecheck
         run: npm run typecheck
 

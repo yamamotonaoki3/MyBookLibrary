@@ -1,0 +1,16 @@
+// Cloudflare Workers / D1 の設定。現時点では D1 のマイグレーション管理用の最小構成。
+// Worker 本体（main・assets 等）は Phase 3（P3-1）で追加する。docs/cloudflare-d1-migration-plan.md §6 を参照。
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mybooklibrary",
+  "compatibility_date": "2026-10-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mybooklibrary-db",
+      // 実環境の ID は Phase 3（P3-2）で D1 を作成するときに設定する。ローカル実行（--local）では使われない。
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "prisma/d1/migrations"
+    }
+  ]
+}

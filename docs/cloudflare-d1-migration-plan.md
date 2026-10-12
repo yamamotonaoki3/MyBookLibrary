@@ -148,6 +148,14 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **実装メモ（#661・B1）**: MySQL 版は従来の場所（`prisma/schema.prisma`）のまま正とし、D1 版は `prisma/d1/schema.prisma` に生成する（計画の `prisma/mysql/` への移動は、設定・CI・文書への影響が大きく利点が小さいため行わない）。生成は `npm run schema:d1`、検査は `npm run schema:d1:check`（生成結果との一致と `prisma validate`。CI で実行）。変換は `@db.*` の除去と generator／datasource の差し替えのみで、D1 で使えない記述（enum・`@@fulltext`・`Unsupported`・`Decimal`・`BigInt`）が MySQL 版に入ると生成が失敗する。**スキーマを変えるときは MySQL 版を編集し、`npm run schema:d1` を実行して D1 版もコミットする。D1 版を直接編集しない。** D1 用クライアントの出力先は `src/generated/prisma-d1`（`npx prisma generate --schema prisma/d1/schema.prisma`）。注意: `@db.Date`（`books.published_at`）は D1 では日時の文字列になるため、日付だけを扱う比較は B5 の結合テストで確認する。
 
+**実装メモ（#662・B2: D1 マイグレーション運用）**: 既存の MySQL マイグレーション 25 件は変換せず、**現在のスキーマから D1 のベースラインを 1 本作る**（`prisma/d1/migrations/0001_baseline.sql`。本番データは ETL で移すため）。形式は `wrangler d1 migrations` の `NNNN_名前.sql`、設定は `app/wrangler.jsonc`（`migrations_dir`。D1 の実 ID は P3-2 で設定）。
+
+- スキーマ変更の手順: ①MySQL 版 `prisma/schema.prisma` を編集 → ②`npm run schema:d1` → ③`npm run d1:migration:new -- <名前>`（D1 版との差分から次の番号のマイグレーションを作成）→ ④MySQL 側も `prisma migrate dev` でマイグレーションを作る。
+- 検査: `npm run d1:migration:check`（マイグレーションを順に適用した結果が D1 版スキーマと一致するか。CI で実行）。
+- ローカル適用: `npm run d1:migrate:local`（Windows でパスが長い場合は `--persist-to C:/tmp/...` を付ける）。
+- 注意: Prisma が SQLite のテーブル再作成（`PRAGMA foreign_keys=OFF` を含む）を出した場合、D1 では `PRAGMA defer_foreign_keys = on;` に置き換える（`new` が警告する）。
+- 構造の同等性の確認（ベースライン適用後）: テーブル 21 件、索引 24 件（一意性を含む）、外部キー 26 件（削除時の動作を含む）が MySQL 版と一致。MySQL が外部キーのために自動作成する索引 14 件は SQLite では不要。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
