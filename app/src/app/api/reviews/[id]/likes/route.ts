@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createNotificationIfAbsent } from "@/repositories/notificationRepository";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { logger } from "@/lib/logger";
 
@@ -48,17 +49,13 @@ export async function POST(_request: NextRequest, { params }: Props) {
     });
 
     if (review.userId !== userId) {
-      await prisma.notification.createMany({
-        data: [
-          {
-            userId: review.userId,
-            type: "like",
-            content: "レビューにいいねが付きました",
-            bookIsbn: review.book.isbn ?? null,
-            bookTitle: review.book.title,
-          },
-        ],
-        skipDuplicates: true,
+      // 同じ宛先・本の「いいね」通知が既にあれば、重複して作らない
+      await createNotificationIfAbsent({
+        userId: review.userId,
+        type: "like",
+        content: "レビューにいいねが付きました",
+        bookIsbn: review.book.isbn ?? null,
+        bookTitle: review.book.title,
       });
     }
 
