@@ -166,9 +166,25 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 | --- | --- |
 | **G1 ビルド・サイズ・PWA** | ✅ ビルド成功（約 35 秒）。Worker は**非圧縮 約 11.5 MiB／gzip 約 2.3 MiB**でデプロイ成功、PWA（`sw.js`・`manifest.json`）も配信される。`proxy.ts`（Node ミドルウェア）は Workers 上で動作（OpenNext は experimental と警告）。**ただし最新の OpenNext アダプタ（1.20.10）は Next.js ≥ 16.3.8 が必須**（現行 16.2.6 は更新が必要）。Windows では「完全には互換でない」警告があるため、ビルド・デプロイは CI（Linux）で行う |
 | **G0 CPU 時間** | ❌ **Workers Free の 10 ms/リクエストでは動かせない**。コールドスタート 158〜286 ms、ログインの bcrypt（cost 12）305〜800 ms、`/login` の描画 13〜178 ms（中央値 99）、D1 直接アクセス 4〜16 ms。**Workers Paid（月 $5〜）が必須**（ユーザー確認: 現在のアカウントは **Free プラン**。検証では 10ms 超過でも打ち切られなかったが公式制限に依存しない。**本番は Paid 前提**）。Paid の含有量（月 3,000 万 CPU ms）は、平均 100 ms/リクエストで**約 30 万リクエスト/月**に相当し、個人利用の規模では**月 $5 の固定費のみ**になる見込み |
-| 追加の課題 | `createMany({ skipDuplicates })` は SQLite で不可（2 箇所）。Prisma を OpenNext（webpack）でバンドルする wasm 設定が**未解決**（#640 の続き）。bcrypt が最大の CPU 消費だが、Paid の含有量内に収まるため WebCrypto 系（PBKDF2 等）への段階移行（ログイン時に平文から新方式で再ハッシュし、`$2b$` 接頭辞で方式を判定）は**任意の最適化**とし、実測で体感が悪い場合のみ着手する。PBKDF2 は Workers で反復回数の上限（10万回）があり強度が下がる点も要確認 |
+| 追加の課題 | `createMany({ skipDuplicates })` は SQLite で不可（2 箇所）。Prisma を OpenNext でバンドルする wasm 設定は §4-7 で**解決**（後処理が必要）。bcrypt が最大の CPU 消費だが、Paid の含有量内に収まるため WebCrypto 系（PBKDF2 等）への段階移行（ログイン時に平文から新方式で再ハッシュし、`$2b$` 接頭辞で方式を判定）は**任意の最適化**とし、実測で体感が悪い場合のみ着手する。PBKDF2 は Workers で反復回数の上限（10万回）があり強度が下がる点も要確認 |
 
 **結論（G0）**: 案 A・E のどちらも **Workers Paid が前提**になる（CPU 制限は DB を替えても変わらない）。D1 は費用面で有利だが、費用の最小値は「Workers Paid 月 $5」で、案 E でも同額。したがって **§11 の D1 は「月 $5 を許容するか」の判断が実質の分岐点**になる。
+
+### 4-7. Phase 0 の検証結果（#640 続報・#641: G3・#642: G4）
+
+#639 と同じ使い捨て Worker（`mbl-verify-app`、D1 は `mbl-verify-db`、架空データのみ）で追加検証した。
+
+| 項目 | 結果 |
+| --- | --- |
+| **Prisma（D1 アダプタ）の Workers 上での動作** | ✅ 解決。原因は、Prisma の query compiler（wasm）が OpenNext のビルドで Worker に同梱されず、webpack が `fs` 読み込みに変換していたこと。**対処**: ①`next.config` の webpack `externals` で `*.wasm` を処理対象から外す、②ビルド後に `handler.mjs` の wasm 参照を相対パスへ置換して `query_compiler_bg.wasm` を同じ場所へコピーする、③`wrangler deploy` が `CompiledWasm` として同梱する。この後処理は**ビルドスクリプト化が必要**（Phase 2）。同梱で **gzip が約 3.1 MiB に増え**、Free の上限（3 MiB）を超える（Paid の 10 MiB 内）。 |
+| **G3 Credentials ログイン** | ✅ ログイン → セッション取得 → 保護ページ表示（200）→ ログアウト → 保護ページがログインへリダイレクト、誤パスワードは `CredentialsSignin`。JWT・D1（Prisma）経由のユーザー取得と失敗カウント更新も動作 |
+| **`proxy.ts`** | ✅ 動作（OpenNext は experimental 警告）。**ただし要対応**: `proxy` の `auth` が付ける Cookie（CSRF 等）が、OpenNext では**ルートハンドラの Cookie の後ろに付加**され、`/api/auth/csrf` のトークンと Cookie が食い違い `MissingCSRF` になる。**対処**: `proxy.ts` の `matcher` から `api/auth` を除外（Auth.js のルートは自前で認証するため保護の低下はない）。Phase 2 で本流に反映し、E2E で再確認する |
+| **Google OAuth** | ⏳ 未検証。検証用の OAuth クライアント（Google Cloud でリダイレクト URI に `https://<worker>/api/auth/callback/google` を登録）の用意が必要で、**ユーザー作業**。環境変数は `AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET` |
+| 環境変数 | `AUTH_SECRET`・`AUTH_TRUST_HOST`（Worker の secret）。`AUTH_SECRET` を変えると既存セッション（JWT）は全て無効になり再ログインが必要 |
+| **G4 Cron** | ✅ 通過。OpenNext の `worker.js` を import する**カスタムエントリ**（`fetch` は OpenNext のものを委譲、`scheduled` を追加）で、Cron Trigger → `/api/cron/check-new-books` を Bearer 付きで内部呼び出し → 200、通知 1 件作成（楽天 API は `RAKUTEN_API_BASE` を Worker 内の架空スタブへ向けて実 API に負荷をかけず検証）。`CRON_SECRET` は Worker secret で渡し、値はログに出していない。初回（コールド）の CPU は約 450 ms |
+| ローカル手動実行 | `wrangler dev --test-scheduled` 後、`curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"`（未実施。公式手順） |
+
+**結論（G3・G4）**: 認証・Cron とも、Workers 上で実現できる見通しが立った。残る不確定は、Google OAuth の実機確認（ユーザー作業）と、Prisma wasm 同梱の後処理をビルドに組み込むことの保守性。
 
 ---
 
