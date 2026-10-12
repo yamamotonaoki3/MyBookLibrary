@@ -81,6 +81,27 @@ describe("createPerBindingProxy", () => {
     const { proxy } = setup();
 
     expect(proxy.self().id).toBe(1);
-    expect(proxy.$disconnect()).toBe("disconnected:1");
+  });
+
+  it("$disconnect は、生成済みのクライアントがあればそれを切断し、バインディングを取得しない", async () => {
+    const { proxy, createClient } = setup();
+    const disconnect = jest.fn();
+    createClient.mockImplementationOnce(() => ({ id: 1, $disconnect: disconnect }) as never);
+
+    expect(proxy.id).toBe(1);
+    await proxy.$disconnect();
+
+    expect(disconnect).toHaveBeenCalledTimes(1);
+    // 切断後は、次のアクセスで新しいクライアントを作る
+    expect(proxy.id).toBeDefined();
+    expect(createClient).toHaveBeenCalledTimes(2);
+  });
+
+  it("$disconnect は、バインディングを取得できない状況（リクエスト外・テストの終了処理）でも例外にならない", async () => {
+    const proxy = createPerBindingProxy(() => {
+      throw new Error("リクエスト外");
+    }, () => ({}));
+
+    await expect((proxy as unknown as { $disconnect: () => Promise<void> }).$disconnect()).resolves.toBeUndefined();
   });
 });

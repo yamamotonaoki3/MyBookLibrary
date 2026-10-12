@@ -17,6 +17,7 @@
     "test:watch": "jest --selectProjects node jsdom --watch",
     "test:coverage": "jest --selectProjects node jsdom --coverage",
     "test:integration": "dotenv -e .env.test -- jest --selectProjects integration --runInBand",
+    "test:integration:d1": "jest --selectProjects integration-d1 --runInBand",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm run test",

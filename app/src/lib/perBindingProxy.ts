@@ -28,6 +28,15 @@ export function createPerBindingProxy<TClient extends object>(
       // `await prisma` や `Promise.resolve(prisma)` が `then` を問い合わせても、バインディングの解決（リクエスト外では例外）は起こさない。
       // Symbol（inspect・toPrimitive 等）も同様に、クライアントの有無に関係なく未定義として扱う。
       if (typeof property === "symbol" || NOT_A_MEMBER.has(property)) return undefined;
+      // 切断は、バインディングを取得せずに、生成済みのクライアントがあればそれだけを切断する
+      // （リクエスト外やテストの終了処理で呼ばれても例外にならない）。
+      if (property === "$disconnect") {
+        return async () => {
+          const target = cached?.client as { $disconnect?: () => Promise<void> } | undefined;
+          cached = undefined;
+          await target?.$disconnect?.();
+        };
+      }
       const client = resolve() as Record<string | symbol, unknown>;
       const value = client[property];
       // メソッド（$transaction・$disconnect 等）は、クライアント自身を this にして呼べるようにする

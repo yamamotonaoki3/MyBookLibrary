@@ -158,6 +158,8 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **実装メモ（#663・B3: Prisma クライアントの DB 切替）**: `src/lib/prisma.ts` が `DB_PROVIDER`（`mysql`〔既定〕／`d1`）で接続先を選ぶ。値はビルド時に `next.config.ts` の `env` で埋め込まれ、使わない側（D1 なら `prismaD1.ts`・`@prisma/adapter-d1`・D1 用クライアント）は MySQL 向けのバンドルに含まれない（本番ビルドで確認）。D1 は `getD1Binding()`（Workers では OpenNext が設定するグローバルのコンテキストの `env.DB`、Node のスクリプト／テストでは `registerD1Binding` で登録）から取得し、`createPerBindingProxy` が `prisma.xxx` へのアクセスのたびにバインディングを解決して、同じバインディングならクライアントを使い回し、変われば作り直す。D1 用クライアントは `src/generated/prisma-d1`（`postinstall` と `npm run prisma:generate:d1` で生成）。2 つの生成クライアントの型は相互に代入できないため、共通の型（MySQL 版の `PrismaClient`）へのキャストは `prismaD1.ts` の 1 か所に集約した。ローカルの D1（miniflare）に対する検証では、作成・取得・一意制約違反（`P2002`）・include・日本語と絵文字・DateTime・upsert・Json・外部キー制約が動作した。Workers 上での動作は Phase 0 で確認済みで、ビルドへの組み込みは B8 で行う。
 
+**実装メモ（#666・B5: 両 DB の結合テスト）**: 結合テスト（`*.itest.ts`）を、MySQL（`npm run test:integration`）と D1（`npm run test:integration:d1`。Jest の `integration-d1` project）の両方で実行する。D1 版は `DB_PROVIDER=d1`・`D1_RUNTIME=node` でアプリを切り替え、`jest.global-setup.integration-d1.ts` が一時ディレクトリにローカル D1（miniflare）を作って D1 マイグレーションを適用し、各テストファイルが `getPlatformProxy` で接続する（`.dev.vars` の読み込みが Jest 上で失敗するため、空の `.dev.vars` を置いた設定ディレクトリを使う）。`resetDb` は D1 では全テーブルを 1 回の batch（外部キー検査を遅延）で空にし、採番も戻す。MySQL 固有の検証は `itFor(["mysql"])` / `describeFor` で除外する。CI は `integration-d1` ジョブを `test` ジョブと並行して実行する。初回の実行で、既存の結合テスト 50 件のうち 49 件が D1 でもそのまま通った（生 SQL・条件付き削除・統合・email 正規化を含む）。残る 1 件は `atomically` の原子性で、D1 の `batch` 化（#664）まで MySQL 限定にしている。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
