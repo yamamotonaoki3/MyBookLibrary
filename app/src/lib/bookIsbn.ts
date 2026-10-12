@@ -120,6 +120,7 @@ export function isBookIsbnConflictError(error: unknown): error is BookIsbnConfli
  * isPrimary が true の要素が複数ある場合は先頭のものを代表として扱う。
  * 一覧が空の場合は Book.isbn を null にし、BookIsbn を全件削除する。
  * 他Bookに既に紐づくISBNが含まれる場合は、変更前に例外を投げる。
+ * 複数の書き込みを含むが、再実行しても同じ結果に収束する（冪等）ため、トランザクションは要求しない。
  */
 export async function replaceIsbns(
   tx: Prisma.TransactionClient,
@@ -188,7 +189,7 @@ export async function replaceIsbns(
       }
       savedIsbns.add(isbn);
     } catch (err) {
-      // 事前検査後の同時登録による競合も、処理全体をロールバックする
+      // 事前検査後の同時登録による競合は、衝突として失敗にする（トランザクションは使わず、再実行で同じ結果に収束する）
       if (isUniqueConstraintError(err)) throw new BookIsbnConflictError([isbn]);
       throw err;
     }

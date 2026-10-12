@@ -2,10 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 import { MAX_ADMIN_COUNT } from "@/lib/adminLimits";
+import { deleteNonAdminUser } from "@/repositories/userDeletionRepository";
 import { demoteAdminUnlessLast, promoteToAdminUnderLimit } from "@/repositories/userRoleRepository";
 import { NextRequest, NextResponse } from "next/server";
 
-class ConcurrentAdminPromotionError extends Error {}
 
 export async function DELETE(
   req: NextRequest,
@@ -47,44 +47,15 @@ export async function DELETE(
     );
   }
 
-  // 事前チェック（41-46行目）と削除実行の間に、別リクエストがこのユーザーを
-  // 管理者へ昇格させると、管理者アカウントが削除されてしまう恐れがある。
-  // そのため削除自体にも role: "user" 条件を課し、実行時点でも再確認する。
-  try {
-    await prisma.$transaction(async (tx) => {
-      await tx.report.deleteMany({ where: { userId: targetId } });
-      await tx.notification.deleteMany({
-        where: {
-          OR: [
-            { userId: targetId },
-            {
-              actorId: targetId,
-              type: { in: ["mutual_favorite_author", "mutual_want_to_read"] },
-            },
-          ],
-        },
-      });
-      await tx.like.deleteMany({ where: { userId: targetId } });
-      await tx.review.deleteMany({ where: { userId: targetId } });
-      await tx.readingStatus.deleteMany({ where: { userId: targetId } });
-      await tx.favoriteAuthor.deleteMany({ where: { userId: targetId } });
-      await tx.session.deleteMany({ where: { userId: targetId } });
-      await tx.account.deleteMany({ where: { userId: targetId } });
-      const { count } = await tx.user.deleteMany({
-        where: { id: targetId, role: "user" },
-      });
-      if (count === 0) {
-        throw new ConcurrentAdminPromotionError();
-      }
-    });
-  } catch (e) {
-    if (e instanceof ConcurrentAdminPromotionError) {
-      return NextResponse.json(
-        { error: "管理者アカウントは削除できません" },
-        { status: 400 }
-      );
-    }
-    throw e;
+  // 事前チェックと削除実行の間に、別リクエストがこのユーザーを管理者へ昇格させると、
+  // 管理者アカウントが削除されてしまう恐れがある。そのため削除自体にも「一般ユーザー」の
+  // 条件を課し、実行時点でも再確認する（昇格されていた場合は何も削除されない）。
+  const deleted = await deleteNonAdminUser(targetId);
+  if (!deleted) {
+    return NextResponse.json(
+      { error: "管理者アカウントは削除できません" },
+      { status: 400 }
+    );
   }
 
   await recordAuditEvent({
