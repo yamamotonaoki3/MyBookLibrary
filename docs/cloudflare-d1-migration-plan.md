@@ -182,6 +182,8 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **実装メモ（#678: バインドパラメータ上限）**: D1 は 1 クエリのバインドパラメータが 100 個まで。Prisma（`@prisma/adapter-d1`）は上限を 98 として、**単純な `findMany` の `IN`・`createMany`・リレーションの読み込みは自動で分割する**が、①`count` / `deleteMany` の `IN`、②`OR` の中の `IN`、③`notIn` は分割されず失敗することを、150 件規模の D1 結合テストで確認した（手書きの SQL〔`atomically` の `d1`〕も分割されないため、同様に扱った）。そのため、件数に比例する次の箇所だけを直した（共通ヘルパーは `src/lib/chunk.ts`、既定 50 件ずつ）。CSV インポート（著者・本の検索。`OR` を ISBN とタイトルの別クエリにして統合）、ダッシュボードと受賞一覧の読了数（`countReadBooks`）、お気に入り著者ページ（`OR` の分割）、相互フォローの検索、通知の一括作成（`createNotificationsInChunks`。新刊チェック・読みたい本・お気に入り著者・通報）、本の削除時のいいね・通報の削除、手動登録本の統合（受賞登録の `OR` を 30 組ずつの削除に分割）、ISBN の衝突検査。`notIn`（お気に入り著者以外の本）は取得してから除外する形にした。MySQL の挙動は変えていない。判断して**直さなかった箇所**: 検索 API の `OR`（楽天・NDL の 1 ページ分で ISBN とタイトルが各 30 件前後のため上限内）、固定数の `IN`（ステータス・通知種別など）、おすすめ（上限は `limit`=5）。D1 の結合テストは `bind-limit.itest.ts`（MySQL でも同じテストを実行）。
 
+**実装メモ（#683・P3-2: 環境分離）**: `wrangler.jsonc` のトップレベルを本番、`env.staging` をステージングとした（Worker 名 `mybooklibrary` / `mybooklibrary-staging`、D1 `mybooklibrary-db` / `mybooklibrary-staging-db`、公開 URL は `*.nyproducts.workers.dev`）。バインディング（D1）と vars は環境に継承されないため環境ごとに書き、triggers は継承されるため、ステージングの Cron は空配列（`crons: []`）で上書きして無効にした。`AUTH_URL`・`AUTH_TRUST_HOST`・`CRON_TARGET_ORIGIN` は secret ではないため `vars` に置く（secret は `wrangler secret put`）。D1 の `database_id` は `wrangler d1 create` の後に反映する（秘密情報ではない。作成前のままデプロイするとエラーになる）。リモートのマイグレーションは `npm run d1:migrate:staging` / `d1:migrate:production`。両環境の設定は `wrangler deploy --dry-run` で解決を確認し、CI の `worker` ジョブにステージングの確認を追加した。手順は [cloudflare-deploy.md](cloudflare-deploy.md)。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
