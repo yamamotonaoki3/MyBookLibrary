@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { deleteNonAdminUser } from "@/repositories/userDeletionRepository";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 import { NextRequest, NextResponse } from "next/server";
@@ -23,24 +24,14 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  await prisma.$transaction([
-    prisma.report.deleteMany({ where: { userId } }),
-    prisma.notification.deleteMany({
-      where: {
-        OR: [
-          { userId },
-          { actorId: userId, type: { in: ["mutual_favorite_author", "mutual_want_to_read"] } },
-        ],
-      },
-    }),
-    prisma.like.deleteMany({ where: { userId } }),
-    prisma.review.deleteMany({ where: { userId } }),
-    prisma.readingStatus.deleteMany({ where: { userId } }),
-    prisma.favoriteAuthor.deleteMany({ where: { userId } }),
-    prisma.session.deleteMany({ where: { userId } }),
-    prisma.account.deleteMany({ where: { userId } }),
-    prisma.user.delete({ where: { id: userId } }),
-  ]);
+  const deleted = await deleteNonAdminUser(userId);
+  if (!deleted) {
+    // 事前チェック後に管理者へ昇格された場合は、何も削除されない
+    return NextResponse.json(
+      { error: "管理者アカウントは削除できません" },
+      { status: 400 }
+    );
+  }
 
   // 削除対象のユーザー自身が行為者のため、既に存在しないIDをactorUserIdに残さない
   await recordAuditEvent({

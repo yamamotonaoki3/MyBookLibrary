@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { atomically } from "@/lib/atomically";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
@@ -83,48 +84,47 @@ export async function PATCH(request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "受賞登録が見つかりません。" }, { status: 404 });
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      // 著者名が変更された場合は findOrCreate
-      if (author !== undefined) {
-        const normalizedAuthor = normalizeAuthorName(author);
-        let authorRecord = await tx.author.findFirst({ where: { name: normalizedAuthor } });
-        if (!authorRecord) {
-          authorRecord = await tx.author.create({ data: { name: normalizedAuthor } });
-        }
-        await tx.book.update({
-          where: { id: entry.bookId },
-          data: {
-            ...(title !== undefined && { title }),
-            authorId: authorRecord.id,
-          },
-        });
-      } else if (title !== undefined) {
-        await tx.book.update({
-          where: { id: entry.bookId },
-          data: { title },
-        });
-      }
+    // 複数の更新を、衝突の起きうる順に分けて実行する。いずれも再実行しても同じ結果に収束する（冪等）。
+    // (1) ISBN の置き換え: 他の本との衝突検査を最初に行い、衝突時は何も書き込まずに失敗する。
+    if (isbns !== undefined) {
+      await replaceIsbns(
+        prisma,
+        entry.bookId,
+        (isbns as { isbn: string; isPrimary: boolean }[]).map((item) => ({
+          isbn: item.isbn,
+          isPrimary: item.isPrimary,
+        }))
+      );
+    }
 
-      if (isbns !== undefined) {
-        await replaceIsbns(
-          tx,
-          entry.bookId,
-          (isbns as { isbn: string; isPrimary: boolean }[]).map((item) => ({
-            isbn: item.isbn,
-            isPrimary: item.isPrimary,
-          }))
-        );
-      }
+    // (2) 著者名が変更された場合は findOrCreate（作成は再実行しても重複しない形で先に済ませる）
+    let authorId: number | undefined;
+    if (author !== undefined) {
+      const normalizedAuthor = normalizeAuthorName(author);
+      const authorRecord =
+        (await prisma.author.findFirst({ where: { name: normalizedAuthor } })) ??
+        (await prisma.author.create({ data: { name: normalizedAuthor } }));
+      authorId = authorRecord.id;
+    }
 
-      return tx.awardEntry.update({
+    // (3) 本と受賞登録の更新は、読み取りを挟まない 2 文として原子的に実行する
+    const bookData = {
+      ...(title !== undefined && { title }),
+      ...(authorId !== undefined && { authorId }),
+    };
+    const [, updated] = await atomically([
+      Object.keys(bookData).length > 0
+        ? prisma.book.update({ where: { id: entry.bookId }, data: bookData })
+        : prisma.book.findUniqueOrThrow({ where: { id: entry.bookId } }),
+      prisma.awardEntry.update({
         where: { id: entryId },
         data: {
           ...(type !== undefined && { type }),
           ...(year !== undefined && { year }),
           ...(awardId !== undefined && { awardId }),
         },
-      });
-    });
+      }),
+    ]);
 
     return NextResponse.json(updated);
   } catch (error) {
