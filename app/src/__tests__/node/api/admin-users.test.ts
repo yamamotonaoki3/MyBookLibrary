@@ -168,50 +168,43 @@ describe("PATCH /api/admin/users/[id]", () => {
   it("最後の管理者を降格しようとする → 400を返す", async () => {
     asAdmin(ADMIN_ID);
     prismaMock.user.findUnique.mockResolvedValue({ role: "admin", email: "a2@example.com" });
-    prismaMock.$queryRaw.mockResolvedValue([{ count: 1 }]);
+    prismaMock.$executeRaw.mockResolvedValue(0); // 条件付き UPDATE が 0 件（最後の管理者）
     const res = await call("2", "user");
     expect(res.status).toBe(400);
-    expect(prismaMock.user.update).not.toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("正常系: 一般ユーザーを管理者に昇格 → 200を返し監査ログを記録する", async () => {
     asAdmin(ADMIN_ID);
     prismaMock.user.findUnique.mockResolvedValue({ role: "user", email: "u@example.com" });
-    prismaMock.$queryRaw.mockResolvedValue([{ count: 1 }]);
-    prismaMock.user.update.mockResolvedValue({});
+    prismaMock.$executeRaw.mockResolvedValue(1);
 
     const res = await call("2", "admin");
     expect(res.status).toBe(200);
-    expect(prismaMock.user.update).toHaveBeenCalledWith({
-      where: { id: 2 },
-      data: { role: "admin" },
-    });
+    expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
     expect(prismaMock.auditLog.create).toHaveBeenCalled();
   });
 
   it("管理者数が上限（5人）に達している状態で昇格しようとする → 400を返す", async () => {
     asAdmin(ADMIN_ID);
     prismaMock.user.findUnique.mockResolvedValue({ role: "user", email: "u@example.com" });
-    prismaMock.$queryRaw.mockResolvedValue([{ count: 5 }]);
+    prismaMock.$executeRaw.mockResolvedValue(0); // 条件付き UPDATE が 0 件（上限に到達）
 
     const res = await call("2", "admin");
     const data = await res.json();
     expect(res.status).toBe(400);
     expect(data.error).toBe("管理者は最大5人までです");
-    expect(prismaMock.user.update).not.toHaveBeenCalled();
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("正常系: 管理者を降格（他にも管理者がいる） → 200を返す", async () => {
     asAdmin(ADMIN_ID);
     prismaMock.user.findUnique.mockResolvedValue({ role: "admin", email: "a2@example.com" });
-    prismaMock.$queryRaw.mockResolvedValue([{ count: 2 }]);
-    prismaMock.user.update.mockResolvedValue({});
+    prismaMock.$executeRaw.mockResolvedValue(1);
 
     const res = await call("2", "user");
     expect(res.status).toBe(200);
-    expect(prismaMock.user.update).toHaveBeenCalledWith({
-      where: { id: 2 },
-      data: { role: "user" },
-    });
+    expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(prismaMock.auditLog.create).toHaveBeenCalled();
   });
 });

@@ -21,25 +21,33 @@ export type BookIsbnCandidate = {
 
 /**
  * 指定した Book のISBNを代表ISBN(isPrimary)として設定する。
- * 既存の代表ISBNは非代表に戻してから更新するため、常に代表は1件のみになる。
+ * その Book の全ISBNの isPrimary を 1 つの UPDATE で付け替えるため、常に代表は1件のみになる
+ * （複数文のトランザクションを使わず原子化する。docs/cloudflare-d1-migration-plan.md §5-3）。
  * isbn が bookId に紐づく BookIsbn としてまだ登録されていない場合は例外を投げる。
  */
 export async function setPrimaryIsbn(bookId: number, isbn: string): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const target = await tx.bookIsbn.findUnique({ where: { isbn } });
-    if (!target || target.bookId !== bookId) {
-      throw new Error(`ISBN ${isbn} は Book ${bookId} に登録されていません`);
-    }
+  const target = await prisma.bookIsbn.findUnique({ where: { isbn } });
+  if (!target || target.bookId !== bookId) {
+    throw new Error(`ISBN ${isbn} は Book ${bookId} に登録されていません`);
+  }
 
-    await tx.bookIsbn.updateMany({
-      where: { bookId, isPrimary: true },
-      data: { isPrimary: false },
-    });
-    await tx.bookIsbn.update({
-      where: { isbn },
-      data: { isPrimary: true },
-    });
-  });
+  await prisma.$executeRaw`
+    UPDATE book_isbns SET is_primary = (isbn = ${isbn})
+    WHERE book_id = ${bookId}
+      AND EXISTS (
+        SELECT 1 FROM (
+          SELECT isbn FROM book_isbns
+          WHERE isbn = ${isbn} AND book_id = ${bookId} LIMIT 1
+        ) AS target_isbn
+      )
+  `;
+
+  // LIMIT 付き導出テーブルで MySQL の 1093 を避ける。
+  // 更新件数は同じ代表ISBNの再指定で 0 になり得るため、存在を別途確認する。
+  const remaining = await prisma.bookIsbn.findUnique({ where: { isbn } });
+  if (!remaining || remaining.bookId !== bookId) {
+    throw new Error(`ISBN ${isbn} は Book ${bookId} に登録されていません`);
+  }
 }
 
 /**
