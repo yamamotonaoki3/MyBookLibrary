@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   };
 
   try {
-    const [items, total] = await prisma.$transaction([
+    const [items, total] = await Promise.all([
       prisma.auditLog.findMany({
         where,
         orderBy: { createdAt: "desc" },
