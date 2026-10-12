@@ -10,10 +10,8 @@ export type RecommendedUser = {
 type RecommendedUserRow = {
   userId: number;
   name: string;
-  // COUNT(DISTINCT ...) は $queryRaw で bigint 文字列として返ることがある
+  // COUNT(DISTINCT ...) は $queryRaw で bigint や文字列として返ることがある
   commonAuthorCount: number | string | bigint;
-  // GROUP_CONCAT の結果。区切り文字 "|" で分割して使う
-  commonAuthorNames: string;
 };
 
 function toNumberCount(count: RecommendedUserRow["commonAuthorCount"]): number {
@@ -57,23 +55,37 @@ export async function getRecommendedUsers(
     SELECT
       c.candidate_user_id AS userId,
       u.name AS name,
-      COUNT(DISTINCT c.author_id) AS commonAuthorCount,
-      GROUP_CONCAT(DISTINCT a.name ORDER BY a.name SEPARATOR '|') AS commonAuthorNames
+      COUNT(DISTINCT c.author_id) AS commonAuthorCount
     FROM candidates c
     JOIN users u ON u.id = c.candidate_user_id
-    JOIN authors a ON a.id = c.author_id
     GROUP BY c.candidate_user_id, u.name
     ORDER BY commonAuthorCount DESC, userId ASC
     LIMIT ${limit}
   `;
 
-  return rows.map((row) => {
-    const allNames = row.commonAuthorNames ? row.commonAuthorNames.split("|") : [];
-    return {
-      userId: row.userId,
-      name: row.name,
-      commonAuthorCount: toNumberCount(row.commonAuthorCount),
-      commonAuthorNames: allNames.slice(0, DISPLAY_AUTHOR_NAMES_LIMIT),
-    };
+  if (rows.length === 0) return [];
+
+  // 共通著者名は、DB 方言に依存する GROUP_CONCAT を使わず、別クエリで取得して組み立てる
+  const commonRows = await prisma.favoriteAuthor.findMany({
+    where: {
+      userId: { in: rows.map((row) => row.userId) },
+      author: { favoriteAuthors: { some: { userId } } },
+    },
+    select: { userId: true, author: { select: { name: true } } },
+    orderBy: { author: { name: "asc" } },
   });
+  const namesByUser = new Map<number, string[]>();
+  for (const { userId: candidateId, author } of commonRows) {
+    const names = namesByUser.get(candidateId) ?? [];
+    // 旧実装の GROUP_CONCAT(DISTINCT ...) と同じく、同名の別著者は 1 つにまとめる
+    if (!names.includes(author.name)) names.push(author.name);
+    namesByUser.set(candidateId, names);
+  }
+
+  return rows.map((row) => ({
+    userId: row.userId,
+    name: row.name,
+    commonAuthorCount: toNumberCount(row.commonAuthorCount),
+    commonAuthorNames: (namesByUser.get(row.userId) ?? []).slice(0, DISPLAY_AUTHOR_NAMES_LIMIT),
+  }));
 }

@@ -300,6 +300,8 @@ Phase 1 の Issue を起票する（P1-2 email 正規化、P1-3 生 SQL の DB �
 | `lib/userRecommendations.ts`（おすすめユーザー） | `GROUP_CONCAT(DISTINCT a.name ORDER BY a.name SEPARATOR '|')` は SQLite で不可（`SEPARATOR` 構文、DISTINCT と区切り文字の併用不可） | サブクエリで DISTINCT 化してから `GROUP_CONCAT(name, '\|')`、または取得後にアプリ側で結合 |
 | `api/admin/users/[id]/route.ts`（2 箇所） | `FOR UPDATE` | §5-3 の #4・#5 |
 
+**対応済み（#650）**: おすすめ著者は `co_cnt * 1.0 / (...)` で小数の除算にした（`CAST(... AS REAL)` は MySQL では書式が異なるため、両 DB で通る `* 1.0` を採用）。おすすめユーザーは `GROUP_CONCAT` を SQL から外し、共通著者名は別クエリ（Prisma の `findMany`）で取得して TypeScript 側で組み立てる形にした。`FOR UPDATE` の 2 箇所は #648 で解消済み。MySQL の実 DB に対する結合テストを追加し、SQLite は同じ SQL（アプリのソースから抽出）を `node:sqlite` で実行して同じ結果になることを確認した（SQLite 側の自動化は P2-3）。
+
 テストは、**Prisma の MySQL 側と D1 側の両方で同じ入力・同じ結果になること**を結合テストで担保する（§8）。
 
 ---
