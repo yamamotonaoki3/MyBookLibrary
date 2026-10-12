@@ -64,6 +64,15 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 - ✅ マイグレーションは `wrangler d1 migrations` と `prisma migrate diff` の組み合わせ（`prisma migrate deploy` の利用可否は記載なし）。
 - ⚠️ 本リポジトリは Prisma 6.19.3。Prisma 7 への更新が前提になる可能性が高い（`prisma-client` ジェネレータ・`prisma.config.ts` 等の変更）。Json（SQLite）の扱いは 6 系で対応済みと認識しているが未確認。
 
+### 2-4. Hyperdrive（外部の PostgreSQL／MySQL へ接続する代替経路）
+
+- ✅ **Hyperdrive** は、Workers から外部のデータベースへ接続プール経由でつなぐ仕組み。**PostgreSQL と MySQL（MySQL 互換を含む）に対応**（MySQL 対応は 2025 年 4 月に提供開始。料金は Postgres と同じ）。AWS・Google Cloud・Azure 上の DB のほか Neon・PlanetScale 等につなげる。
+- ✅ **Workers Free でも利用可**。Free は **1 日 10 万クエリ**まで、Paid は無制限。**接続プールとクエリキャッシュ、データ転送に追加料金はない**。設定数は Free 10／Paid 25。クエリの最大実行時間は 60 秒。
+- ✅ Prisma は PostgreSQL では**公式手順あり**（`pg`（8.13.0 超）＋ `@prisma/adapter-pg`、`prisma generate --no-engine`）。Workers では**リクエストごとに新しい接続（プール）を作る**必要がある（使い回しは不可）。
+- ⚠️ **MySQL を Hyperdrive 経由で Prisma から使う公式手順は見つかっていない**（Cloudflare の例は `mysql2` と `disableEval: true`）。Workers で動くドライバ（`@prisma/adapter-mariadb` 等）の検証が必要（#645）。
+- ⚠️ Hyperdrive のクエリが **Workers のサブリクエスト数（Free: 50）に数えられるか**は公式ページに記載がない（#645 で実測）。
+- 含意: **D1 の弱点は「`$transaction` 非対応」**（§5-3 の検証で確認）であり、Hyperdrive 経由の PostgreSQL／MySQL は**本物のトランザクションが使える**ため、この問題がなくなる。一方、**Workers 側の制限（CPU 10ms など）は DB を替えても変わらない**。
+
 ---
 
 ## 3. 互換性マトリクス（本アプリの要素別）
@@ -104,9 +113,10 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 | **A（採用案）** | OpenNext ＋ D1 ＋ Prisma（D1 アダプタ） | 現行コードの変更が最小。Repository 層（#613）の分離が効く | Prisma D1 が Preview・トランザクション非対応。Prisma 7 更新が必要な可能性 |
 | B | vinext ＋ D1 ＋ Prisma | Cloudflare 推奨。proxy.ts 対応 | 開発中。next-auth・PWA 互換が未確認。ビルド系の置換が大きい |
 | C | OpenNext ＋ D1 ＋ **Drizzle**（Prisma を置換） | D1 のネイティブ機能（`batch` による原子的実行）を使える。Prisma Preview のリスクを回避 | Repository 層・auth アダプタ・テスト基盤の書き換えが大きい |
+| **E** | OpenNext ＋ **Hyperdrive ＋ 外部の PostgreSQL または MySQL**（D1 を使わない） | **本物のトランザクション**が使え、`$transaction` 11 箇所の置換が不要。MySQL を選べば**現行のスキーマ・SQL・マイグレーションをほぼそのまま使える**（併存問題〈§4-4〉も単純化）。Prisma の PostgreSQL 手順は公式にある | 外部 DB のホスティング費用・無料枠の制約（Neon Free は自動停止の起動待ち、Supabase Free は 1 週間無操作で停止）。**PostgreSQL は 3 つ目の方言**で、スキーマ・SQL の書き換えが生じる。MySQL の Prisma＋Hyperdrive は公式手順が未確認。Workers 側の CPU 制限は解消しない |
 | D | 現状維持（AWS を再構築）／他クラウドへ移転 | 移行リスクなし。Terraform コードが残っているため再構築は可能 | 費用が発生する（本計画の前提を満たさない） |
 
-**推奨**: A を第一候補とし、**G2（トランザクション）が許容できない場合は C に切り替える**。判断は Phase 0 の結果で行う。
+**推奨**: A を第一候補とし、**G2（トランザクション）が許容できない場合は C（Drizzle）または E（Hyperdrive）に切り替える**。C は D1 のネイティブ機能（`batch`）を活かせるが書き換えが大きく、E は DB を外部に置くことでトランザクション問題自体をなくせる（費用と運用先が増える）。判断は Phase 0 の結果で行う。
 
 ### 4-3. 検証ゲート（Phase 0 で判定する Go/No-Go）
 
@@ -114,7 +124,7 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 | --- | --- | --- | --- |
 | **G0** | **CPU・費用**: 最小構成の Worker で、ログイン（bcrypt）・一覧ページ・API の CPU 時間を実測（Free と Paid） | 主要操作が Free の 10ms 内に収まる、または Paid（月 $5）を許容する判断をユーザーが行う | Paid 前提で進める／（コスト不可なら）案 D を再検討 |
 | **G1** | **ビルド・サイズ**: OpenNext で本アプリがビルド・デプロイでき、Worker サイズ上限（Free/Paid）に収まる。PWA（SW・manifest）が配信される | 起動・主要画面表示・SW 配信が成功 | vinext を試す／依存の削減 |
-| **G2** | **Prisma D1 とトランザクション**: D1 アダプタで CRUD・`upsert`・`createMany`・Json が動き、§5-3 の各箇所を「単一文化／`batch` 化／競合を許容」のどれで置き換えるか判断できる | 11 箇所すべてに置換方針が付き、整合性要件を満たす | 案 C（Drizzle）へ切替 |
+| **G2** | **Prisma D1 とトランザクション**: D1 アダプタで CRUD・`upsert`・`createMany`・Json が動き、§5-3 の各箇所を「単一文化／`batch` 化／競合を許容」のどれで置き換えるか判断できる | 11 箇所すべてに置換方針が付き、整合性要件を満たす | 案 C（Drizzle）または案 E（Hyperdrive ＋ PostgreSQL／MySQL。#645）へ切替 |
 | **G3** | **認証**: Credentials ログイン、Google OAuth、JWT セッション、`proxy`（または `middleware`）による保護が Workers で動く | ログイン〜保護ページ表示〜ログアウトが通る | `middleware.ts`（Edge）化／認証周りの調整 |
 | **G4** | **Cron**: Cron Trigger から `/api/cron/check-new-books` を実行できる | スケジュール実行で通知が作成される | カスタム Worker エントリ／別 Worker から呼び出し |
 
@@ -135,6 +145,88 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 | データの往復 | MySQL → D1 の ETL（§7）に加え、**D1 → MySQL の逆 ETL**と、D1 の定期エクスポート（バックアップ）を用意する。これにより、運用中の最新データを使って RDS へ戻せる |
 
 **トレードオフ**: スキーマ変更・テスト・CI の負荷が増え、機能追加のたびに 2 つの DB での動作確認が必要になる。軽減策は、(1) スキーマの正を 1 つにして生成する、(2) CI で自動検査する、(3) DB 依存を Repository に閉じ込める、の 3 点。**併存の保守負荷が過大になった場合は、併存を見直すかをユーザーと再検討する**（見直しのトリガー: 両 DB 対応が原因の開発遅延が続く、D1 のみで運用できる実績が十分に積み上がった、など）。
+
+### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
+
+| 項目 | 内容 |
+| --- | --- |
+| 構成 | Workers（OpenNext）→ Hyperdrive → 外部の PostgreSQL／MySQL。D1 は使わない |
+| 費用（月額の目安） | **Workers**: Free なら $0、CPU 時間で足りなければ Paid の **$5〜**（Hyperdrive は Free/Paid とも**追加料金なし**）。**DB**: Neon Free **$0**（0.5GB・月 100 CU 時間・アイドル 5 分で自動停止）、Supabase Free **$0**（**1 週間無操作で停止**するためポートフォリオには不向き。Pro は月 $25）。マネージド MySQL は候補の料金を要確認。→ **Neon Free ルートなら $0〜$5**で、D1 案とほぼ同等 |
+| 注意（費用の数値） | Neon・Supabase の数値は**第三者記事を含み、情報が食い違う項目がある**（Paid の最低料金、エグレス等）。契約前に公式の料金ページで確認する（#645） |
+| PostgreSQL を選ぶ場合 | 第 3 の方言になる。Json→`jsonb`、`GROUP_CONCAT`→`string_agg`、`mode: "insensitive"` の扱い、日時・`@db.Date`、自動採番の移行（`sequence` の更新）等の書き換えと、ETL（MySQL→PostgreSQL）が必要。**大文字小文字を区別する点は SQLite と同じ**なので、`email` の小文字正規化（P1-2）は流用できる |
+| MySQL を選ぶ場合 | スキーマ・マイグレーション・生 SQL（`FOR UPDATE` を含む）を**ほぼそのまま**使える。**MySQL と D1 の併存（§4-4）は不要**になり、RDS への復帰も同じスキーマで済む。ただし Workers で動く Prisma のドライバ構成が未確認 |
+| 向かないケース | Workers の **CPU 時間（Free 10ms）が問題の場合**は、DB を替えても解決しない（Paid が必要）。また接続ドライバ分の CPU が加わる可能性がある |
+| 検証 | #645（G2 不合格時のみ実施） |
+
+### 4-6. Phase 0 の検証結果（#639: G0・G1）
+
+実際の Cloudflare アカウントへ、本アプリのコピー（使い捨て）を OpenNext でデプロイして計測した（詳細は #639 のコメント）。
+
+| 項目 | 結果 |
+| --- | --- |
+| **G1 ビルド・サイズ・PWA** | ✅ ビルド成功（約 35 秒）。Worker は**非圧縮 約 11.5 MiB／gzip 約 2.3 MiB**でデプロイ成功、PWA（`sw.js`・`manifest.json`）も配信される。`proxy.ts`（Node ミドルウェア）は Workers 上で動作（OpenNext は experimental と警告）。**ただし最新の OpenNext アダプタ（1.20.10）は Next.js ≥ 16.3.8 が必須**（現行 16.2.6 は更新が必要）。Windows では「完全には互換でない」警告があるため、ビルド・デプロイは CI（Linux）で行う |
+| **G0 CPU 時間** | ❌ **Workers Free の 10 ms/リクエストでは動かせない**。コールドスタート 158〜286 ms、ログインの bcrypt（cost 12）305〜800 ms、`/login` の描画 13〜178 ms（中央値 99）、D1 直接アクセス 4〜16 ms。**Workers Paid（月 $5〜）が必須**（ユーザー確認: 現在のアカウントは **Free プラン**。検証では 10ms 超過でも打ち切られなかったが公式制限に依存しない。**本番は Paid 前提**）。Paid の含有量（月 3,000 万 CPU ms）は、平均 100 ms/リクエストで**約 30 万リクエスト/月**に相当し、個人利用の規模では**月 $5 の固定費のみ**になる見込み |
+| 追加の課題 | `createMany({ skipDuplicates })` は SQLite で不可（2 箇所）。Prisma を OpenNext でバンドルする wasm 設定は §4-7 で**解決**（後処理が必要）。bcrypt が最大の CPU 消費だが、Paid の含有量内に収まるため WebCrypto 系（PBKDF2 等）への段階移行（ログイン時に平文から新方式で再ハッシュし、`$2b$` 接頭辞で方式を判定）は**任意の最適化**とし、実測で体感が悪い場合のみ着手する。PBKDF2 は Workers で反復回数の上限（10万回）があり強度が下がる点も要確認 |
+
+**結論（G0）**: 案 A・E のどちらも **Workers Paid が前提**になる（CPU 制限は DB を替えても変わらない）。D1 は費用面で有利だが、費用の最小値は「Workers Paid 月 $5」で、案 E でも同額。したがって **§11 の D1 は「月 $5 を許容するか」の判断が実質の分岐点**になる。
+
+### 4-7. Phase 0 の検証結果（#640 続報・#641: G3・#642: G4）
+
+#639 と同じ使い捨て Worker（`mbl-verify-app`、D1 は `mbl-verify-db`、架空データのみ）で追加検証した。
+
+| 項目 | 結果 |
+| --- | --- |
+| **Prisma（D1 アダプタ）の Workers 上での動作** | ✅ 解決。原因は、Prisma の query compiler（wasm）が OpenNext のビルドで Worker に同梱されず、webpack が `fs` 読み込みに変換していたこと。**対処**: ①`next.config` の webpack `externals` で `*.wasm` を処理対象から外す、②ビルド後に `handler.mjs` の wasm 参照を相対パスへ置換して `query_compiler_bg.wasm` を同じ場所へコピーする、③`wrangler deploy` が `CompiledWasm` として同梱する。この後処理は**ビルドスクリプト化が必要**（Phase 2）。同梱で **gzip が約 3.1 MiB に増え**、Free の上限（3 MiB）を超える（Paid の 10 MiB 内）。 |
+| **G3 Credentials ログイン** | ✅ ログイン → セッション取得 → 保護ページ表示（200）→ ログアウト → 保護ページがログインへリダイレクト、誤パスワードは `CredentialsSignin`。JWT・D1（Prisma）経由のユーザー取得と失敗カウント更新も動作 |
+| **`proxy.ts`** | ✅ 動作（OpenNext は experimental 警告）。**ただし要対応**: `proxy` の `auth` が付ける Cookie（CSRF 等）が、OpenNext では**ルートハンドラの Cookie の後ろに付加**され、`/api/auth/csrf` のトークンと Cookie が食い違い `MissingCSRF` になる。**対処**: `proxy.ts` の `matcher` から `api/auth` を除外（Auth.js のルートは自前で認証するため保護の低下はない）。Phase 2 で本流に反映し、E2E で再確認する |
+| **Google OAuth** | ⏳ 未検証。検証用の OAuth クライアント（Google Cloud でリダイレクト URI に `https://<worker>/api/auth/callback/google` を登録）の用意が必要で、**ユーザー作業**。環境変数は `AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET` |
+| 環境変数 | `AUTH_SECRET`・`AUTH_TRUST_HOST`（Worker の secret）。`AUTH_SECRET` を変えると既存セッション（JWT）は全て無効になり再ログインが必要 |
+| **G4 Cron** | ✅ 通過。OpenNext の `worker.js` を import する**カスタムエントリ**（`fetch` は OpenNext のものを委譲、`scheduled` を追加）で、Cron Trigger → `/api/cron/check-new-books` を Bearer 付きで内部呼び出し → 200、通知 1 件作成（楽天 API は `RAKUTEN_API_BASE` を Worker 内の架空スタブへ向けて実 API に負荷をかけず検証）。`CRON_SECRET` は Worker secret で渡し、値はログに出していない。初回（コールド）の CPU は約 450 ms |
+| ローカル手動実行 | `wrangler dev --test-scheduled` 後、`curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"`（未実施。公式手順） |
+
+**結論（G3・G4）**: 認証・Cron とも、Workers 上で実現できる見通しが立った。残る不確定は、Google OAuth の実機確認（ユーザー作業）と、Prisma wasm 同梱の後処理をビルドに組み込むことの保守性。
+
+### 4-8. Go/No-Go 判断資料（#644）
+
+#### ゲートの合否（2026-10-12 時点）
+
+| ゲート | 判定 | 根拠（要約） |
+| --- | --- | --- |
+| G0 CPU・費用 | ⚠️ 条件付き（**Paid 必須**） | Free の 10ms は不可（§4-6）。Paid 月 $5 の含有量で個人利用は収まる |
+| G1 ビルド・サイズ・PWA | ✅ | ビルド成功。gzip 約 3.1 MiB（Prisma wasm 同梱後）は Paid の上限内（Free の 3 MiB は超過）。PWA 配信 OK |
+| G2 Prisma D1・トランザクション | ⚠️ 条件付き | CRUD・upsert 等は OK。`$transaction` 11 箇所の置換が必須（§5-3）。Workers 上でも動作確認（§4-7） |
+| G3 認証 | ✅（Google OAuth のみ未検証） | Credentials 一式が動作。`proxy` の `matcher` から `api/auth` を除外する対処が必要 |
+| G4 Cron | ✅ | カスタム Worker エントリの `scheduled` で通知作成まで確認 |
+
+#### 判断（推奨）: **Go ── 案 A（OpenNext ＋ Prisma ＋ D1）、本番は Workers Paid 前提**
+
+- **致命的な障害は見つからなかった**。残る課題はいずれも「実装して潰せる」性質（`$transaction` の置換、wasm 同梱の後処理、`proxy` の matcher、`skipDuplicates` の書き換え）。
+- **案 E（Hyperdrive ＋ 外部 DB）は採らない**（#645 は実施しない）。理由: Workers 側の費用（Paid）は D1 案と同額で、案 E の利点は `$transaction` 不要のみ。一方で外部 DB の費用・自動停止・方言の追加が加わる。`$transaction` 11 箇所は、条件付き単一文／`batch`／冪等化で置換できる見通し（§5-3）で、その作業は MySQL 上でも先に入れられる（P1-4）。**P1-4 で想定外の置換不能が見つかった場合のみ、案 E を再検討する**。
+- **vinext（#643）は後回し**（OpenNext で通ったため必須ではない）。OpenNext の experimental 要素（Node 版 proxy）が将来問題になった場合に比較する。
+- **Prisma 7 への更新は不要**（Prisma 6.19 ＋ D1 アダプタで動作）。P1-1 は起票しない。
+
+#### リスクと緩和
+
+| リスク | 緩和 |
+| --- | --- |
+| `$transaction` 置換の漏れによる無警告の不整合（D1 は配列形式を非原子的に実行） | 置換が済むまで D1 アダプタを本流に混ぜない。D1 ビルドでは `$transaction` を例外化するラッパーまたは lint で検出。両 DB の結合テスト（P2-3） |
+| Prisma D1 アダプタが Preview | 利用箇所を Repository に閉じ込める（責務分離ルール）。不具合時は Repository 単位で D1 バインディング直呼びに切替可能 |
+| OpenNext の Node 版 proxy が experimental | E2E を Workers プレビューで実行（P3-3）。問題時は `middleware.ts`（Edge）化か vinext |
+| wasm 同梱の後処理がビルド依存で壊れやすい | ビルドスクリプト化し、CI で「Worker 起動＋ DB 読み取り」のスモークテストを必須にする |
+| Windows でのビルドが非公式 | ビルド・デプロイは CI（Linux）で行う |
+| bcrypt の CPU（約 0.3〜0.8 秒/回） | Paid の含有量内。体感が悪い場合のみ WebCrypto 移行（任意の最適化） |
+| Free アカウントのまま運用すると上限に当たる | 本番切替前に Paid へ変更（P3-1 の前提） |
+
+#### ユーザーの決定が必要な事項（§11）
+
+- **D1（費用）**: Workers Paid 月 $5（約 750 円）を許容するか。**許容しない場合は No-Go 側**（案 D: Cloudflare 以外、または AWS 継続）になる。
+- **D3（保全期間）**・**D4（URL・独自ドメイン）**: 未決定のまま Phase 1 は開始できる（Phase 4 までに決める）。
+- **Google OAuth の実機確認**: 検証用 OAuth クライアントを用意するか、Phase 2（P2-4）の確認に回すか。
+- **D5（Phase 0 の進め方）**: 解決済み（P0-1〜P0-4 を実施）。
+
+#### Go の場合の次の一手
+
+Phase 1 の Issue を起票する（P1-2 email 正規化、P1-3 生 SQL の DB 非依存化、P1-4 トランザクション置換、P1-5 logger、P1-6 画像最適化の依存除去）。いずれも **MySQL のまま本番に影響せず先にマージできる**。P1-4 を最初に着手して、置換可否を早期に確定する。Phase 0 の使い捨て Worker／D1（`mbl-verify-*`）は、Go/No-Go 確定後に削除する。
 
 ---
 
@@ -182,6 +274,19 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 | 11 | `api/admin/users/[id]/route.ts`（ユーザー削除） | 管理者によるユーザー削除。関連データの削除後、`role: "user"` 条件付きでユーザーを削除し、0 件なら失敗（削除直前に昇格された管理者を消さないため） | #1 と同様に**カスケード整理 ＋ 条件付き削除 1 文**（`DELETE ... WHERE id=? AND role='user'`）に寄せる。ほかに暗黙の複数文更新（`upsert` 内部等）がないかは Phase 0 で網羅確認 |
 
 原則: **(1) 読み取りを挟まない複数文は `batch`（D1 のネイティブ機能）、(2) 読み取り→判定→更新は条件付き単一文に畳む、(3) 管理者操作で競合頻度が低いものは冪等化して許容**。Prisma D1 アダプタで `batch` が使えない場合は、該当箇所だけ D1 バインディングの SQL を直接使う Repository を設ける。
+
+**検証結果（#640 第 1 報、ローカル D1 ＋ Prisma 6.19.3 ＋ `@prisma/adapter-d1` 6.19.3）**:
+
+- ✅ CRUD・`upsert`・一意制約違反（`P2002`）・日本語/絵文字・Json 列・`DateTime`（保存形式は ISO 8601 の TEXT）は動作。**Prisma 7 への更新は基本機能には不要**。
+- ❌ **`$transaction` のコールバック形式は例外**（`D1 does not support interactive transactions`）。
+- ❌ **`$transaction` の配列形式は、エラーにならず非原子的に実行される**（2 文目が失敗しても 1 文目が残る。警告ログのみ）。**無警告でデータ不整合になる**ため、置換が済むまで本流に混ぜない。
+- ✅ D1 ネイティブの `batch` は**原子的**。ただし Prisma アダプタからは呼べない。✅ 条件付き単一 `UPDATE`（`WHERE ... AND (SELECT COUNT(*) ...) > 1`）で最後の管理者の降格防止を原子化できた。
+- ⚠️ 整数除算（`3/5` が `0`）、`GROUP_CONCAT ... SEPARATOR` の構文エラー、`email` の完全一致が大文字小文字を区別する点は、§5-2・§5-4 のとおり。
+- ✅（第 2 報）`createMany`（500 行）・`IN`（150 件）は Prisma が自動分割して成功。**生 SQL・D1 バインディング直接は 100 個超で失敗**するため、`IN (...)` は 100 個以内に分割する。明示 ID の挿入後も自動採番は最大 ID + 1 から続く。
+- ✅（第 2 報）マイグレーションは `prisma migrate diff --from-schema-datamodel 旧 --to-schema-datamodel 新 --script` → `wrangler d1 migrations apply` で運用でき、**Prisma 6.19.3 のまま可能**。
+- ✅（第 2 報）MySQL 用と D1 用の Prisma クライアントは同じコードベースで 2 つ生成できるが、**型は相互に代入できない**（`$transaction`・`createManyAndReturn` の差）。共通の型は `prisma.ts` の 1 か所で明示的にキャストして揃え、モデル定義の同一性はドリフト検査で担保する。
+- 結論: G2 は**条件付きで合格**（`$transaction` 11 箇所の置換が必須。D1 バインディングを直接使う Repository が必要）。併存の保守コストと案 E（`$transaction` がそのまま使える）を #644 で比較して決める。詳細は #640 のコメント。
+- 補足: 本スキーマは 12 の関係が `ON DELETE RESTRICT`（MySQL でも同じ）。ユーザー削除で関連行を手動削除しているのはこのため。「カスケード整理」（#1・#11）は、**MySQL 側のスキーマ変更（マイグレーション）を伴う**。
 
 ### 5-4. `$queryRaw`（MySQL 方言）の書き換え
 
@@ -316,6 +421,7 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 | P0-3（#641） | 認証と proxy の検証（G3） | Credentials・Google OAuth・JWT・保護ルートを Workers で確認 | 動作可否と必要な変更が文書化 |
 | P0-4（#642） | Cron の検証（G4） | Cron Trigger → API 内部呼び出し | スケジュール実行で通知作成 |
 | P0-5（#643） | vinext の比較検証（任意） | 同じ最小構成を vinext で試し、OpenNext との比較を記録 | 比較表と最終選定 |
+| P0-6（#645） | Hyperdrive ＋ PostgreSQL／MySQL の最小検証（案 E。G2 不合格時のみ） | 本物のトランザクション、MySQL の Prisma 構成、サブリクエスト数、DB ホスティングの料金・自動停止 | 案 E の採否判断の材料と費用比較表 |
 
 → **Phase 0 の結果で、本計画の採用案（A/B/C）と Free/Paid を確定し、本書を更新**する（Go/No-Go。#644）。
 
@@ -378,11 +484,12 @@ P0-1〜P0-5 ──(Go/No-Go)──▶ Phase 1 ─▶ Phase 2 ─▶ Phase 3 ─�
 | # | 事項 | 内容 |
 | --- | --- | --- |
 | D1 | **費用の許容** | Workers Free で動かない（CPU 10ms 超過）場合、**Workers Paid の月 $5（約 750 円）**を許容するか。G0 の実測後に最終判断。許容できない場合は案 D（Cloudflare 以外）の再検討 |
+| D7 | **DB の選び方（D1 が不合格の場合）** | 案 E を採る場合の DB（Neon Free の PostgreSQL／マネージド MySQL）と、費用・自動停止の起動待ちを許容するか。#645 の結果を見て判断 |
 | D6 | ~~MySQL（RDS）を残すか~~ | **決定済み（2026-10-12）**: MySQL 用と D1 用の両方のスキーマ・マイグレーションを維持し、RDS で再開できる状態を保つ（§4-4）。保守負荷が過大になった場合のみ再検討 |
 | D2 | ~~停止中の AWS（RDS）の扱い~~ | **解決済み（2026-10-11）**: RDS は削除済み。ダンプを取得・暗号化し、PC と USB に保管。手動スナップショットは当面保持（月 $2 弱） |
 | D3 | **旧データの保全期間** | 移行後、スナップショット／暗号化ダンプを何日保持するか（保持中は少額の保管費用）。暗号化ダンプの 3 か所目（別の場所）をどこにするか |
 | D4 | **公開 URL・独自ドメイン** | 当面 `*.workers.dev` でよいか。独自ドメイン（別途費用）を使うか |
-| D5 | **Phase 0 の進め方** | 次に P0-1〜P0-4 の Issue を作成して検証を始めてよいか（アカウント作成・Wrangler のログインはユーザー操作が必要） |
+| D5 | ~~**Phase 0 の進め方**~~ **解決済み（2026-10-12）** | 次に P0-1〜P0-4 の Issue を作成して検証を始めてよいか（アカウント作成・Wrangler のログインはユーザー操作が必要） |
 
 ---
 
