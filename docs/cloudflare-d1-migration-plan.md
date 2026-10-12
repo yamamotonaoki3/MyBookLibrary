@@ -184,6 +184,8 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **実装メモ（#683・P3-2: 環境分離）**: `wrangler.jsonc` のトップレベルを本番、`env.staging` をステージングとした（Worker 名 `mybooklibrary` / `mybooklibrary-staging`、D1 `mybooklibrary-db` / `mybooklibrary-staging-db`、公開 URL は `*.nyproducts.workers.dev`）。バインディング（D1）と vars は環境に継承されないため環境ごとに書き、triggers は継承されるため、ステージングの Cron は空配列（`crons: []`）で上書きして無効にした。`AUTH_URL`・`AUTH_TRUST_HOST`・`CRON_TARGET_ORIGIN` は secret ではないため `vars` に置く（secret は `wrangler secret put`）。D1 の `database_id` は `wrangler d1 create` の後に反映する（秘密情報ではない。作成前のままデプロイするとエラーになる）。リモートのマイグレーションは `npm run d1:migrate:staging` / `d1:migrate:production`。両環境の設定は `wrangler deploy --dry-run` で解決を確認し、CI の `worker` ジョブにステージングの確認を追加した。手順は [cloudflare-deploy.md](cloudflare-deploy.md)。
 
+**実装メモ（#684・P3-3: Workers Builds）**: Cloudflare 公式の Workers Builds で、GitHub と Worker を連携して自動デプロイする。Worker が環境ごとに別（`mybooklibrary-staging` / `mybooklibrary`）のため、連携も 2 つ。`main` へのマージでステージングへ自動デプロイし、確認後に `main` を `production` ブランチへ反映すると本番へデプロイされる二段構えにした（本番の誤デプロイを避けるため。当初案の「main で本番へ」から変更）。ルートディレクトリは `app`、ビルドは `npm run build:worker`、デプロイは `npm run deploy:staging` / `deploy:production`（リモート D1 のマイグレーション適用 → `wrangler deploy`）。ビルドの Node は 22（`app/.node-version` と `NODE_VERSION`）。`main` 以外のブランチのプレビュービルドは、同じ D1 を使うため無効にする。連携には先に Worker が存在している必要があるため、初回だけ手元から `wrangler deploy` する（Workers Paid が前提）。手順は [cloudflare-deploy.md](cloudflare-deploy.md)。連携時に自動発行される API トークンには D1 の権限が含まれない（公式ドキュメントで確認）ため、連携後にトークンへ D1 の編集権限を足す必要がある（デプロイコマンドが D1 のマイグレーションを適用するため）。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
