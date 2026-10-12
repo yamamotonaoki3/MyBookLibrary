@@ -160,6 +160,8 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **実装メモ（#666・B5: 両 DB の結合テスト）**: 結合テスト（`*.itest.ts`）を、MySQL（`npm run test:integration`）と D1（`npm run test:integration:d1`。Jest の `integration-d1` project）の両方で実行する。D1 版は `DB_PROVIDER=d1`・`D1_RUNTIME=node` でアプリを切り替え、`jest.global-setup.integration-d1.ts` が一時ディレクトリにローカル D1（miniflare）を作って D1 マイグレーションを適用し、各テストファイルが `getPlatformProxy` で接続する（`.dev.vars` の読み込みが Jest 上で失敗するため、空の `.dev.vars` を置いた設定ディレクトリを使う）。`resetDb` は D1 では全テーブルを 1 回の batch（外部キー検査を遅延）で空にし、採番も戻す。MySQL 固有の検証は `itFor(["mysql"])` / `describeFor` で除外する。CI は `integration-d1` ジョブを `test` ジョブと並行して実行する。初回の実行で、既存の結合テスト 50 件のうち 49 件が D1 でもそのまま通った（生 SQL・条件付き削除・統合・email 正規化を含む）。残る 1 件は `atomically` の原子性で、D1 の `batch` 化（#664）まで MySQL 限定にしている。
 
+**実装メモ（#664・B4a: `atomically` の D1 実装）**: `atomically(steps)` は、各書き込みを `{ prisma, d1 }` の組（MySQL では Prisma の操作、D1 では**同じ意味の SQL**）で受け取り、MySQL は `$transaction` の配列形式、D1 は D1 の `batch`（1 つでも失敗すれば全体を取り消す）で実行して影響行数を返す。Prisma は D1 の複数文を原子化できず、操作から SQL を取り出す公式の手段もないため、SQL は手書きし、**両 DB の結合テスト（B5）で 2 つの表現が同じ結果になること**を担保する。Prisma を直接呼ぶ処理は repositories に置いた（`followRepository`・`passwordResetRepository`・`reviewModerationRepository`・`awardEntryRepository`・`manualBookRepository`・`userDeletionRepository`）。D1 の日時は ISO 8601 の文字列（Prisma と同じ形式）で保存する。ESLint の `no-restricted-syntax` で、`atomically.ts` 以外での `$transaction` の利用をエラーにしている（D1 で非原子的に実行されるため）。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |

@@ -140,6 +140,8 @@ describe("POST /api/admin/manual-books/merge", () => {
       [alice.id, "read"],
       [bob.id, "reading"],
     ]);
+    // 付け替えた行の更新日時も、Date として読める有効な値になっている
+    expect(Math.abs(Date.now() - statuses[1].updatedAt.getTime())).toBeLessThan(60_000);
     const entries = await testPrisma.awardEntry.findMany({ where: { bookId: target.id } });
     expect(entries.map((e) => [e.awardId, e.year]).sort()).toEqual(
       [

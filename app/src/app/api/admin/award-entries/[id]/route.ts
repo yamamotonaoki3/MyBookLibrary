@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { atomically } from "@/lib/atomically";
+import { updateBookAndAwardEntry } from "@/repositories/awardEntryRepository";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
@@ -107,24 +107,14 @@ export async function PATCH(request: NextRequest, { params }: Props) {
       authorId = authorRecord.id;
     }
 
-    // (3) 本と受賞登録の更新は、読み取りを挟まない 2 文として原子的に実行する
-    const bookData = {
-      ...(title !== undefined && { title }),
-      ...(authorId !== undefined && { authorId }),
-    };
-    const [, updated] = await atomically([
-      Object.keys(bookData).length > 0
-        ? prisma.book.update({ where: { id: entry.bookId }, data: bookData })
-        : prisma.book.findUniqueOrThrow({ where: { id: entry.bookId } }),
-      prisma.awardEntry.update({
-        where: { id: entryId },
-        data: {
-          ...(type !== undefined && { type }),
-          ...(year !== undefined && { year }),
-          ...(awardId !== undefined && { awardId }),
-        },
-      }),
-    ]);
+    // (3) 本と受賞登録の更新は、読み取りを挟まない書き込みとして原子的に実行する
+    await updateBookAndAwardEntry({
+      bookId: entry.bookId,
+      entryId,
+      book: { title, authorId },
+      entry: { type, year, awardId },
+    });
+    const updated = await prisma.awardEntry.findUniqueOrThrow({ where: { id: entryId } });
 
     return NextResponse.json(updated);
   } catch (error) {

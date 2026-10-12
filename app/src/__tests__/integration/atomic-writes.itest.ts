@@ -9,10 +9,10 @@
 jest.mock("@/lib/session");
 
 import { NextRequest } from "next/server";
-import { testPrisma, resetDb, itFor } from "../helpers/dbTest";
+import { testPrisma, resetDb } from "../helpers/dbTest";
 import { asUser } from "../helpers/sessionMock";
 import { getRequest, jsonRequest, routeCtx } from "../helpers";
-import { atomically } from "@/lib/atomically";
+import { atomically, d1Timestamp, type AtomicStep } from "@/lib/atomically";
 import { prisma } from "@/lib/prisma";
 
 afterAll(async () => {
@@ -37,27 +37,81 @@ async function createBook(isbn: string | null) {
 }
 
 describe("atomically", () => {
-  // D1 では、atomically を D1 の batch で実行するようにするまで（#664）原子的にならないため、MySQL のみで検証する。
-  // #664 で itFor を外し、D1 でも同じ検証を行う。
-  itFor(["mysql"])("途中の書き込みが失敗すると、先の書き込みも反映されない", async () => {
+  /** ユーザーを 1 件作る書き込み（MySQL は Prisma、D1 は同じ意味の SQL）。 */
+  const insertUser = (name: string, email: string): AtomicStep => ({
+    prisma: () => prisma.user.create({ data: { name, email, role: "user" } }),
+    d1: {
+      sql: "INSERT INTO users (name, email, role, created_at) VALUES (?, ?, 'user', ?)",
+      params: [name, email, d1Timestamp()],
+    },
+  });
+
+  it("途中の書き込みが失敗すると、先の書き込みも反映されない", async () => {
     await createUser("既存", "dup@example.com");
 
     await expect(
-      atomically([
-        prisma.user.create({ data: { name: "新規", email: "new@example.com", role: "user" } }),
-        prisma.user.create({ data: { name: "重複", email: "dup@example.com", role: "user" } }),
-      ])
+      atomically([insertUser("新規", "new@example.com"), insertUser("重複", "dup@example.com")])
     ).rejects.toThrow();
 
     expect(await testPrisma.user.findUnique({ where: { email: "new@example.com" } })).toBeNull();
   });
 
-  it("すべて成功すると、すべて反映される", async () => {
-    await atomically([
-      prisma.user.create({ data: { name: "A", email: "a@example.com", role: "user" } }),
-      prisma.user.create({ data: { name: "B", email: "b@example.com", role: "user" } }),
-    ]);
+  it("すべて成功すると、すべて反映され、影響行数が返る", async () => {
+    const counts = await atomically([insertUser("A", "a@example.com"), insertUser("B", "b@example.com")]);
+
     expect(await testPrisma.user.count()).toBe(2);
+    expect(counts).toEqual([1, 1]);
+  });
+
+  it("requireRow の書き込みの対象がなければ、全体が失敗して先の書き込みも取り消される", async () => {
+    await expect(
+      atomically([
+        insertUser("新規", "new@example.com"),
+        {
+          prisma: () => prisma.user.delete({ where: { id: 999999 } }),
+          d1: { sql: "DELETE FROM users WHERE id = ?", params: [999999] },
+          requireRow: true,
+        },
+      ])
+    ).rejects.toMatchObject({ code: "P2025" });
+
+    expect(await testPrisma.user.findUnique({ where: { email: "new@example.com" } })).toBeNull();
+  });
+
+  it("requireRow の書き込みの対象があれば、通常どおり反映される", async () => {
+    const target = await createUser("対象", "target@example.com");
+
+    const [, deleted] = await atomically([
+      insertUser("新規", "new@example.com"),
+      {
+        prisma: () => prisma.user.delete({ where: { id: target.id } }),
+        d1: { sql: "DELETE FROM users WHERE id = ?", params: [target.id] },
+        requireRow: true,
+      },
+    ]);
+
+    expect(deleted).toBe(1);
+    expect(await testPrisma.user.findUnique({ where: { email: "target@example.com" } })).toBeNull();
+    expect(await testPrisma.user.findUnique({ where: { email: "new@example.com" } })).not.toBeNull();
+  });
+
+  it("複数行に影響する更新・削除は、その行数を返す", async () => {
+    await createUser("A", "a@example.com");
+    await createUser("B", "b@example.com");
+    await createUser("C", "c@example.com");
+
+    const [updated, deleted] = await atomically([
+      {
+        prisma: () => prisma.user.updateMany({ where: { email: { in: ["a@example.com", "b@example.com"] } }, data: { name: "更新" } }),
+        d1: { sql: "UPDATE users SET name = ? WHERE email IN (?, ?)", params: ["更新", "a@example.com", "b@example.com"] },
+      },
+      {
+        prisma: () => prisma.user.deleteMany({ where: { email: "c@example.com" } }),
+        d1: { sql: "DELETE FROM users WHERE email = ?", params: ["c@example.com"] },
+      },
+    ]);
+
+    expect([updated, deleted]).toEqual([2, 1]);
   });
 });
 
@@ -141,6 +195,9 @@ describe("POST /api/admin/users/[id]/reset-password", () => {
     expect(updated.password).not.toContain("dummyhash");
     const notes = await testPrisma.notification.findMany({ where: { userId: target.id } });
     expect(notes.map((n) => n.type)).toEqual(["password_reset_by_admin"]);
+    // SQL で直接保存した日時も、Prisma で Date として読める（D1 では ISO 8601 の文字列で保存する）
+    expect(Math.abs(Date.now() - notes[0].createdAt.getTime())).toBeLessThan(60_000);
+    expect(notes[0].isRead).toBe(false);
   });
 });
 
@@ -165,7 +222,10 @@ describe("DELETE /api/admin/reviews/[id]", () => {
     );
     expect(res1.status).toBe(204);
     expect(await testPrisma.review.count()).toBe(0);
-    expect(await testPrisma.notification.count({ where: { userId: owner.id, type: "review_deleted" } })).toBe(1);
+    const notice = await testPrisma.notification.findFirstOrThrow({ where: { userId: owner.id, type: "review_deleted" } });
+    expect(notice.bookIsbn).toBe("9780000000001");
+    expect(notice.bookTitle).toBe("テスト本");
+    expect(Math.abs(Date.now() - notice.createdAt.getTime())).toBeLessThan(60_000);
 
     const second = await testPrisma.review.create({
       data: { userId: owner.id, bookId: book.id, body: "二つ目の感想です。十分な長さ。" },
