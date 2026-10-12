@@ -4,6 +4,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mybooklibrary",
   "compatibility_date": "2026-10-01",
+  // 新刊チェックの Cron（毎日 UTC 00:00 = JST 09:00。AWS の EventBridge と同じ）。
+  // scheduled ハンドラは worker/index.mjs。CRON_SECRET は Worker の secret（wrangler secret put）で設定する。
+  "triggers": { "crons": ["0 0 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

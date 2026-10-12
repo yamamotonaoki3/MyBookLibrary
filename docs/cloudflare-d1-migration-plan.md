@@ -168,6 +168,12 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **環境変数と再ログイン（Workers）**: `AUTH_SECRET`（Worker の secret。**変更すると既存の JWT セッションがすべて無効になり、全員が再ログインになる**）、`AUTH_TRUST_HOST`（`true`。Workers ではホスト名を信頼する）、Google ログインを使う場合は `AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`（Worker の secret。Google Cloud のリダイレクト URI に `https://<ドメイン>/api/auth/callback/google` を登録）。セッションの Cookie 名は https で `__Secure-authjs.*`／`__Host-authjs.csrf-token` になり、**配信ドメインを変える（例: `*.workers.dev` → 独自ドメイン）と Cookie が共有されず、全員が再ログインになる**。**Google の実機でのログイン確認は、検証用の OAuth クライアントが必要なため #641 で行う**（アダプタ側の D1 動作は上記のとおり確認済み）。
 
+**実装メモ（#668・B7: Cron の Worker 対応）**: Cron Trigger の `scheduled` ハンドラを `src/lib/cronScheduler.ts`（`createScheduledHandler`）に実装した。`CRON_SECRET`（Worker の secret）を Bearer にして、Worker 内の `fetch` ハンドラを直接呼び、`GET /api/cron/check-new-books` を内部呼び出しする（HTTP を介さない）。`CRON_SECRET` 未設定、API の 2xx 以外・例外は、実行を失敗として扱う（ダッシュボードで見える）。Cloudflare の Cron は自動再試行しないが、API は重複通知を作らない冪等な作りのため、失敗は次の定時実行で回復する。ログに `CRON_SECRET` の値は出さない。カスタムエントリは `app/worker/index.mjs`（OpenNext の `worker.js` の `fetch` と Durable Object のクラスを再エクスポートし、`scheduled` を足す。wrangler の `main` への設定とビルドは P3-1）。スケジュールは `wrangler.jsonc` の `triggers.crons`（`0 0 * * *` = UTC 00:00 = JST 09:00、AWS の EventBridge と同じ）。内部リクエストの origin は変数 `CRON_TARGET_ORIGIN`（未設定なら `http://localhost`。P3-2 で設定）。AWS 側の EventBridge + Lambda（Terraform）は併存のため変更しない。
+
+- ローカルでの手動実行: `wrangler dev --test-scheduled` で起動し、`curl "http://localhost:8787/__scheduled?cron=0+0+*+*+*"`。`CRON_SECRET` は `.dev.vars`（git 管理外）に書く。**実際に wrangler で起動して確認済み**（Bearer 認証で 200、secret はログに出ない）。
+- 検証: 単体テスト（ハンドラ）と、MySQL・D1 の結合テスト（scheduled ハンドラ → 実際のルート → DB。楽天 API はスタブ）。再実行しても通知が重複しないこと、1 週間より前の本・通知 OFF の著者は対象外、新刊が 35 件でも全件作成されることを確認。
+- D1 の制約への対処: D1 は 1 回のクエリのバインドパラメータが 100 個までのため、通知の一括作成は 10 件ずつに分けた。**同じ制約を受ける他の箇所（CSV インポートの著者の一括作成、大量の `IN` 句など）は別途対応が必要**（フォローアップの Issue を起票）。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
