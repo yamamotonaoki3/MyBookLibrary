@@ -1,0 +1,331 @@
+// このファイルは自動生成です。直接編集しないでください。
+// 元: prisma/schema.prisma（MySQL 版が正）。再生成: npm run schema:d1
+// 差分の検査: npm run schema:d1:check（CI で実行）
+
+generator client {
+  provider   = "prisma-client-js"
+  output     = "../../src/generated/prisma-d1"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./d1-generate-only.db"
+}
+
+model User {
+  id                    Int              @id @default(autoincrement())
+  name                  String
+  email                 String           @unique
+  image                 String?
+  emailVerified         DateTime?        @map("email_verified")
+  password              String?
+  role                  String           @default("user")
+  loginFailCount        Int              @default(0) @map("login_fail_count")
+  lockedUntil           DateTime?        @map("locked_until")
+  secretWordHash        String?          @map("secret_word_hash")
+  secretWordFailCount   Int              @default(0) @map("secret_word_fail_count")
+  secretWordLockedUntil DateTime?        @map("secret_word_locked_until")
+  mustChangePassword    Boolean          @default(false) @map("must_change_password")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  favoriteAuthors       FavoriteAuthor[]
+  readingStatuses       ReadingStatus[]
+  reviews               Review[]
+  likes                 Like[]
+  notifications         Notification[]   @relation("NotificationRecipient")
+  actorNotifications    Notification[]   @relation("NotificationActor")
+  reports               Report[]
+  accounts              Account[]
+  sessions              Session[]
+  contactInquiries      ContactInquiry[]
+  libraries             UserLibrary[]
+  following             Follow[]         @relation("following")
+  followers             Follow[]         @relation("followers")
+  createdBooks          Book[]           @relation("BookCreatedBy")
+  auditLogs             AuditLog[]       @relation("AuditLogActor")
+
+  @@map("users")
+}
+
+model UserLibrary {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  systemid  String
+  libkey    String   @default("")
+  name      String
+  pref      String
+  city      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, systemid, libkey])
+  @@map("user_libraries")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            Int     @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       Int      @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Author {
+  id              Int              @id @default(autoincrement())
+  name            String
+  books           Book[]
+  favoriteAuthors FavoriteAuthor[]
+
+  @@map("authors")
+}
+
+model Book {
+  id                 Int                  @id @default(autoincrement())
+  authorId           Int                  @map("author_id")
+  title              String
+  isbn               String?              @unique
+  publishedAt        DateTime             @map("published_at")
+  publishedAtUnknown Boolean              @default(false) @map("published_at_unknown")
+  coverImageUrl      String?              @map("cover_image_url")
+  source             String               @default("rakuten")
+  createdByUserId    Int?                 @map("created_by_user_id")
+  author             Author               @relation(fields: [authorId], references: [id])
+  createdByUser      User?                @relation("BookCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  awardEntries       AwardEntry[]
+  readingStatuses    ReadingStatus[]
+  reviews            Review[]
+  enrichmentItems    BookEnrichmentItem[]
+  bookIsbns          BookIsbn[]
+
+  @@map("books")
+}
+
+model BookIsbn {
+  id        Int      @id @default(autoincrement())
+  bookId    Int      @map("book_id")
+  isbn      String   @unique
+  isPrimary Boolean  @default(false) @map("is_primary")
+  source    String   @default("rakuten") // "ndl" | "rakuten" | "manual"
+  createdAt DateTime @default(now()) @map("created_at")
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId])
+  @@map("book_isbns")
+}
+
+model Award {
+  id           Int          @id @default(autoincrement())
+  name         String       @unique
+  awardEntries AwardEntry[]
+
+  @@map("awards")
+}
+
+model AwardEntry {
+  id      Int    @id @default(autoincrement())
+  bookId  Int    @map("book_id")
+  awardId Int    @map("award_id")
+  year    Int
+  type    String
+  book    Book   @relation(fields: [bookId], references: [id])
+  award   Award  @relation(fields: [awardId], references: [id])
+
+  @@unique([bookId, awardId, year])
+  @@map("award_entries")
+}
+
+model FavoriteAuthor {
+  id       Int     @id @default(autoincrement())
+  userId   Int     @map("user_id")
+  authorId Int     @map("author_id")
+  notify   Boolean @default(true)
+  user     User    @relation(fields: [userId], references: [id])
+  author   Author  @relation(fields: [authorId], references: [id])
+
+  @@unique([userId, authorId])
+  @@index([authorId])
+  @@map("favorite_authors")
+}
+
+model ReadingStatus {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  bookId    Int      @map("book_id")
+  status    String   @default("unread")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id])
+  book      Book     @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+  @@map("reading_statuses")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  bookId    Int      @map("book_id")
+  body      String
+  isSpoiler Boolean  @default(false) @map("is_spoiler")
+  isPublic  Boolean  @default(true) @map("is_public")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+  book      Book     @relation(fields: [bookId], references: [id])
+  likes     Like[]
+  reports   Report[]
+
+  @@map("reviews")
+}
+
+model Like {
+  id       Int    @id @default(autoincrement())
+  userId   Int    @map("user_id")
+  reviewId Int    @map("review_id")
+  user     User   @relation(fields: [userId], references: [id])
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reviewId])
+  @@map("likes")
+}
+
+model Report {
+  id        Int      @id @default(autoincrement())
+  reviewId  Int      @map("review_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, reviewId])
+  @@map("reports")
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  type      String
+  content   String
+  actorId   Int?      @map("actor_id")
+  bookIsbn  String?   @map("book_isbn")
+  bookTitle String?   @map("book_title")
+  isRead    Boolean   @default(false) @map("is_read")
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation("NotificationRecipient", fields: [userId], references: [id])
+  actor     User?     @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, type, bookIsbn])
+  @@map("notifications")
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int      @map("follower_id")
+  followingId Int      @map("following_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  follower    User     @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+model ContactInquiry {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  email     String
+  category  String
+  subject   String
+  body      String
+  status    String   @default("open")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("contact_inquiries")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  eventType   String   @map("event_type")
+  actorUserId Int?     @map("actor_user_id")
+  actorEmail  String?  @map("actor_email")
+  targetType  String?  @map("target_type")
+  targetId    Int?     @map("target_id")
+  detail      Json?
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actorUser User? @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([eventType, createdAt])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model BookEnrichmentJob {
+  id              Int                  @id @default(autoincrement())
+  status          String               @default("pending") // pending | running | completed | failed | cancelled
+  activeSlot      String?              @unique @map("active_slot")
+  totalCount      Int                  @default(0) @map("total_count")
+  doneCount       Int                  @default(0) @map("done_count")
+  successCount    Int                  @default(0) @map("success_count")
+  failCount       Int                  @default(0) @map("fail_count")
+  reviewCount     Int                  @default(0) @map("review_count")
+  cancelRequested Boolean              @default(false) @map("cancel_requested")
+  startedByUserId Int?                 @map("started_by_user_id")
+  startedAt       DateTime?            @map("started_at")
+  finishedAt      DateTime?            @map("finished_at")
+  lastTickAt      DateTime?            @map("last_tick_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  items           BookEnrichmentItem[]
+
+  @@index([status])
+  @@map("book_enrichment_jobs")
+}
+
+model BookEnrichmentItem {
+  id           Int      @id @default(autoincrement())
+  jobId        Int      @map("job_id")
+  bookId       Int      @map("book_id")
+  status       String   @default("pending") // pending | processing | done | error | needs_review | dismissed | cancelled
+  errorMessage String? @map("error_message")
+  resultDetail Json?    @map("result_detail")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  job          BookEnrichmentJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  book         Book              @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, status])
+  @@map("book_enrichment_items")
+}

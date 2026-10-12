@@ -65,6 +65,11 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      # D1 版スキーマ（prisma/d1/schema.prisma）が MySQL 版から生成した内容と一致し、
+      # Prisma として有効であることを検査する（手編集・再生成漏れの検出）。
+      - name: D1 schema drift check
+        run: npm run schema:d1:check
+
       - name: Typecheck
         run: npm run typecheck
 

@@ -28,7 +28,9 @@
     "migration:verify": "tsx prisma/scripts/migration/verify-migration.ts",
     "migration:backfill": "tsx prisma/scripts/backfill-book-owner.ts",
     "audit:production-readonly": "tsx prisma/scripts/audit-production-readonly.ts",
-    "audit:email-normalization": "tsx prisma/scripts/audit-email-normalization.ts"
+    "audit:email-normalization": "tsx prisma/scripts/audit-email-normalization.ts",
+    "schema:d1": "tsx prisma/scripts/generate-d1-schema.ts",
+    "schema:d1:check": "tsx prisma/scripts/generate-d1-schema.ts --check && prisma validate --schema prisma/d1/schema.prisma"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
