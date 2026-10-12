@@ -9,7 +9,7 @@
 jest.mock("@/lib/session");
 
 import { NextRequest } from "next/server";
-import { testPrisma, resetDb } from "../helpers/dbTest";
+import { testPrisma, resetDb, itFor } from "../helpers/dbTest";
 import { asUser } from "../helpers/sessionMock";
 import { getRequest, jsonRequest, routeCtx } from "../helpers";
 import { atomically } from "@/lib/atomically";
@@ -37,7 +37,9 @@ async function createBook(isbn: string | null) {
 }
 
 describe("atomically", () => {
-  it("途中の書き込みが失敗すると、先の書き込みも反映されない", async () => {
+  // D1 では、atomically を D1 の batch で実行するようにするまで（#664）原子的にならないため、MySQL のみで検証する。
+  // #664 で itFor を外し、D1 でも同じ検証を行う。
+  itFor(["mysql"])("途中の書き込みが失敗すると、先の書き込みも反映されない", async () => {
     await createUser("既存", "dup@example.com");
 
     await expect(

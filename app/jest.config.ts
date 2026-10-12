@@ -57,6 +57,22 @@ const config: Config = {
       // 開発用DBへ誤って migrate してしまう事故を防ぐガードを含む。
       globalSetup: "<rootDir>/jest.global-setup.integration.ts",
     },
+    {
+      // 同じ結合テストを、ローカルの D1（miniflare）に対して実行する（DB_PROVIDER=d1）。
+      // MySQL 専用のテストは describeFor / itFor（helpers/dbTest）で除外する。
+      ...shared,
+      displayName: "integration-d1",
+      testEnvironment: "node",
+      testMatch: ["<rootDir>/src/__tests__/integration/**/*.itest.ts"],
+      setupFiles: [...shared.setupFiles, "<rootDir>/jest.setup.integration-d1.ts"],
+      moduleNameMapper: {
+        ...shared.moduleNameMapper,
+        // @prisma/adapter-d1 が読み込む ESM 専用の ky は、バインディング版では使われないためスタブにする
+        "^ky$": "<rootDir>/src/__tests__/helpers/kyStub.ts",
+      },
+      globalSetup: "<rootDir>/jest.global-setup.integration-d1.ts",
+      globalTeardown: "<rootDir>/jest.global-teardown.integration-d1.ts",
+    },
   ],
   // .tsx（未テストのコンポーネント・ページ）も含めて測定する。含めないと
   // 「テストが無いファイルほど分母に入らず数字が良く見える」状態になる。

@@ -8,10 +8,18 @@ import { createPerBindingProxy } from "@/lib/perBindingProxy";
  * Workers で動くよう、エンジン不要（wasm）の生成物を使う（`engineType = "client"`。docs/cloudflare-d1-migration-plan.md §4-7）。
  * 生成: `npm run prisma:generate:d1`（postinstall でも実行される）。
  */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PrismaClient: D1PrismaClient } = require("@/generated/prisma-d1/wasm") as {
-  PrismaClient: new (options: { adapter: unknown; log?: string[] }) => unknown;
-};
+type D1ClientModule = { PrismaClient: new (options: { adapter: unknown; log?: string[] }) => unknown };
+
+// 実行環境（D1_RUNTIME）で読み込む生成物を選ぶ。値はビルド時に埋め込まれ、使わない側はバンドルから除かれる。
+//   - workers（既定）… Workers 向けの wasm エントリ。
+//   - node … Node.js 上のテスト・スクリプト向け（miniflare のローカル D1 に接続する結合テスト等）。
+const { PrismaClient: D1PrismaClient } = (
+  process.env.D1_RUNTIME === "node"
+    ? // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("@/generated/prisma-d1")
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("@/generated/prisma-d1/wasm")
+) as D1ClientModule;
 
 /**
  * D1 用クライアントを、MySQL 版の `PrismaClient` 型として返す。

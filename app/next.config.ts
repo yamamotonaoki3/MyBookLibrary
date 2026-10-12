@@ -28,6 +28,7 @@ const nextConfig: NextConfig = {
   // 接続先の DB（mysql / d1）をビルド時に埋め込む。使わない側の実装はバンドルから除かれる（src/lib/prisma.ts）。
   env: {
     DB_PROVIDER: process.env.DB_PROVIDER ?? "mysql",
+    D1_RUNTIME: process.env.D1_RUNTIME ?? "workers",
   },
   output: "standalone",
   devIndicators: false,
