@@ -126,9 +126,10 @@ export async function POST(request: NextRequest) {
 
     const missingAuthors = authorNames.filter((n) => !authorMap.has(n));
     if (missingAuthors.length > 0) {
+      // authors.name には一意制約がなく、skipDuplicates は実質的に効かなかった（主キーは自動採番）。
+      // SQLite（D1）が skipDuplicates に対応していないため外した。挙動は変わらない。
       await prisma.author.createMany({
         data: missingAuthors.map((name) => ({ name })),
-        skipDuplicates: true,
       });
       const newAuthors = await prisma.author.findMany({
         where: { name: { in: missingAuthors } },

@@ -162,6 +162,8 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **実装メモ（#664・B4a: `atomically` の D1 実装）**: `atomically(steps)` は、各書き込みを `{ prisma, d1 }` の組（MySQL では Prisma の操作、D1 では**同じ意味の SQL**）で受け取り、MySQL は `$transaction` の配列形式、D1 は D1 の `batch`（1 つでも失敗すれば全体を取り消す）で実行して影響行数を返す。Prisma は D1 の複数文を原子化できず、操作から SQL を取り出す公式の手段もないため、SQL は手書きし、**両 DB の結合テスト（B5）で 2 つの表現が同じ結果になること**を担保する。Prisma を直接呼ぶ処理は repositories に置いた（`followRepository`・`passwordResetRepository`・`reviewModerationRepository`・`awardEntryRepository`・`manualBookRepository`・`userDeletionRepository`）。D1 の日時は ISO 8601 の文字列（Prisma と同じ形式）で保存する。ESLint の `no-restricted-syntax` で、`atomically.ts` 以外での `$transaction` の利用をエラーにしている（D1 で非原子的に実行されるため）。
 
+**実装メモ（#665・B4b: `skipDuplicates`）**: `createMany({ skipDuplicates: true })` は SQLite（D1）で使えないため、2 箇所を書き換えた。①CSV インポートの著者の一括作成は、`authors.name` に一意制約がなく `skipDuplicates` が実質的に効いていなかったため、指定を外した（挙動は不変）。②いいねの通知は、`notificationRepository.createNotificationIfAbsent`（作成して、一意制約違反〔P2002〕なら無視する。既存の通知は変更しない）に置き換えた。P2002 の判定は `isUniqueConstraintError`（`src/lib/prismaErrors.ts`。MySQL 用・D1 用どちらの生成クライアントのエラーも `code` で判定）に共通化した。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
