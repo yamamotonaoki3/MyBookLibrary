@@ -164,6 +164,10 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 
 **実装メモ（#665・B4b: `skipDuplicates`）**: `createMany({ skipDuplicates: true })` は SQLite（D1）で使えないため、2 箇所を書き換えた。①CSV インポートの著者の一括作成は、`authors.name` に一意制約がなく `skipDuplicates` が実質的に効いていなかったため、指定を外した（挙動は不変）。②いいねの通知は、`notificationRepository.createNotificationIfAbsent`（作成して、一意制約違反〔P2002〕なら無視する。既存の通知は変更しない）に置き換えた。P2002 の判定は `isUniqueConstraintError`（`src/lib/prismaErrors.ts`。MySQL 用・D1 用どちらの生成クライアントのエラーも `code` で判定）に共通化した。
 
+**実装メモ（#667・B6: 認証の D1 対応）**: Credentials ログインは Prisma 経由のため D1 でそのまま動く（B5 の結合テストで確認）。Google ログイン用の NextAuth アダプタ（`createAdapter`）も、結合テストを MySQL・D1 の両方で実行して同じ結果になることを確認した（ユーザー作成〔メール小文字化〕、メール検索、連携、アカウントからの取得、更新、削除のカスケード）。この検証で、`getUserByAccount` だけユーザー ID が数値のまま返る既存の不整合が見つかり、他の関数と同じく文字列にそろえた。`proxy.ts` の `matcher` から `api/auth` を除外した（OpenNext では proxy の Cookie がルートの Cookie の後ろに付き、`MissingCSRF` になるため。`api/auth` は認証不要の公開パスで、AWS 側の挙動は変わらない。除外の範囲は単体テストで固定）。ESM 専用の `@auth/prisma-adapter` を Jest で読み込むため、このパッケージだけ CommonJS へ変換する設定を `jest.config.ts` に追加した。
+
+**環境変数と再ログイン（Workers）**: `AUTH_SECRET`（Worker の secret。**変更すると既存の JWT セッションがすべて無効になり、全員が再ログインになる**）、`AUTH_TRUST_HOST`（`true`。Workers ではホスト名を信頼する）、Google ログインを使う場合は `AUTH_GOOGLE_ID`・`AUTH_GOOGLE_SECRET`（Worker の secret。Google Cloud のリダイレクト URI に `https://<ドメイン>/api/auth/callback/google` を登録）。セッションの Cookie 名は https で `__Secure-authjs.*`／`__Host-authjs.csrf-token` になり、**配信ドメインを変える（例: `*.workers.dev` → 独自ドメイン）と Cookie が共有されず、全員が再ログインになる**。**Google の実機でのログイン確認は、検証用の OAuth クライアントが必要なため #641 で行う**（アダプタ側の D1 動作は上記のとおり確認済み）。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
