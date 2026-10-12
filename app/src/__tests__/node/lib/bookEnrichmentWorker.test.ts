@@ -117,8 +117,7 @@ describe("processEnrichmentJob", () => {
     prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
     prismaMock.bookIsbn.create.mockResolvedValue({});
     prismaMock.bookIsbn.findUnique.mockResolvedValue({ bookId: 1, isbn: "9784000000001" });
-    prismaMock.bookIsbn.updateMany.mockResolvedValue({});
-    prismaMock.bookIsbn.update.mockResolvedValue({});
+    prismaMock.$executeRaw.mockResolvedValue(1);
     prismaMock.bookIsbn.findMany.mockResolvedValue([{ isbn: "9784000000001" }]);
 
     await processEnrichmentJob(1);
@@ -127,10 +126,8 @@ describe("processEnrichmentJob", () => {
     expect(prismaMock.bookIsbn.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000001" }) })
     );
-    expect(prismaMock.bookIsbn.update).toHaveBeenCalledWith({
-      where: { isbn: "9784000000001" },
-      data: { isPrimary: true },
-    });
+    // 代表ISBNの付け替えは 1 つの UPDATE 文（タグ付きテンプレート）で行われる
+    expect(prismaMock.$executeRaw).toHaveBeenCalledWith(expect.anything(), "9784000000001", 1, "9784000000001", 1);
   });
 
   it("候補が単一（NDL単行本由来）の場合も自動反映する", async () => {
@@ -282,8 +279,7 @@ describe("processEnrichmentJob", () => {
     prismaMock.bookEnrichmentItem.update.mockResolvedValue({});
     prismaMock.bookIsbn.create.mockResolvedValue({});
     prismaMock.bookIsbn.findUnique.mockResolvedValue({ bookId: 1, isbn: "9784000000099" });
-    prismaMock.bookIsbn.updateMany.mockResolvedValue({});
-    prismaMock.bookIsbn.update.mockResolvedValue({});
+    prismaMock.$executeRaw.mockResolvedValue(1);
 
     await processEnrichmentJob(1);
 
@@ -297,10 +293,8 @@ describe("processEnrichmentJob", () => {
       expect.objectContaining({ data: expect.objectContaining({ bookId: 1, isbn: "9784000000100" }) })
     );
     // 元々のISBNが代表として同期される
-    expect(prismaMock.bookIsbn.update).toHaveBeenCalledWith({
-      where: { isbn: "9784000000099" },
-      data: { isPrimary: true },
-    });
+    // 代表ISBNの付け替えは 1 つの UPDATE 文（タグ付きテンプレート）で行われる
+    expect(prismaMock.$executeRaw).toHaveBeenCalledWith(expect.anything(), "9784000000099", 1, "9784000000099", 1);
     // 遡及登録のみでも成功（done）として扱われる
     expect(prismaMock.bookEnrichmentItem.update).toHaveBeenCalledWith({
       where: { id: 10 },
