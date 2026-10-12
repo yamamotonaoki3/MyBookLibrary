@@ -9,7 +9,8 @@
     "seed": "tsx prisma/seed.ts"
   },
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && prisma generate --schema prisma/d1/schema.prisma",
+    "prisma:generate:d1": "prisma generate --schema prisma/d1/schema.prisma",
     "dev": "next dev",
     "build": "next build --webpack",
     "test": "jest --selectProjects node jsdom",
@@ -39,6 +40,7 @@
     "@auth/prisma-adapter": "^2.11.2",
     "@base-ui/react": "^1.5.0",
     "@ducanh2912/next-pwa": "^10.2.9",
+    "@prisma/adapter-d1": "^6.19.3",
     "@prisma/client": "6.19.3",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

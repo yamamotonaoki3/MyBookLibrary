@@ -156,6 +156,8 @@ AWS（EC2 / RDS / CloudFront）の費用が発生するようになったため�
 - 注意: Prisma が SQLite のテーブル再作成（`PRAGMA foreign_keys=OFF` を含む）を出した場合、D1 では `PRAGMA defer_foreign_keys = on;` に置き換える（`new` が警告する）。
 - 構造の同等性の確認（ベースライン適用後）: テーブル 21 件、索引 24 件（一意性を含む）、外部キー 26 件（削除時の動作を含む）が MySQL 版と一致。MySQL が外部キーのために自動作成する索引 14 件は SQLite では不要。
 
+**実装メモ（#663・B3: Prisma クライアントの DB 切替）**: `src/lib/prisma.ts` が `DB_PROVIDER`（`mysql`〔既定〕／`d1`）で接続先を選ぶ。値はビルド時に `next.config.ts` の `env` で埋め込まれ、使わない側（D1 なら `prismaD1.ts`・`@prisma/adapter-d1`・D1 用クライアント）は MySQL 向けのバンドルに含まれない（本番ビルドで確認）。D1 は `getD1Binding()`（Workers では OpenNext が設定するグローバルのコンテキストの `env.DB`、Node のスクリプト／テストでは `registerD1Binding` で登録）から取得し、`createPerBindingProxy` が `prisma.xxx` へのアクセスのたびにバインディングを解決して、同じバインディングならクライアントを使い回し、変われば作り直す。D1 用クライアントは `src/generated/prisma-d1`（`postinstall` と `npm run prisma:generate:d1` で生成）。2 つの生成クライアントの型は相互に代入できないため、共通の型（MySQL 版の `PrismaClient`）へのキャストは `prismaD1.ts` の 1 か所に集約した。ローカルの D1（miniflare）に対する検証では、作成・取得・一意制約違反（`P2002`）・include・日本語と絵文字・DateTime・upsert・Json・外部キー制約が動作した。Workers 上での動作は Phase 0 で確認済みで、ビルドへの組み込みは B8 で行う。
+
 ### 4-5. 案 E（Hyperdrive ＋ 外部 DB）の概要と費用
 
 | 項目 | 内容 |
