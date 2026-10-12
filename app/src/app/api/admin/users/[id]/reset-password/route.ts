@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { atomically } from "@/lib/atomically";
+import { applyAdminPasswordReset } from "@/repositories/passwordResetRepository";
 import { requireAdminSession } from "@/lib/session";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 import { NextRequest, NextResponse } from "next/server";
@@ -51,28 +51,13 @@ export async function POST(
   const tempPassword = generateTempPassword();
   const hashed = await bcrypt.hash(tempPassword, 12);
 
-  // パスワード更新と通知作成のどちらかが失敗して一時パスワードが失われる
-  // （＝管理者も本人も新しいパスワードを知りえずロックアウトする）事態を防ぐため、
-  // 一つのトランザクションとして実行する
-  await atomically([
-    prisma.user.update({
-      where: { id: targetId },
-      data: {
-        password: hashed,
-        mustChangePassword: true,
-        loginFailCount: 0,
-        lockedUntil: null,
-      },
-    }),
-    prisma.notification.create({
-      data: {
-        userId: targetId,
-        type: "password_reset_by_admin",
-        content:
-          "管理者によりパスワードがリセットされました。管理者から伝えられた一時パスワードでログインし、パスワードを再設定してください。",
-      },
-    }),
-  ]);
+  // パスワード更新と通知作成は、片方だけ失敗するとロックアウトするため原子的に実行する
+  await applyAdminPasswordReset({
+    userId: targetId,
+    passwordHash: hashed,
+    noticeContent:
+      "管理者によりパスワードがリセットされました。管理者から伝えられた一時パスワードでログインし、パスワードを再設定してください。",
+  });
 
   await recordAuditEvent({
     eventType: AUDIT_EVENT.ADMIN_PASSWORD_RESET_FORCED,

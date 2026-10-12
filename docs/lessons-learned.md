@@ -212,6 +212,20 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - **状態**: 有効
 - **根拠**: Issue #648
 
+### 2026-10-12: Prisma の単一レコード操作は「対象がなければ例外」で全体を取り消す。SQL に置き換えるときは同じ失敗を再現する
+
+- **種別**: Codex レビュー指摘の採用（P2）
+- **対象領域・関連ファイル**: backend / `app/src/lib/atomically.ts`, `app/src/lib/atomicallyD1.ts`, `app/src/repositories/*`
+- **何が起きたか**:
+  - `atomically` を D1 の `batch` で実行するため、Prisma の操作を手書きの SQL に置き換えた。Prisma の `update` / `delete` は対象の行がないと例外（P2025）になりトランザクション全体が取り消されるが、SQL の `UPDATE` / `DELETE` は 0 件でも成功する。事前確認の後に対象が消えると、他の書き込みだけが確定する退行になっていた。
+- **対応**:
+  - 単一レコードの書き込みに `requireRow` を付け、直後に「直前の変更行数（`changes()`）が 0 なら `json('x')` で例外にする」文を batch に挟んで、全体を取り消すようにした。MySQL・D1 の両方で、取り消しをテストで確認した。
+- **次回の行動規則**:
+  - ORM の操作を SQL に置き換えるときは、成功時の結果だけでなく、**失敗の仕方（対象なし・一意制約違反・外部キー違反）も同じになる**ことを両方の DB のテストで確かめる。
+  - D1 の `batch` の中で条件を検査したいときは、`changes()` と、失敗する式（`json('x')` 等）を組み合わせる。
+- **状態**: 有効
+- **根拠**: Issue #664
+
 デバッグ手法として有効だったもの（参考）:
 - `window.fetch`をモンキーパッチして実際に飛んだリクエストのURL/methodをログする。chrome-devtools MCPの`navigate_page`の`initScript`パラメータを使うとページ読み込み前・アプリコードより先に仕込める。
 - `console.log`を一時的に仕込み、`list_console_messages`に`includePreservedMessages: true`を付けて確認する（reloadやSPA遷移でconsoleがクリアされるため、これを付けないと過去のログが消えて見えない）。

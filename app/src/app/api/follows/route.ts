@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
-import { atomically } from "@/lib/atomically";
+import { removeFollow } from "@/repositories/followRepository";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { logger } from "@/lib/logger";
 
@@ -132,22 +132,12 @@ export async function DELETE(request: NextRequest) {
     });
 
     // 読み取り結果（followedBack）は事前に取得済みのため、書き込みだけを原子的に実行する
-    await atomically([
-      prisma.follow.delete({ where: { id: existing.id } }),
-      ...(followedBack
-        ? [
-            prisma.notification.deleteMany({
-              where: {
-                type: { in: ["mutual_favorite_author", "mutual_want_to_read"] },
-                OR: [
-                  { userId, actorId: targetUserId },
-                  { userId: targetUserId, actorId: userId },
-                ],
-              },
-            }),
-          ]
-        : []),
-    ]);
+    await removeFollow({
+      followId: existing.id,
+      userId,
+      targetUserId,
+      wasMutual: followedBack !== null,
+    });
 
     return NextResponse.json({ following: false });
   } catch (e) {
