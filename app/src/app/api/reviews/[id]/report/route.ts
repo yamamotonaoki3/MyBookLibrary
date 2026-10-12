@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
+import { createNotificationsInChunks } from "@/repositories/notificationRepository";
 
 
 type Params = { params: Promise<{ id: string }> };
@@ -34,15 +35,15 @@ export async function POST(_req: Request, { params }: Params) {
       select: { id: true },
     });
     if (review && admins.length > 0) {
-      await prisma.notification.createMany({
-        data: admins.map((admin) => ({
+      await createNotificationsInChunks(
+        admins.map((admin) => ({
           userId: admin.id,
           type: "report",
           content: `「${review.book.title}」のレビューが通報されました。`,
           bookIsbn: review.book.isbn ?? null,
           bookTitle: review.book.title,
-        })),
-      });
+        }))
+      );
     }
 
     return Response.json({ reported: true });

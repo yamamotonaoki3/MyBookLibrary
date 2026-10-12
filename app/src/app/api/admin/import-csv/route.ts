@@ -5,6 +5,7 @@ import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
+import { flatMapInChunks, uniqueBy } from "@/lib/chunk";
 
 type ParsedRow = {
   title: string;
@@ -118,10 +119,9 @@ export async function POST(request: NextRequest) {
 
     // 著者を一括取得・不足分を一括作成
     const authorNames = [...new Set(parsedRows.map((p) => p.row.normalizedAuthor))];
-    const existingAuthors = await prisma.author.findMany({
-      where: { name: { in: authorNames } },
-      select: { id: true, name: true },
-    });
+    const existingAuthors = await flatMapInChunks(authorNames, (part) =>
+      prisma.author.findMany({ where: { name: { in: part } }, select: { id: true, name: true } })
+    );
     const authorMap = new Map(existingAuthors.map((a) => [a.name, a.id]));
 
     const missingAuthors = authorNames.filter((n) => !authorMap.has(n));
@@ -131,20 +131,28 @@ export async function POST(request: NextRequest) {
       await prisma.author.createMany({
         data: missingAuthors.map((name) => ({ name })),
       });
-      const newAuthors = await prisma.author.findMany({
-        where: { name: { in: missingAuthors } },
-        select: { id: true, name: true },
-      });
+      const newAuthors = await flatMapInChunks(missingAuthors, (part) =>
+        prisma.author.findMany({ where: { name: { in: part } }, select: { id: true, name: true } })
+      );
       for (const a of newAuthors) authorMap.set(a.name, a.id);
     }
 
     // 書籍を一括取得
     const isbns = parsedRows.map((p) => p.row.isbn).filter((v): v is string => v !== null);
     const titles = parsedRows.map((p) => p.row.title);
-    const existingBooks = await prisma.book.findMany({
-      where: { OR: [{ isbn: { in: isbns } }, { title: { in: titles } }] },
-      select: { id: true, isbn: true, title: true, authorId: true },
-    });
+    // D1 のバインドパラメータの上限（100 個）を超えないよう、ISBN とタイトルを分割して検索し、結果を統合する
+    const bookSelect = { id: true, isbn: true, title: true, authorId: true } as const;
+    const existingBooks = uniqueBy(
+      [
+        ...(await flatMapInChunks(isbns, (part) =>
+          prisma.book.findMany({ where: { isbn: { in: part } }, select: bookSelect })
+        )),
+        ...(await flatMapInChunks(titles, (part) =>
+          prisma.book.findMany({ where: { title: { in: part } }, select: bookSelect })
+        )),
+      ],
+      (b) => b.id
+    );
     const bookByIsbn = new Map(existingBooks.filter((b) => b.isbn).map((b) => [b.isbn, b]));
     const bookByTitleAuthor = new Map(
       existingBooks.map((b) => [`${b.title}::${b.authorId}`, b])

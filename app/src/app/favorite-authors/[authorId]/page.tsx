@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { deduplicateByTitle, searchBooks } from "@/lib/rakuten";
+import { flatMapInChunks, uniqueBy } from "@/lib/chunk";
 import { BookStatusCard } from "./_components/BookStatusCard";
 import { SearchInput } from "./_components/SearchInput";
 import type { AuthorBook } from "@/types/author";
@@ -44,30 +45,35 @@ async function BookList({
     : allBooks;
 
   const isbnList = filteredBooks.map((b) => b.isbn).filter(Boolean);
-  const dbBooks = await prisma.book.findMany({
-    where: {
-      OR: [
-        { isbn: { in: isbnList } },
-        { authorId, title: { in: filteredBooks.map((b) => b.title) } },
-      ],
+  // 楽天の検索結果の件数に比例して条件が増え、D1 のバインドパラメータの上限（100 個）を超えるため、分割して検索し結果を統合する
+  const dbBookSelect = {
+    id: true,
+    isbn: true,
+    title: true,
+    readingStatuses: {
+      where: { userId },
+      select: { status: true },
     },
-    select: {
-      id: true,
-      isbn: true,
-      title: true,
-      readingStatuses: {
-        where: { userId },
-        select: { status: true },
-      },
-      reviews: {
-        where: { userId },
-        select: { id: true },
-      },
-      awardEntries: {
-        select: { year: true, type: true, award: { select: { name: true } } },
-      },
+    reviews: {
+      where: { userId },
+      select: { id: true },
     },
-  });
+    awardEntries: {
+      select: { year: true, type: true, award: { select: { name: true } } },
+    },
+  } as const;
+  const dbBooks = uniqueBy(
+    [
+      ...(await flatMapInChunks(isbnList, (part) =>
+        prisma.book.findMany({ where: { isbn: { in: part } }, select: dbBookSelect })
+      )),
+      ...(await flatMapInChunks(
+        filteredBooks.map((b) => b.title),
+        (part) => prisma.book.findMany({ where: { authorId, title: { in: part } }, select: dbBookSelect })
+      )),
+    ],
+    (b) => b.id
+  );
 
   const bookByIsbn = new Map(dbBooks.filter((b) => b.isbn).map((b) => [b.isbn, b]));
   const bookByTitle = new Map(dbBooks.map((b) => [b.title, b]));

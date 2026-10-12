@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import { BookOpen, Star, TrendingUp, Clock, ThumbsUp } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { countReadBooks } from "@/lib/readingProgress";
 import { auth } from "@/auth";
 import { getRecentReads } from "@/backend/dashboard/recentReads";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,9 +26,7 @@ export default async function Home() {
     awards.map(async (award) => {
       const bookIds = award.awardEntries.map((e) => e.bookId);
       const total = bookIds.length;
-      const read = await prisma.readingStatus.count({
-        where: { userId: userId, status: "read", bookId: { in: bookIds } },
-      });
+      const read = await countReadBooks(userId, bookIds);
       const pct = total > 0 ? Math.round((read / total) * 100) : 0;
       return { id: award.id, name: award.name, total, read, pct };
     })
@@ -36,9 +35,7 @@ export default async function Home() {
   const allBookIds = awards.flatMap((a) => a.awardEntries.map((e) => e.bookId));
   const uniqueBookIds = [...new Set(allBookIds)];
   const totalAll = uniqueBookIds.length;
-  const readAll = await prisma.readingStatus.count({
-    where: { userId: userId, status: "read", bookId: { in: uniqueBookIds } },
-  });
+  const readAll = await countReadBooks(userId, uniqueBookIds);
   const pctAll = totalAll > 0 ? Math.round((readAll / totalAll) * 100) : 0;
 
   const favoriteAuthors = await prisma.favoriteAuthor.findMany({
@@ -68,10 +65,13 @@ export default async function Home() {
   });
 
   const favoriteAuthorIds = new Set(favoriteAuthors.map((fa) => fa.authorId));
-  const othersStatuses = await prisma.readingStatus.findMany({
-    where: { userId: userId, book: { authorId: { notIn: [...favoriteAuthorIds] } } },
-    select: { status: true },
-  });
+  // お気に入り著者の数に比例する `notIn` は D1 の上限に当たるため、読書状況を取得してから除外する
+  const othersStatuses = (
+    await prisma.readingStatus.findMany({
+      where: { userId: userId },
+      select: { status: true, book: { select: { authorId: true } } },
+    })
+  ).filter((s) => !favoriteAuthorIds.has(s.book.authorId));
   const othersTotal = othersStatuses.length;
   const othersRead = othersStatuses.filter((s) => s.status === "read").length;
   const othersPct = othersTotal > 0 ? Math.round((othersRead / othersTotal) * 100) : 0;

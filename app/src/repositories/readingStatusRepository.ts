@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { createNotificationsInChunks } from "@/repositories/notificationRepository";
 
 export type ReadingStatusValue = "unread" | "want_to_read" | "reading" | "read";
 
@@ -62,5 +63,5 @@ export function findUserName(userId: number) {
 }
 
 export function createNotifications(data: Prisma.NotificationCreateManyInput[]) {
-  return prisma.notification.createMany({ data });
+  return createNotificationsInChunks(data);
 }

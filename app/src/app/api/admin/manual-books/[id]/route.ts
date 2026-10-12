@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { chunk } from "@/lib/chunk";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 type Props = { params: Promise<{ id: string }> };
@@ -71,8 +72,11 @@ export async function DELETE(request: NextRequest, { params }: Props) {
 
     const reviews = await prisma.review.findMany({ where: { bookId }, select: { id: true } });
     const reviewIds = reviews.map((r) => r.id);
-    await prisma.like.deleteMany({ where: { reviewId: { in: reviewIds } } });
-    await prisma.report.deleteMany({ where: { reviewId: { in: reviewIds } } });
+    // レビュー数に比例して `IN` の値が増え、D1 のバインドパラメータの上限（100 個）を超えるため、分割して削除する
+    for (const part of chunk(reviewIds)) {
+      await prisma.like.deleteMany({ where: { reviewId: { in: part } } });
+      await prisma.report.deleteMany({ where: { reviewId: { in: part } } });
+    }
     await prisma.review.deleteMany({ where: { bookId } });
     await prisma.readingStatus.deleteMany({ where: { bookId } });
     await prisma.awardEntry.deleteMany({ where: { bookId } });

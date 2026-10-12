@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma";
 import { isUniqueConstraintError } from "@/lib/prismaErrors";
+import { flatMapInChunks } from "@/lib/chunk";
 
 
 export type BookIsbnCandidate = {
@@ -129,20 +130,24 @@ export async function replaceIsbns(
 
   const targetIsbns = [...deduped.keys()];
   const [bookIsbnConflicts, legacyBookConflicts] = await Promise.all([
-    tx.bookIsbn.findMany({
-      where: {
-        isbn: { in: targetIsbns },
-        bookId: { not: bookId },
-      },
-      select: { isbn: true },
-    }),
-    tx.book.findMany({
-      where: {
-        id: { not: bookId },
-        isbn: { in: targetIsbns },
-      },
-      select: { isbn: true },
-    }),
+    flatMapInChunks(targetIsbns, (part) =>
+      tx.bookIsbn.findMany({
+        where: {
+          isbn: { in: part },
+          bookId: { not: bookId },
+        },
+        select: { isbn: true },
+      })
+    ),
+    flatMapInChunks(targetIsbns, (part) =>
+      tx.book.findMany({
+        where: {
+          id: { not: bookId },
+          isbn: { in: part },
+        },
+        select: { isbn: true },
+      })
+    ),
   ]);
   const conflictingIsbns = new Set<string>();
   for (const { isbn } of bookIsbnConflicts) conflictingIsbns.add(isbn);

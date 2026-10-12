@@ -26,9 +26,7 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
   const authorFilter =
     !isNaN(authorIdNum) && author !== "all" && author !== "others"
       ? { book: { authorId: authorIdNum } }
-      : author === "others"
-        ? { book: { authorId: { notIn: favoriteAuthorIds } } }
-        : {};
+      : {};
 
   const statusFilter =
     status !== "all" ? { status } : {};
@@ -51,7 +49,12 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
 
   const reviewedBookIds = new Set(myReviews.map((r) => r.bookId));
 
-  if (myStatuses.length === 0) {
+  // お気に入り著者の数に比例する `notIn` は D1 のバインドパラメータの上限に当たるため、取得してから除外する
+  const favoriteAuthorIdSet = new Set(favoriteAuthorIds);
+  const visibleStatuses =
+    author === "others" ? myStatuses.filter((rs) => !favoriteAuthorIdSet.has(rs.book.authorId)) : myStatuses;
+
+  if (visibleStatuses.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         該当する本がありません。
@@ -61,7 +64,7 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {myStatuses.map((rs) => (
+      {visibleStatuses.map((rs) => (
         <BookCard
           key={rs.bookId}
           book={{

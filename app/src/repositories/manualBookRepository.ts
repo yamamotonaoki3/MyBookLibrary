@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { atomically, d1Timestamp, type AtomicStep } from "@/lib/atomically";
+import { chunk } from "@/lib/chunk";
+
+/** 受賞登録の削除 1 回あたりの（賞, 年度）の組み合わせの数。1 組で 2 個、統合元の本の ID で 1 個のバインドパラメータを使う。 */
+const AWARD_ENTRY_PAIRS_PER_DELETE = 30;
 
 /**
  * 手動登録の本（統合元）を別の本（統合先）へ統合する。
@@ -45,19 +49,20 @@ export async function mergeManualBook(params: { sourceBookId: number; targetBook
   ];
 
   // AwardEntry: 統合先に同一の賞・年度の組み合わせが既にあれば統合元の行を破棄し、残りを付け替える
-  if (targetEntries.length > 0) {
+  // 組み合わせの数に比例して条件が増え、D1 のバインドパラメータの上限（100 個）を超えるため、一定数ごとの削除に分ける
+  for (const entries of chunk(targetEntries, AWARD_ENTRY_PAIRS_PER_DELETE)) {
     steps.push({
       prisma: () =>
         prisma.awardEntry.deleteMany({
           where: {
             bookId: sourceBookId,
-            OR: targetEntries.map((e) => ({ awardId: e.awardId, year: e.year })),
+            OR: entries.map((e) => ({ awardId: e.awardId, year: e.year })),
           },
         }),
       d1: {
         sql: `DELETE FROM award_entries
-              WHERE book_id = ? AND (${targetEntries.map(() => "(award_id = ? AND year = ?)").join(" OR ")})`,
-        params: [sourceBookId, ...targetEntries.flatMap((e) => [e.awardId, e.year])],
+              WHERE book_id = ? AND (${entries.map(() => "(award_id = ? AND year = ?)").join(" OR ")})`,
+        params: [sourceBookId, ...entries.flatMap((e) => [e.awardId, e.year])],
       },
     });
   }
