@@ -30,6 +30,9 @@
     "audit:production-readonly": "tsx prisma/scripts/audit-production-readonly.ts",
     "audit:email-normalization": "tsx prisma/scripts/audit-email-normalization.ts",
     "schema:d1": "tsx prisma/scripts/generate-d1-schema.ts",
+    "d1:migration:new": "tsx prisma/scripts/d1-migration.ts new",
+    "d1:migration:check": "tsx prisma/scripts/d1-migration.ts check",
+    "d1:migrate:local": "wrangler d1 migrations apply mybooklibrary-db --local",
     "schema:d1:check": "tsx prisma/scripts/generate-d1-schema.ts --check && prisma validate --schema prisma/d1/schema.prisma"
   },
   "dependencies": {
@@ -76,6 +79,7 @@
     "tailwindcss": "^4",
     "ts-jest": "^29.4.11",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.149.0"
   }
 }
