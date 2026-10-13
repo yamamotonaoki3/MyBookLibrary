@@ -80,7 +80,8 @@ describe("POST /api/admin/import-csv（行数が多い CSV）", () => {
     expect(await testPrisma.book.count()).toBe(MANY);
     expect(await testPrisma.author.count()).toBe(MANY);
     expect(await testPrisma.awardEntry.count()).toBe(MANY);
-  });
+    // 150 行の CSV を 2 回取り込むため、混み合った CI では、既定の 5 秒を超えることがある（#712）
+  }, 30_000);
 });
 
 describe("countReadBooks", () => {
