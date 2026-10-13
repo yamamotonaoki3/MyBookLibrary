@@ -31,6 +31,13 @@ ls prisma/scripts/migration/dumps                # dump_20261011T145445Z.sql.enc
 npx wrangler d1 create mybooklibrary-rehearsal-db
 ```
 
+対話の質問には、次のように答える。
+
+- 設定ファイルに追記するか → **no**（一時的な設定ファイルを使うため、`wrangler.jsonc` は変更しない）
+- ローカル開発でリモートに接続するか → **N**（既定のまま Enter）
+
+**`d1 create` は、同じ名前でも何度でも作れてしまう**（2 回実行すると、同じ名前の D1 が 2 つできる）。1 回だけ実行し、やり直すときは先にダッシュボードで消す。
+
 出力された `database_id`（UUID）を控える（秘密情報ではない）。次に、マイグレーションを適用するための一時的な設定ファイルを作る（`app/.wrangler/` は Git の対象外）。`<ID>` を置き換える。
 
 ```bash
@@ -180,6 +187,18 @@ unset MIGRATION_SOURCE_DATABASE_URL
 
 受け入れ基準: 匿名化ダンプで移行・検証が成功した／所要時間を記録した／やり直し手順を確認した。
 
+## 実施結果（2026-10-13）
+
+| 項目 | 1 回目 | 2 回目（やり直し後） |
+| --- | --- | --- |
+| 移行 + 続けての照合 | 2 分 56 秒 | 4 分 40 秒 |
+| 空にする（`reset`） | — | 11 秒 |
+| 照合のみ（`verify`） | 1 分 57 秒 | — |
+| 照合の結果 | 173 項目すべて成功 | 173 項目すべて成功 |
+| 件数 | 21 テーブル、14,793 件 | 同じ |
+
+実データに 0 件のテーブル: `accounts`、`sessions`、`verification_tokens`、`follows`、`reviews`、`likes`、`reports`、`contact_inquiries`（OAuth・レビュー・フォロー・手動登録本は、実データでは確認できない。架空データでの検証は、結合テストで済み）。最終投入（#691）の所要時間は、5 分前後を見込む。
+
 ## つまずいたとき
 
 | 症状 | 原因と対処 |
@@ -191,3 +210,5 @@ unset MIGRATION_SOURCE_DATABASE_URL
 | 「リモートの D1 の名前と ID の両方が必要」 | `--d1-name` と `--d1-id` の両方を指定する |
 | 本番 D1 のエラー（`--confirm-production`） | 名前か ID が本番のものになっている。`<ID>` がリハーサル用 D1 のものか確認する |
 | 認証エラー | `npx wrangler login` をやり直す |
+| `PrismaClientInitializationError`（照合・移行） | 移行元のローカル MySQL に繋がらない。Docker が止まって、コンテナも落ちていることが多い。`docker start mbl-rehearsal-mysql` で再開し、`ready for connections` を待ってから再実行する（データはコンテナに残る）。手順 2 の `docker run` に `--restart unless-stopped` を付けておくと、Docker の再起動で自動的に戻る |
+| 匿名化 SQL が照合順序（collation）のエラー | 変数とテーブルの列の比較で起きる。比較には `BINARY` を使う（修正済み） |
