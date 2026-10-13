@@ -1,7 +1,7 @@
 /**
  * MySQL → D1 のデータ移行・照合・リセット（docs/cloudflare-d1-migration-plan.md §7、#689）。
  *
- *   npm run migration:d1 -- migrate --dry-run                                  … 移行元の件数とメールの重複だけを確認（書き込まない）
+ *   npm run migration:d1 -- migrate --dry-run                                  … 移行元の件数と、メールの重複・JSON の null だけを確認（書き込まない）
  *   npm run migration:d1 -- migrate --local                                    … ローカルの D1 へ移行（リハーサルの練習。migrate のときだけ、マイグレーションも自動で適用）
  *   npm run migration:d1 -- migrate --remote --d1-name <名前> --d1-id <ID> --yes  … リモートの D1 へ移行
  *   npm run migration:d1 -- verify  <移行先の指定>                              … 移行元と移行先を照合（読み取りのみ）
@@ -25,7 +25,7 @@ import { PrismaClient as MysqlClient } from "@/generated/prisma";
 import { Prisma as D1Prisma, PrismaClient as D1Client } from "@/generated/prisma-d1";
 import { assertSourceUrlIsLocal, assertWritableTarget, safeErrorMessage } from "@/lib/migration/etl/guard";
 import { MIGRATION_TABLES } from "@/lib/migration/etl/tables";
-import { assertNoEmailCollisions, migrate, resetTarget, verifyAll, type MigrationClient } from "@/lib/migration/etl/run";
+import { assertNoEmailCollisions, assertNoJsonNullValues, migrate, resetTarget, verifyAll, type MigrationClient } from "@/lib/migration/etl/run";
 
 type Options = {
   command: string;
@@ -153,7 +153,8 @@ async function main(): Promise<void> {
     const source = openSource();
     try {
       await assertNoEmailCollisions(source.client);
-      console.log("移行元: メールアドレスの重複（小文字化後）はありません。件数:");
+      await assertNoJsonNullValues(source.client);
+      console.log("移行元: メールアドレスの重複（小文字化後）と、JSON の null はありません。件数:");
       for (const spec of MIGRATION_TABLES) console.log(`  ${spec.table}: ${await source.client[spec.model].count()} 件`);
       console.log("\n--dry-run のため、書き込みは行っていません。");
     } finally {

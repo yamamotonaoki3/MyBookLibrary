@@ -157,5 +157,5 @@ npm run migration:d1 -- reset  --remote --d1-name <名前> --d1-id <ID> --yes
 - 本番の D1 は、**名前（`mybooklibrary-db`）でも ID（`wrangler.jsonc` のトップレベルの `database_id`）でも**、`--confirm-production mybooklibrary-db` を付けない限り拒否する。最終投入の手順は #691。
 - 移行前に、移行元の確認を自動で行う: メールの小文字化後の重複、Json 列（`audit_logs.detail`、`book_enrichment_items.result_detail`）の **JSON の `null`**（SQL の NULL とは別の値。Prisma は区別できず、移行すると SQL の NULL になるため）。どちらかがあれば、何も書かずに中断する。
 - 書き込みに失敗したときのエラーは、Prisma のメッセージに含まれる値（メールアドレス・本文など）を出さず、表名・エラーの種類・コードだけを表示する。
-- 実データを扱うため、リハーサル用の D1 には、メールアドレス・氏名の匿名化が必要になる場合がある（#690）。移行元のダンプ・復元先の MySQL は、作業後に削除する。
+- 実データを扱うため、リハーサル用の D1 には、匿名化したデータだけを入れる（手順は [docs/d1-rehearsal-runbook.md](../../../../docs/d1-rehearsal-runbook.md)、#690）。移行元のダンプ・復元先の MySQL は、作業後に削除する。
 
