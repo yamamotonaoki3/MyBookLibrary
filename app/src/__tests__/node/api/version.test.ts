@@ -3,8 +3,13 @@ import { GET } from "@/app/api/version/route";
 const CLOUDFLARE_CONTEXT = Symbol.for("__cloudflare-context__");
 const globals = globalThis as Record<symbol, unknown>;
 
+beforeEach(() => {
+  process.env.APP_VERSION = "0.1.0";
+});
+
 afterEach(() => {
   delete globals[CLOUDFLARE_CONTEXT];
+  delete process.env.APP_VERSION;
 });
 
 describe("GET /api/version", () => {
@@ -18,7 +23,7 @@ describe("GET /api/version", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({
-      version: { id: "0e771b49-5bdf-4492-b385-207c75d15f18", tag: "f64ec6c", timestamp: "2026-10-13T03:02:49.040Z" },
+      version: { name: "0.1.0", id: "0e771b49-5bdf-4492-b385-207c75d15f18", tag: "f64ec6c", timestamp: "2026-10-13T03:02:49.040Z" },
     });
   });
 

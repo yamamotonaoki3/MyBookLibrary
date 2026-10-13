@@ -146,8 +146,8 @@ async function main() {
   const versionResponse = await anonymous.request("/api/version");
   const versionBody = versionResponse.status === 200 ? await versionResponse.json() : null;
   const version = versionBody?.version ?? null;
-  check("稼働中のバージョンを取得できる（/api/version）", Boolean(version?.id), `status=${versionResponse.status}`);
-  if (version?.id) console.log(`   バージョン ID: ${version.id}  タグ（コミット）: ${version.tag ?? "なし"}  バージョン作成時刻: ${version.timestamp ?? "不明"}`);
+  check("稼働中のバージョンを取得できる（バージョン名・ID、/api/version）", /^\d+\.\d+\.\d+/.test(version?.name ?? "") && Boolean(version?.id), `status=${versionResponse.status}`);
+  if (version?.id) console.log(`   バージョン: ${version.name ?? "不明"}  ID: ${version.id}  タグ: ${version.tag ?? "なし"}  作成時刻: ${version.timestamp ?? "不明"}`);
 
   // 6. Cron API
   const cron = await anonymous.request("/api/cron/check-new-books");

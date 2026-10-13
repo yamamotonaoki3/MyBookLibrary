@@ -90,11 +90,12 @@ npx wrangler deploy
 
 ```bash
 curl https://mybooklibrary-staging.nyproducts.workers.dev/api/version
-# {"version":{"id":"<バージョン ID>","tag":"<コミット>","timestamp":"<バージョン作成時刻>"}}
+# {"version":{"name":"0.1.0","id":"<バージョン ID>","tag":"0.1.0-<コミット>","timestamp":"<バージョン作成時刻>"}}
 ```
 
-- `id`: Worker のバージョン ID。`npx wrangler deployments list`（`--env staging`）や `deployments status` に出る ID と同じ。
-- `tag`: デプロイしたコミット（先頭 7 文字）。`npm run deploy:staging` / `deploy:production` が、Workers Builds の `WORKERS_CI_COMMIT_SHA`（手元では `git rev-parse`）から付ける。ダッシュボードのバージョン一覧にも出る。
+- `name`: アプリのバージョン名（`app/package.json` の `version`。`0.1.0` など）。ビルド時に埋め込む。上げるときは、`app/` で `npm version <patch|minor|major> --no-git-tag-version` を実行するか、`package.json` を直接編集して、PR に含める。バージョン名はデプロイごとには変わらないため、**同じバージョン名でも、コミットや Worker のバージョン ID で区別する**。
+- `id`: Worker のバージョン ID。`npx wrangler deployments list`（`--env staging`）や `deployments status` に出る ID と同じ（ロールバックの確認の突き合わせに使う）。
+- `tag`: バージョン名とデプロイしたコミット（先頭 7 文字）を `-` でつないだもの（例: `0.1.0-f64ec6c`）。`npm run deploy:staging` / `deploy:production` が、Workers Builds の `WORKERS_CI_COMMIT_SHA`（手元では `git rev-parse`）から付ける。ダッシュボードのバージョン一覧にも出る。
 - `timestamp`: そのバージョンを作成した時刻（ロールバックした時刻ではない）。
 - Workers 以外（ローカル、AWS）では `{"version":null}` になる。`npm run smoke:remote` も、この値を表示する。
 - バインディング（`version_metadata`）は環境に継承されないため、`wrangler.jsonc` のステージングにも書いている。

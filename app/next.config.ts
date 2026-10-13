@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import { version as appVersion } from "./package.json";
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -29,6 +30,8 @@ const nextConfig: NextConfig = {
   env: {
     DB_PROVIDER: process.env.DB_PROVIDER ?? "mysql",
     D1_RUNTIME: process.env.D1_RUNTIME ?? "workers",
+    // アプリのバージョン（package.json の version）。GET /api/version で返す。
+    APP_VERSION: appVersion,
   },
   output: "standalone",
   // D1 向け（Cloudflare Workers）のビルドでは、Prisma の wasm を webpack に処理させず、実行時の ESM import として
