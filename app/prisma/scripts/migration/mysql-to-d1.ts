@@ -18,6 +18,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { parseArgs as parseCliArgs } from "node:util";
 import { getPlatformProxy } from "wrangler";
 import { PrismaD1 } from "@prisma/adapter-d1";
 import { PrismaClient as MysqlClient } from "@/generated/prisma";
@@ -42,24 +43,37 @@ const APP_DIR = path.resolve(__dirname, "../../..");
 const WRANGLER_CLI = path.join(APP_DIR, "node_modules/wrangler/bin/wrangler.js");
 
 function parseArgs(argv: string[]): Options {
-  const [command, ...rest] = argv;
-  const options: Options = { command, local: false, remote: false, dryRun: false, yes: false, persistTo: path.join(APP_DIR, ".wrangler/migration-rehearsal") };
-  for (let i = 0; i < rest.length; i++) {
-    const arg = rest[i];
-    if (arg === "--local") options.local = true;
-    else if (arg === "--remote") options.remote = true;
-    else if (arg === "--dry-run") options.dryRun = true;
-    else if (arg === "--yes") options.yes = true;
-    else if (arg === "--d1-name") options.d1Name = rest[++i];
-    else if (arg === "--d1-id") options.d1Id = rest[++i];
-    else if (arg === "--confirm-production") options.confirmProduction = rest[++i];
-    else if (arg === "--persist-to") options.persistTo = path.resolve(rest[++i]);
-    else throw new Error(`不明な引数です: ${arg}`);
-  }
-  if (!["migrate", "verify", "reset"].includes(command)) {
+  // 引数の定義は、Node.js 標準の util.parseArgs に任せる（未定義の引数は、エラーになる）
+  const { values, positionals } = parseCliArgs({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      local: { type: "boolean" },
+      remote: { type: "boolean" },
+      "dry-run": { type: "boolean" },
+      yes: { type: "boolean" },
+      "d1-name": { type: "string" },
+      "d1-id": { type: "string" },
+      "confirm-production": { type: "string" },
+      "persist-to": { type: "string" },
+    },
+  });
+  const [command, ...extra] = positionals;
+  if (!["migrate", "verify", "reset"].includes(command) || extra.length > 0) {
     throw new Error("使い方: mysql-to-d1.ts <migrate|verify|reset> [--dry-run] (--local | --remote --d1-name <名前> --d1-id <ID>) [--yes]");
   }
-  return options;
+  if (values["persist-to"] === "") throw new Error("--persist-to には、保存先のディレクトリを指定してください（空の値は指定できません）。");
+  return {
+    command,
+    local: values.local ?? false,
+    remote: values.remote ?? false,
+    dryRun: values["dry-run"] ?? false,
+    yes: values.yes ?? false,
+    d1Name: values["d1-name"],
+    d1Id: values["d1-id"],
+    confirmProduction: values["confirm-production"],
+    persistTo: values["persist-to"] ? path.resolve(values["persist-to"]) : path.join(APP_DIR, ".wrangler/migration-rehearsal"),
+  };
 }
 
 function openSource(): { client: MigrationClient; close: () => Promise<void> } {
