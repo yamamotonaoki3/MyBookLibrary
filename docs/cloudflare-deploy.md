@@ -98,7 +98,7 @@ npx wrangler deploy
 | `CALIL_API_KEY` | secret | 任意 | カーリル 図書館 API。蔵書検索を使うなら必須 |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | secret | 任意 | Google ログイン用。未設定でもメール+パスワードのログインは動く。ステージング・本番の URL ごとにリダイレクト URI を Google Cloud Console に登録する（下記） |
 | `ENRICHMENT_TICK_SECRET` | secret | 保留 | 書誌補完ジョブの再開用。Workers 対応の方針は #696 で決める。それまで登録不要 |
-| `AUTH_URL` / `AUTH_TRUST_HOST` / `CRON_TARGET_ORIGIN` | vars | 設定済み | secret ではなく `wrangler.jsonc` の `vars` に書いてある |
+| `AUTH_URL` / `AUTH_TRUST_HOST` / `CRON_TARGET_ORIGIN` / `RAKUTEN_ALLOWED_ORIGIN` | vars | 設定済み | secret ではなく `wrangler.jsonc` の `vars` に書いてある。`RAKUTEN_ALLOWED_ORIGIN` は楽天 API に Referer / Origin として送るドメイン（下記） |
 | `LOG_LEVEL` | vars | 任意 | 既定は `info` |
 
 `DATABASE_URL` は不要（Workers では D1 のバインディング `DB` を使う）。
@@ -127,6 +127,19 @@ npx wrangler secret list
 ```
 
 注意: Worker がまだ存在しない状態で `secret put` すると、先に空の Worker を作るかどうかを聞かれる。上の「初回の手順」で Worker を作成してから登録する。
+
+### 楽天ブックス API のアプリ登録（許可された Web サイト）
+
+楽天 Web Service のアプリ登録で、次を入力する。アプリタイプは「Web アプリケーション」（「API バックエンドサービス」は許可 IP の登録で、Workers の送信元 IP は固定できないため使わない）。
+
+| 項目 | 入力 |
+|---|---|
+| アプリケーション URL | `https://mybooklibrary.nyproducts.workers.dev` |
+| 許可された Web サイト（1 行に 1 ドメイン） | `mybooklibrary.nyproducts.workers.dev` と `mybooklibrary-staging.nyproducts.workers.dev` |
+
+楽天 API は、許可された Web サイト以外のリクエストを **403 Forbidden** で拒否し、**サーバーからの呼び出しにも Referer / Origin を求める**。このため、`RAKUTEN_ALLOWED_ORIGIN`（環境ごとの公開 URL）がある環境では、アプリが Referer と Origin を付けて呼び出す（ヘッダーなしだと 403 になることを、ステージングで A/B 確認した）。ローカル開発・AWS は、従来のアプリ ID / アクセスキー（Cloudflare 用とは別の登録）を使い続ける限り、`RAKUTEN_ALLOWED_ORIGIN` を未設定のままにする（従来どおり何も付けない）。**Cloudflare 用に新しく登録したアプリ ID / アクセスキーを、ローカル・AWS でも使う場合は、そのアプリの「許可された Web サイト」にそれぞれのドメイン（ローカルなら `localhost`）を足し、`RAKUTEN_ALLOWED_ORIGIN` に対応する URL を設定する**（設定しないと 403 になる）。
+
+注意: 楽天が 403 のとき、アプリは国立国会図書館（NDL）の検索結果へ切り替わるため、**画面や API に結果が出ていても、楽天が通っているとは限らない**。`npm run smoke:remote` は、楽天由来の結果（`size` または書影がある）があることで確認する。Worker のログ（`wrangler tail --env staging`）に「楽天API エラー」が出ていないかも見る。
 
 ### Google ログインのリダイレクト URI
 
