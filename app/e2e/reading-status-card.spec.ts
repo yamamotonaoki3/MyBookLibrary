@@ -213,12 +213,15 @@ test.describe("本詳細のステータスボタン", () => {
   });
 });
 
+// 開発サーバー（next dev）は、ページ・API の初回アクセスでコンパイルが走る。負荷の高い CI では、既定の 5 秒を超えて失敗する（#705）。
+const FIRST_VISIT_TIMEOUT = 30_000;
+
 test.describe("本の検索結果カード（未登録の本）", () => {
   test("保存中に「本の情報を取得中…」が出て、完了後に感想を書くリンクが表示される", async ({ page }) => {
     await login(page);
     await page.goto(`/books/search?q=${encodeURIComponent("吾輩")}&type=title`);
     const card = cardOf(page, STUB_TITLE);
-    await expect(card).toBeVisible();
+    await expect(card).toBeVisible({ timeout: FIRST_VISIT_TIMEOUT });
     await page.waitForLoadState("networkidle");
     const before = await layoutOf(card, STUB_TITLE);
 
@@ -236,7 +239,7 @@ test.describe("本の検索結果カード（未登録の本）", () => {
     await login(page);
     await page.goto(`/books/search?q=${encodeURIComponent("吾輩")}&type=title`);
     const card = cardOf(page, STUB_TITLE);
-    await expect(card).toBeVisible();
+    await expect(card).toBeVisible({ timeout: FIRST_VISIT_TIMEOUT });
     await page.waitForLoadState("networkidle");
 
     // 本詳細側の登録（楽天・NDL 取得）が遅い状況を再現する
