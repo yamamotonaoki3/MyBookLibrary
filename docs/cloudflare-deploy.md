@@ -86,7 +86,56 @@ npx wrangler deploy
 
 ## Secrets の登録
 
-`AUTH_SECRET`・`CRON_SECRET`・Google OAuth などの secret は、このリポジトリ・チャットに書かず、環境ごとに登録する。手順と一覧は #685 で整備する。公開 URL に関わる `AUTH_URL`・`CRON_TARGET_ORIGIN` は secret ではなく、`wrangler.jsonc` の `vars` に書いてある。
+実値は、このリポジトリ・Issue・PR・チャットに書かない。Worker の secret として、**環境ごと**（ステージングと本番）に登録する。Worker ごとに独立した値なので、**ステージングと本番で別々の値を生成する**（`AUTH_SECRET`・`CRON_SECRET` を使い回さない）。
+
+### 登録するもの
+
+| 名前 | 種別 | 必須 | 内容・入手元 |
+|---|---|---|---|
+| `AUTH_SECRET` | secret | 必須 | NextAuth のセッション署名。ランダム値を生成する |
+| `CRON_SECRET` | secret | 必須 | Cron の Bearer トークン（16 文字以上）。ランダム値を生成する |
+| `RAKUTEN_APP_ID` / `RAKUTEN_ACCESS_KEY` | secret | 必須 | 楽天ブックス Web Service（https://webservice.rakuten.co.jp/ ）。現行と同じ値でよい |
+| `CALIL_API_KEY` | secret | 任意 | カーリル 図書館 API。蔵書検索を使うなら必須 |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | secret | 任意 | Google ログイン用。未設定でもメール+パスワードのログインは動く。ステージング・本番の URL ごとにリダイレクト URI を Google Cloud Console に登録する（下記） |
+| `ENRICHMENT_TICK_SECRET` | secret | 保留 | 書誌補完ジョブの再開用。Workers 対応の方針は #696 で決める。それまで登録不要 |
+| `AUTH_URL` / `AUTH_TRUST_HOST` / `CRON_TARGET_ORIGIN` | vars | 設定済み | secret ではなく `wrangler.jsonc` の `vars` に書いてある |
+| `LOG_LEVEL` | vars | 任意 | 既定は `info` |
+
+`DATABASE_URL` は不要（Workers では D1 のバインディング `DB` を使う）。
+
+### ランダム値の生成と登録
+
+`app/` で実行する。生成した値は画面に出さず、パイプで直接 `wrangler` に渡す（シェルの履歴・チャットに残さない）。
+
+```bash
+# 例: ステージングの AUTH_SECRET（ランダムな値を生成して登録する）
+openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET --env staging
+
+# 例: 本番の AUTH_SECRET（--env を付けない）
+openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET
+```
+
+`openssl` が使えない場合は、`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))" | npx wrangler secret put AUTH_SECRET --env staging` でもよい。`CRON_SECRET` も同様に、環境ごとに別の値で登録する。
+
+楽天・カーリル・Google の値は、現行の `app/.env.local`（ローカル）や AWS の SSM Parameter Store にあるものを使う。値を画面に出さずに登録するには、`npx wrangler secret put RAKUTEN_APP_ID --env staging` を実行すると入力を求められるので、そこに貼り付ける（入力は画面に表示されない）。
+
+登録の確認（名前だけが表示され、値は表示されない）:
+
+```bash
+npx wrangler secret list --env staging
+npx wrangler secret list
+```
+
+注意: Worker がまだ存在しない状態で `secret put` すると、先に空の Worker を作るかどうかを聞かれる。上の「初回の手順」で Worker を作成してから登録する。
+
+### Google ログインのリダイレクト URI
+
+Google Cloud Console の OAuth クライアントの「承認済みのリダイレクト URI」に、環境ごとに次を追加する（既存の AWS 用の URI は残す）。
+
+- ステージング: `https://mybooklibrary-staging.nyproducts.workers.dev/api/auth/callback/google`
+- 本番: `https://mybooklibrary.nyproducts.workers.dev/api/auth/callback/google`
+
+ステージングの確認には、本番と別の OAuth クライアントを作ると、本番の認証情報を検証に使わずに済む（推奨）。
 
 ## 確認
 
