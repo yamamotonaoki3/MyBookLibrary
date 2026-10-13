@@ -31,6 +31,7 @@
     "migration:dump-checksum": "tsx prisma/scripts/migration/dump-checksum.ts",
     "migration:restore": "tsx prisma/scripts/migration/restore-to-target.ts",
     "migration:verify": "tsx prisma/scripts/migration/verify-migration.ts",
+    "migration:d1": "tsx prisma/scripts/migration/mysql-to-d1.ts",
     "migration:backfill": "tsx prisma/scripts/backfill-book-owner.ts",
     "audit:production-readonly": "tsx prisma/scripts/audit-production-readonly.ts",
     "audit:email-normalization": "tsx prisma/scripts/audit-email-normalization.ts",

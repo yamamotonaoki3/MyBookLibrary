@@ -2,7 +2,7 @@
 
 本番DB（AWS RDS MySQL）から新しい移行先 DB（MySQL→MySQL 前提）への移行に使う、再実行可能な移行・照合ツール群。
 
-> **注記（#609）**: D1/SQLite 等、MySQL 以外を移行先とする場合は restore/verify の改修が必要。
+> **注記（#609）**: 本ディレクトリの restore/verify は MySQL → MySQL 用。D1 への移行は、末尾の「D1 への移行（#689）」の `mysql-to-d1.ts` を使う。
 
 前提となる仕様は [`docs/data-migration-spec-481.md`](../../../../docs/data-migration-spec-481.md) を参照。**ETL変換は行わない**。方式は「dump復元 → 未適用migrationを`prisma migrate deploy`で適用」のみ。
 
@@ -128,3 +128,34 @@ npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/bac
 - `restore-to-target.ts`は、DB初期化を実行する前に、dumpのテーブル構成が本番（12件のmigration適用済み）の期待値（`_prisma_migrations`＋16アプリケーションテーブル）と過不足なく一致することを検証する。空のdumpや不完全なdumpをそのまま復元してしまう事故を防ぐため。
 - `restore-to-target.ts`は、実際にimportする直前に`<dump>.sha256`の記録値とdumpファイルの実測SHA-256が一致することを検証する。`dump-checksum.ts`実行後にdumpが改変されていないことを確認するため。
 - dumpファイル・接続情報は全て`.gitignore`対象（`app/.env.migration-*`、`app/prisma/scripts/migration/dumps/`）。コミットされるのは`.env.migration-*.example`のプレースホルダのみ。
+
+## D1 への移行（#689）
+
+Cloudflare D1 への移行は、`mysql-to-d1.ts`（`npm run migration:d1`）で行う。方式は、Prisma で「MySQL から読み → D1 へ書く」ETL（[移行計画書 §7](../../../../docs/cloudflare-d1-migration-plan.md)）。ID・bcrypt ハッシュ・日時（ミリ秒）・日本語をそのまま移し、メールアドレスだけ小文字化・前後の空白除去（`normalizeEmail`）する。投入順は外部キーの親 → 子。
+
+**移行元**は、取得済みのダンプを**ローカルの MySQL（Docker）へ復元したもの**。環境変数 `MIGRATION_SOURCE_DATABASE_URL` に接続文字列を渡す（ホストは localhost / 127.0.0.1 のみ許可。アプリの `DATABASE_URL` は読まない）。復元の手順は上の「3. restore」。復元後は、未適用の MySQL マイグレーションも適用しておく（`follows`・`audit_logs` などの新しいテーブルが必要）。**移行先**は wrangler のログイン（`npx wrangler login`）で接続する。
+
+```bash
+cd app
+# 1. 移行元の件数と、メールの重複（小文字化後）だけを確認する（書き込まない）
+npm run migration:d1 -- migrate --dry-run
+
+# 2. ローカルの D1 へ移行して練習する（マイグレーションも自動で適用。保存先は既定で app/.wrangler/migration-rehearsal）
+npm run migration:d1 -- migrate --local --yes
+
+# 3. リモートの D1（リハーサル用）へ移行する。名前と ID の両方を指定する
+npm run migration:d1 -- migrate --remote --d1-name <D1 の名前> --d1-id <D1 の ID> --yes
+
+# 照合だけを実行する（読み取りのみ）／ 移行先を空にしてやり直す
+npm run migration:d1 -- verify --remote --d1-name <名前> --d1-id <ID>
+npm run migration:d1 -- reset  --remote --d1-name <名前> --d1-id <ID> --yes
+```
+
+- `migrate` は、移行先の全テーブルが空でなければ、何も書かずに中断する（既存のデータへの上書き・重複投入を防ぐ）。やり直しは `reset` で空にしてから行う。リモートの D1 には、あらかじめマイグレーション（`wrangler d1 migrations apply`）を適用しておく。
+- `migrate` は、書き込みのあと、続けて照合する。照合は、表ごとの**件数・キーの集合（欠落・余剰）・列ごとの SHA-256**、外部キー違反（`PRAGMA foreign_key_check`）、採番（`sqlite_sequence`）が最大 ID 以上であること。変換する列（`users.email`）は、移行元を変換した値と比較する。1 つでも失敗すれば終了コード 1。
+- 出力は、表名・列名・件数・PASS/FAIL だけ。**値（メールアドレス・本文など）は出さない。**
+- 本番の D1 は、**名前（`mybooklibrary-db`）でも ID（`wrangler.jsonc` のトップレベルの `database_id`）でも**、`--confirm-production mybooklibrary-db` を付けない限り拒否する。最終投入の手順は #691。
+- 移行前に、移行元の確認を自動で行う: メールの小文字化後の重複、Json 列（`audit_logs.detail`、`book_enrichment_items.result_detail`）の **JSON の `null`**（SQL の NULL とは別の値。Prisma は区別できず、移行すると SQL の NULL になるため）。どちらかがあれば、何も書かずに中断する。
+- 書き込みに失敗したときのエラーは、Prisma のメッセージに含まれる値（メールアドレス・本文など）を出さず、表名・エラーの種類・コードだけを表示する。
+- 実データを扱うため、リハーサル用の D1 には、メールアドレス・氏名の匿名化が必要になる場合がある（#690）。移行元のダンプ・復元先の MySQL は、作業後に削除する。
+
