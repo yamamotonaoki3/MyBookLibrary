@@ -60,7 +60,7 @@ UPDATE audit_logs SET
 SELECT
   (SELECT COUNT(*) FROM users WHERE LOWER(email) NOT LIKE 'rehearsal-user-%@example.com') AS users_email_left,
   (SELECT COUNT(*) FROM users WHERE name NOT LIKE 'testuser\_%') AS users_name_left,
-  (SELECT COUNT(*) FROM users WHERE password IS NOT NULL AND password <> @dummy_hash) AS users_password_left,
+  (SELECT COUNT(*) FROM users WHERE password IS NOT NULL AND BINARY password <> BINARY @dummy_hash) AS users_password_left,
   (SELECT COUNT(*) FROM reviews WHERE body NOT LIKE '[REHEARSAL]%') AS reviews_left,
   (SELECT COUNT(*) FROM notifications WHERE content NOT LIKE '[REHEARSAL]%') AS notifications_left,
   (SELECT COUNT(*) FROM contact_inquiries WHERE email NOT LIKE 'rehearsal-inquiry-%@example.com') AS inquiries_left,
