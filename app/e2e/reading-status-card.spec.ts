@@ -213,15 +213,29 @@ test.describe("本詳細のステータスボタン", () => {
   });
 });
 
-// 開発サーバー（next dev）は、ページ・API の初回アクセスでコンパイルが走る。負荷の高い CI では、既定の 5 秒を超えて失敗する（#705）。
-const FIRST_VISIT_TIMEOUT = 30_000;
+/**
+ * 検索結果のページを開き、未登録の本のカードが表示されるまで待つ。
+ * 本の検索 API は、同じユーザーのリクエストが 500 ms 以内に続くと 429 を返し、画面に「リクエストが多すぎます」と出る
+ * （直前のテストの検索と近いタイミングになると起こる。#710）。その場合は、少し待って、ページを読み込み直す。
+ */
+async function openSearchResults(page: Page): Promise<Locator> {
+  await page.goto(`/books/search?q=${encodeURIComponent("吾輩")}&type=title`);
+  const card = cardOf(page, STUB_TITLE);
+  await expect(async () => {
+    if (await page.getByText("リクエストが多すぎます").isVisible()) {
+      // 検索ボタンは、同じ URL への遷移になり再検索されない。ページを読み込み直して、URL の条件で検索し直す
+      await page.waitForTimeout(700);
+      await page.reload();
+    }
+    await expect(card).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 25_000 });
+  return card;
+}
 
 test.describe("本の検索結果カード（未登録の本）", () => {
   test("保存中に「本の情報を取得中…」が出て、完了後に感想を書くリンクが表示される", async ({ page }) => {
     await login(page);
-    await page.goto(`/books/search?q=${encodeURIComponent("吾輩")}&type=title`);
-    const card = cardOf(page, STUB_TITLE);
-    await expect(card).toBeVisible({ timeout: FIRST_VISIT_TIMEOUT });
+    const card = await openSearchResults(page);
     await page.waitForLoadState("networkidle");
     const before = await layoutOf(card, STUB_TITLE);
 
@@ -237,9 +251,7 @@ test.describe("本の検索結果カード（未登録の本）", () => {
 
   test("未登録の本のタイトルをクリックすると、本詳細へ移動するまで取得中の表示が出る", async ({ page }) => {
     await login(page);
-    await page.goto(`/books/search?q=${encodeURIComponent("吾輩")}&type=title`);
-    const card = cardOf(page, STUB_TITLE);
-    await expect(card).toBeVisible({ timeout: FIRST_VISIT_TIMEOUT });
+    const card = await openSearchResults(page);
     await page.waitForLoadState("networkidle");
 
     // 本詳細側の登録（楽天・NDL 取得）が遅い状況を再現する
