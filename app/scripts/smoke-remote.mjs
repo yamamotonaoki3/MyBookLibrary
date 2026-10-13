@@ -135,7 +135,11 @@ async function main() {
   // 4. 本の検索（楽天ブックス・DB）
   const search = await client.request(`/api/books/search?q=${encodeURIComponent("吾輩は猫である")}&type=title`);
   const searchBody = search.status === 200 ? await search.json() : null;
-  check("本の検索 API が結果を返す（楽天ブックス）", search.status === 200 && Array.isArray(searchBody?.items) && searchBody.items.length > 0, `status=${search.status} items=${searchBody?.items?.length}`);
+  // 楽天が 0 件・失敗のときは国立国会図書館（NDL）の結果に切り替わるため、結果があるだけでは楽天の確認にならない。
+  // NDL の結果は size が空・書影なしで返るため、size か書影のある結果を、楽天ブックス由来とみなして数える。
+  const items = Array.isArray(searchBody?.items) ? searchBody.items : [];
+  const rakutenItems = items.filter((item) => item.size !== "" || item.coverImageUrl !== null);
+  check("本の検索 API が楽天ブックスの結果を返す（NDL の結果は数えない）", search.status === 200 && rakutenItems.length > 0, `status=${search.status} items=${items.length} rakuten=${rakutenItems.length}`);
 
   // 5. Cron API
   const cron = await anonymous.request("/api/cron/check-new-books");

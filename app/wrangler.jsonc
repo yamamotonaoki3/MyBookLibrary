@@ -29,7 +29,9 @@
     // 公開 URL（workers.dev）。NextAuth の AUTH_URL と、Cron が内部呼び出しで使う origin。
     "AUTH_URL": "https://mybooklibrary.nyproducts.workers.dev",
     "AUTH_TRUST_HOST": "true",
-    "CRON_TARGET_ORIGIN": "https://mybooklibrary.nyproducts.workers.dev"
+    "CRON_TARGET_ORIGIN": "https://mybooklibrary.nyproducts.workers.dev",
+    // 楽天ブックス API に Referer / Origin として送る、アプリ登録（許可された Web サイト）のドメイン
+    "RAKUTEN_ALLOWED_ORIGIN": "https://mybooklibrary.nyproducts.workers.dev"
   },
   "d1_databases": [
     {
@@ -50,7 +52,8 @@
       "vars": {
         "AUTH_URL": "https://mybooklibrary-staging.nyproducts.workers.dev",
         "AUTH_TRUST_HOST": "true",
-        "CRON_TARGET_ORIGIN": "https://mybooklibrary-staging.nyproducts.workers.dev"
+        "CRON_TARGET_ORIGIN": "https://mybooklibrary-staging.nyproducts.workers.dev",
+        "RAKUTEN_ALLOWED_ORIGIN": "https://mybooklibrary-staging.nyproducts.workers.dev"
       },
       "d1_databases": [
         {

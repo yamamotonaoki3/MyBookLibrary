@@ -18,6 +18,23 @@ export type RakutenBook = {
   size: string; // 例: "単行本", "文庫", "新書", ""
 };
 
+/**
+ * 楽天ブックスの API は、アプリ登録の「許可された Web サイト」のドメインからのリクエストだけを受け付け、
+ * サーバー（Cloudflare Workers）からの呼び出しにも、そのドメインを Referer / Origin として求める（付けないと 403）。
+ * RAKUTEN_ALLOWED_ORIGIN（Worker の vars。例: https://mybooklibrary.nyproducts.workers.dev）があれば付ける。
+ * 未設定（ローカル開発・テスト・AWS）では、従来どおり何も付けない。
+ */
+function rakutenRequestHeaders(): Record<string, string> | undefined {
+  const raw = process.env.RAKUTEN_ALLOWED_ORIGIN;
+  if (!raw) return undefined;
+  try {
+    const origin = new URL(raw).origin;
+    return { Referer: `${origin}/`, Origin: origin };
+  } catch {
+    return undefined;
+  }
+}
+
 function getCredentials() {
   const appId = process.env.RAKUTEN_APP_ID;
   const accessKey = process.env.RAKUTEN_ACCESS_KEY;
@@ -73,6 +90,7 @@ async function fetchRakutenWithRetry(url: string, options?: RakutenRequestOption
 
     try {
       const res = await fetch(url, {
+        headers: rakutenRequestHeaders(),
         next: { revalidate: 3600 },
         signal: buildRequestSignal({ signal: totalSignal, timeoutMs: options?.timeoutMs }),
       });
@@ -241,7 +259,7 @@ export async function getAuthorBookCount(authorName: string): Promise<number> {
   url.searchParams.set("author", authorName);
 
   try {
-    const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+    const res = await fetch(url.toString(), { headers: rakutenRequestHeaders(), next: { revalidate: 3600 } });
     if (res.ok) {
       const data = await res.json();
       const count = data.count ?? 0;

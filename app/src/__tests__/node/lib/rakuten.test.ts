@@ -45,6 +45,40 @@ describe("rakuten", () => {
     delete process.env.RAKUTEN_ACCESS_KEY;
   });
 
+  describe("リクエストヘッダー（許可された Web サイト）", () => {
+    afterEach(() => {
+      delete process.env.RAKUTEN_ALLOWED_ORIGIN;
+    });
+
+    it("RAKUTEN_ALLOWED_ORIGIN があれば、Referer と Origin を付けて呼び出す", async () => {
+      process.env.RAKUTEN_ALLOWED_ORIGIN = "https://books.example.com/some/path";
+      const fetchFn = mockFetchJson({ Items: [makeBook()], pageCount: 1 });
+
+      await fetchBookPage({ page: 1, hits: 30 });
+
+      expect(fetchFn.mock.calls[0][1]?.headers).toEqual({ Referer: "https://books.example.com/", Origin: "https://books.example.com" });
+    });
+
+    it("未設定、または URL として不正なら、ヘッダーを付けない", async () => {
+      const fetchFn = mockFetchJson({ Items: [], pageCount: 1 });
+      await fetchBookPage({ page: 1, hits: 30 });
+      process.env.RAKUTEN_ALLOWED_ORIGIN = "not a url";
+      await fetchBookPage({ page: 1, hits: 30 });
+
+      expect(fetchFn.mock.calls[0][1]?.headers).toBeUndefined();
+      expect(fetchFn.mock.calls[1][1]?.headers).toBeUndefined();
+    });
+
+    it("著者の件数の取得にも付ける", async () => {
+      process.env.RAKUTEN_ALLOWED_ORIGIN = "https://books.example.com";
+      const fetchFn = mockFetchJson({ count: 3 });
+
+      await getAuthorBookCount("著者A");
+
+      expect(fetchFn.mock.calls[0][1]?.headers).toEqual({ Referer: "https://books.example.com/", Origin: "https://books.example.com" });
+    });
+  });
+
   describe("fetchBookPage", () => {
     it("正常時はitemsとpageCountを返す", async () => {
       mockFetchJson({ Items: [makeBook()], pageCount: 3 });
