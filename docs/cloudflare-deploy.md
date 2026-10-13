@@ -137,6 +137,22 @@ Google Cloud Console の OAuth クライアントの「承認済みのリダイ�
 
 ステージングの確認には、本番と別の OAuth クライアントを作ると、本番の認証情報を検証に使わずに済む（推奨）。
 
+## ステージングの疎通確認（`npm run smoke:remote`）
+
+デプロイ済みのステージングに HTTP で接続して、画面・未認証のリダイレクト・Google のコールバック URL・Credentials ログイン・保護ページ・本の検索（楽天ブックス）・Cron API（Bearer なしの拒否と、Bearer 付きの手動実行）を確認する。`app/` で実行する。
+
+```bash
+npm run smoke:remote
+```
+
+- 接続先は `STAGING_URL`（既定はステージングの URL）。認証情報を送るため、https で、既定の origin と完全一致する URL にしか接続しない（誤って本番へ接続しないため）。別の URL は `SMOKE_ALLOW_NON_DEFAULT=1` で明示的に許可する。ユーザー情報・クエリ・フラグメント付きの URL は、値がログに出ないよう拒否する。
+- ログインには、ステージング専用のテストユーザー（架空のデータ。メールは `@example.com`）を使う。認証情報は、リポジトリの外のファイル（既定は `~/.mbl-staging-smoke.env`。`STAGING_SMOKE_ENV_FILE` で変更可）か、環境変数 `STAGING_SMOKE_EMAIL` / `STAGING_SMOKE_PASSWORD` / `STAGING_CRON_SECRET` で渡す。値は出力に出さない。
+- テストユーザーは、ステージングの D1 に、`bcryptjs` でハッシュ化したパスワードを `users` へ挿入して作る（`wrangler d1 execute DB --remote --env staging --command ...`。`--file` での実行は認証エラーになることがあるため `--command` を使う）。
+- 誤ったパスワードでのログインは、失敗が重なるとテストユーザーがロックされるため、確認しない。
+- ステージングの Cron Trigger は無効のため、Cron は HTTP 呼び出しで手動実行して確認する（`STAGING_CRON_SECRET` に、ステージングの `CRON_SECRET` と同じ値を設定する）。
+
+ブラウザ操作を伴う既存の E2E（Playwright）は、テスト用 DB に直接接続してデータを準備・削除する作りのため、そのままではデプロイ済みの環境に対して実行できない。必要になったら別 Issue で扱う。
+
 ## 確認
 
 ```bash

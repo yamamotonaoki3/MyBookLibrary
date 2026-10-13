@@ -13,6 +13,7 @@
     "prisma:generate:d1": "prisma generate --schema prisma/d1/schema.prisma",
     "build:worker": "node scripts/build-worker.mjs",
     "smoke:worker": "node scripts/smoke-worker.mjs",
+    "smoke:remote": "node scripts/smoke-remote.mjs",
     "dev": "next dev",
     "build": "next build --webpack",
     "test": "jest --selectProjects node jsdom",
