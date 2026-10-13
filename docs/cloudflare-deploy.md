@@ -9,7 +9,7 @@ Cloudflare Workers + D1 への移行（#609）で使う環境とデプロイの�
 | ステージング | `mybooklibrary-staging` | `https://mybooklibrary-staging.nyproducts.workers.dev` | `mybooklibrary-staging-db` | なし（本番との二重通知を防ぐため。手動で確認する） | `wrangler deploy --env staging` |
 | 本番 | `mybooklibrary` | `https://mybooklibrary.nyproducts.workers.dev` | `mybooklibrary-db` | 毎日 UTC 00:00（JST 09:00） | `wrangler deploy` |
 
-設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングでは Cron を空配列で上書きして無効にしている。`main` へのマージによる自動デプロイ（Workers Builds）は #684 で設定する。
+設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングでは Cron を空配列で上書きして無効にしている。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
 
 ## 初回準備（Cloudflare アカウントでの操作）
 
@@ -165,6 +165,49 @@ npm run smoke:remote
 - ステージングの Cron Trigger は無効のため、Cron は HTTP 呼び出しで手動実行して確認する（`STAGING_CRON_SECRET` に、ステージングの `CRON_SECRET` と同じ値を設定する）。
 
 ブラウザ操作を伴う既存の E2E（Playwright）は、テスト用 DB に直接接続してデータを準備・削除する作りのため、そのままではデプロイ済みの環境に対して実行できない。必要になったら別 Issue で扱う。
+
+## 運用（ロールバック・ログ・請求）
+
+### ロールバック
+
+直前の不具合を、コードを直さずに、以前のバージョンへ戻したいとき。Worker のバージョンを切り替えるだけで、数秒で終わる。`app/` で実行する（ステージングは `--env staging`、本番は付けない）。
+
+```bash
+# 1. バージョンの履歴を見る（一番下が最新。Version(s) の ID を控える）
+npx wrangler deployments list --env staging
+
+# 2. 戻したいバージョンへ切り替える（100% のトラフィックをそのバージョンに向ける）
+npx wrangler rollback <version-id> --env staging -m "理由"
+
+# 3. 現在のバージョンを確認する
+npx wrangler deployments status --env staging
+```
+
+- **D1 のデータとマイグレーションは戻らない**。戻るのは Worker のバージョン（コード、静的アセット、バインディング・互換性などの設定）で、D1 の中身は現在のまま。戻す先のバージョンの設定（D1 の接続先など）が今も正しいかを、戻す前に確認する。マイグレーションでテーブルの構造を変えた変更を戻すときは、コードを戻す前に、古いコードが新しい構造で動くかを確認する（列の追加は、古いコードでも動くことが多い。列の削除や名前変更は動かない）。
+- **ロールバックしたあとも、`main`（または `production`）に次のコミットがマージされれば、自動デプロイで最新に戻る**。不具合を直す前に、マージを止めておく。
+- 恒久的に戻すときは、ダッシュボードで戻すのではなく、Git で該当の変更を `git revert` して、通常のデプロイの流れに乗せる。
+- ステージングで、1 つ前のバージョンへ戻して `npm run smoke:remote` が通ること、元のバージョンへ戻して通ることを確認した（#687）。本番も同じ手順（`--env staging` なし）。
+- **D1 のデータを戻したいとき**（誤更新・破損）は、Worker のロールバックではなく、D1 の Time Travel（時点復元）を使う。AWS は停止中のため、旧環境へ戻す前提はない。データの不整合への対応は、移行計画書（[cloudflare-d1-migration-plan.md](cloudflare-d1-migration-plan.md)）の §9-3 に従う。
+
+### ログの確認
+
+Worker は `observability` を有効にしている（`wrangler.jsonc`）。
+
+```bash
+# リアルタイムでログを見る（Ctrl+C で止める。ステージングは --env staging）
+npx wrangler tail --env staging
+```
+
+- ダッシュボードの「Workers & Pages」→ Worker →「Observability」（ログ）でも、過去のログを検索できる。
+- ログに、リクエストの URL やエラーのメッセージが出る。**秘密の値（キー・トークン）がログに出ていないかを、出力を共有する前に確認する。**
+- `wrangler tail` は自分が起動したものだけを止める（他のプロセスを名前のパターンで一括停止しない）。
+
+### 請求・使用量の確認
+
+- ダッシュボードの「アカウント」→「請求（Billing）」で、現在の請求額と、Workers Paid の使用量（リクエスト数・CPU 時間）を確認する。
+- D1 は「Workers & Pages」→「D1」→ 各データベースで、読み取り・書き込みの行数とストレージを確認する。
+- 同じアカウントを他のプロジェクトと共有している場合、クォータと請求は合算される。
+- 請求アラート（通知）の設定は、ダッシュボードの「請求」→「請求アラート」（#682）。
 
 ## 確認
 
