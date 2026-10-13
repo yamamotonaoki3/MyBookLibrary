@@ -99,13 +99,13 @@ docs: 要件定義書を追加
 | --- | --- |
 | フロントエンド | Next.js 16 (React 19) + TypeScript |
 | バックエンド | Next.js API Routes（同一プロジェクト内） |
-| データベース | MySQL 8.4 |
+| データベース | Cloudflare D1（SQLite。ステージングと、構築済みの本番 Worker）／ MySQL 8.4（ローカル開発・停止中の AWS。本番の利用者向けデータは、Phase 4 で MySQL から D1 へ移すまで AWS 側） |
 | ORM | Prisma 6 |
 | スタイリング | Tailwind CSS v4 |
 | コンテナ | Docker |
 | 認証 | 未定（NextAuth.js 候補） |
 | 外部API | 楽天ブックスAPI（候補） |
-| デプロイ | AWS（EC2（Next.js standalone を systemd で起動）/ RDS MySQL / CloudFront / Lambda + EventBridge ルール（cron）/ SSM Parameter Store、Terraform 管理） |
+| デプロイ | Cloudflare Workers（OpenNext）+ D1。GitHub から Workers Builds で自動デプロイ（`main` → ステージング、`production` ブランチ → 本番）。手順は [docs/cloudflare-deploy.md](docs/cloudflare-deploy.md)。AWS（EC2 / RDS MySQL / CloudFront / Lambda + EventBridge / SSM、Terraform 管理）は現在すべて停止中で、いつでも再起動できるようファイルだけ残している（[docs/aws-deploy-plan.md](docs/aws-deploy-plan.md)）。本番 Worker と本番 D1 は構築済みだが、利用者向けの切り替え（データ移行を含む）は未実施で、Phase 4（#689〜#692）で行う |
 
 ---
 
