@@ -63,7 +63,7 @@ Cloudflare 公式の CI/CD（Workers Builds）で、GitHub のリポジトリと
 | ルートディレクトリ | `app` |
 | ビルドコマンド | `npm run build:worker`（依存関係のインストールは Workers Builds が自動で行う） |
 | ビルド変数 | `NODE_VERSION` = `22`（`app/.node-version` でも指定している） |
-| デプロイコマンド | 上の表（リモート D1 にマイグレーションを適用してから `wrangler deploy`） |
+| デプロイコマンド | 上の表（リモート D1 にマイグレーションを適用してから、コミットをタグに付けて `wrangler deploy`。`scripts/deploy-worker.mjs`） |
 | プレビュー（`main` 以外のブランチ）のビルド | 無効のままにする（プレビューは本番・ステージングと同じ D1 を使うため。PR のビルド確認は GitHub Actions が行う） |
 
 Workers Builds が連携時に自動発行する API トークンの権限は、Workers Scripts・Workers KV・Workers R2 の編集などで、**D1 は含まれない**（公式ドキュメントで確認）。デプロイコマンドが D1 のマイグレーションを適用するため、連携後に必ずトークンへ **D1 の編集権限**を足す（下の「初回の手順」の 4）。足さないと、マイグレーションが失敗し、後続のデプロイも実行されない。ビルドの上限は 1 回 20 分、Paid の無料枠は月 6,000 分。
@@ -83,6 +83,24 @@ npx wrangler deploy
 3. `mybooklibrary` も同様に連携する（本番ブランチは `production`）。
 4. **API トークンに D1 の編集権限を足す**: ダッシュボード右上のプロフィール → 「My Profile」→「API Tokens」で、Workers Builds が発行したトークン（名前に Workers Builds を含むもの）を開き、「Edit」→ 権限に「Account」「D1」「Edit」を追加して保存する。2 つの Worker で同じトークンを使う設定にしておくと、1 回で済む。
 5. 動作確認: `main` に小さな変更をマージし、ステージングの Worker の「Deployments」にビルドが走り、成功することを確認する。
+
+## 稼働中のバージョンの確認（`/api/version`）
+
+いま動いている Worker のバージョンを、HTTP で確認できる（認証不要）。ロールバックや再デプロイで、狙ったバージョンへ切り替わったかを確かめるために使う。
+
+```bash
+curl https://mybooklibrary-staging.nyproducts.workers.dev/api/version
+# {"version":{"name":"0.1.0","id":"<バージョン ID>","tag":"0.1.0-<コミット>","timestamp":"<バージョン作成時刻>"}}
+```
+
+- `name`: アプリのバージョン名（`app/package.json` の `version`。`0.1.0` など）。ビルド時に埋め込む。上げるときは、`app/` で `npm version <patch|minor|major> --no-git-tag-version` を実行するか、`package.json` を直接編集して、PR に含める。バージョン名はデプロイごとには変わらないため、**同じバージョン名でも、コミットや Worker のバージョン ID で区別する**。
+- `id`: Worker のバージョン ID。`npx wrangler deployments list`（`--env staging`）や `deployments status` に出る ID と同じ（ロールバックの確認の突き合わせに使う）。
+- `tag`: バージョン名とデプロイしたコミット（先頭 7 文字）を `-` でつないだもの（例: `0.1.0-f64ec6c`）。`npm run deploy:staging` / `deploy:production` が、Workers Builds の `WORKERS_CI_COMMIT_SHA`（手元では `git rev-parse`）から付ける。ダッシュボードのバージョン一覧にも出る。
+- `timestamp`: そのバージョンを作成した時刻（ロールバックした時刻ではない）。
+- Workers 以外（ローカル、AWS）では `{"version":null}` になる。`npm run smoke:remote` も、この値を表示する。
+- バインディング（`version_metadata`）は環境に継承されないため、`wrangler.jsonc` のステージングにも書いている。
+
+**ロールバックの確認のしかた**: 切り替えてから、新しい ID が返るまでに **3〜9 秒かかる**（直後は古い ID が返ることがある）。10 秒ほど待って `/api/version` の `id` が、戻したバージョンの ID と一致するかを確認する。`npx wrangler deployments status` の現在のバージョンとも突き合わせる。**この機能が入る前のバージョンへ戻すと、`/api/version` 自体が存在しない**（404）ため、確認できない。
 
 ## Secrets の登録
 

@@ -20,6 +20,8 @@
     "binding": "ASSETS"
   },
   "observability": { "enabled": true },
+  // 稼働中のバージョン（ID・タグ・時刻）を GET /api/version で返すためのバインディング。環境に継承されないため、ステージングにも書く。
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
 
   // ---- 本番（production） ----
   // 新刊チェックの Cron（毎日 UTC 00:00 = JST 09:00。AWS の EventBridge と同じ）。
@@ -49,6 +51,7 @@
       // Worker 名は mybooklibrary-staging（env 名が付く）。公開 URL は https://mybooklibrary-staging.nyproducts.workers.dev
       // Cron は無効（本番との二重通知を防ぐ。手動実行で確認する）。
       "triggers": { "crons": [] },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "vars": {
         "AUTH_URL": "https://mybooklibrary-staging.nyproducts.workers.dev",
         "AUTH_TRUST_HOST": "true",

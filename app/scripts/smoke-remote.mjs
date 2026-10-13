@@ -6,6 +6,7 @@
  *   - Credentials ログイン、セッション、保護ページ
  *   - 本の検索 API（楽天ブックス・DB）
  *   - Cron API が Bearer なしを拒否すること
+ *   - 稼働中のバージョン（/api/version）。ロールバックの前後で、狙ったバージョンかを確認するために表示する
  *
  * 接続先は STAGING_URL（既定: https://mybooklibrary-staging.nyproducts.workers.dev）。https で、既定の origin と完全一致する URL にしか、
  * 認証情報を送らない（本番などへの誤接続を防ぐ）。別の URL は SMOKE_ALLOW_NON_DEFAULT=1 で明示的に許可する。
@@ -141,7 +142,14 @@ async function main() {
   const rakutenItems = items.filter((item) => item.size !== "" || item.coverImageUrl !== null);
   check("本の検索 API が楽天ブックスの結果を返す（NDL の結果は数えない）", search.status === 200 && rakutenItems.length > 0, `status=${search.status} items=${items.length} rakuten=${rakutenItems.length}`);
 
-  // 5. Cron API
+  // 5. 稼働中のバージョン（ロールバックの確認に使う）。認証なしで取得できる
+  const versionResponse = await anonymous.request("/api/version");
+  const versionBody = versionResponse.status === 200 ? await versionResponse.json() : null;
+  const version = versionBody?.version ?? null;
+  check("稼働中のバージョンを取得できる（バージョン名・ID、/api/version）", /^\d+\.\d+\.\d+/.test(version?.name ?? "") && Boolean(version?.id), `status=${versionResponse.status}`);
+  if (version?.id) console.log(`   バージョン: ${version.name ?? "不明"}  ID: ${version.id}  タグ: ${version.tag ?? "なし"}  作成時刻: ${version.timestamp ?? "不明"}`);
+
+  // 6. Cron API
   const cron = await anonymous.request("/api/cron/check-new-books");
   check("Cron API は Bearer なしを拒否する（401）", cron.status === 401, `status=${cron.status}`);
   if (cronSecret) {

@@ -40,8 +40,8 @@
     "d1:migrate:local": "wrangler d1 migrations apply mybooklibrary-db --local",
     "d1:migrate:staging": "wrangler d1 migrations apply DB --remote --env staging",
     "d1:migrate:production": "wrangler d1 migrations apply DB --remote",
-    "deploy:staging": "npm run d1:migrate:staging && wrangler deploy --env staging",
-    "deploy:production": "npm run d1:migrate:production && wrangler deploy",
+    "deploy:staging": "node scripts/deploy-worker.mjs staging",
+    "deploy:production": "node scripts/deploy-worker.mjs production",
     "schema:d1:check": "tsx prisma/scripts/generate-d1-schema.ts --check && prisma validate --schema prisma/d1/schema.prisma"
   },
   "dependencies": {
