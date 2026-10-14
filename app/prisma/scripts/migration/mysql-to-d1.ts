@@ -15,17 +15,13 @@
  *
  * 出力は、表名・列名・件数・PASS/FAIL だけ。値（メールアドレス・本文など）は出さない。
  */
-import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { parseArgs as parseCliArgs } from "node:util";
-import { getPlatformProxy } from "wrangler";
-import { PrismaD1 } from "@prisma/adapter-d1";
 import { PrismaClient as MysqlClient } from "@/generated/prisma";
-import { Prisma as D1Prisma, PrismaClient as D1Client } from "@/generated/prisma-d1";
+import { Prisma as D1Prisma } from "@/generated/prisma-d1";
 import { assertProfileMatchesTarget, assertSourceUrlIsLocal, assertWritableTarget, safeErrorMessage, type MigrationProfile } from "@/lib/migration/etl/guard";
 import { DEMO_MASTER_TABLES, MIGRATION_TABLES } from "@/lib/migration/etl/tables";
+import { openD1Target, DEFAULT_PERSIST_TO } from "./d1Target";
 import { assertNoEmailCollisions, assertNoJsonNullValues, migrate, resetTarget, verifyAll, type MigrationClient } from "@/lib/migration/etl/run";
 
 type Options = {
@@ -40,9 +36,6 @@ type Options = {
   confirmProduction?: string;
   persistTo: string;
 };
-
-const APP_DIR = path.resolve(__dirname, "../../..");
-const WRANGLER_CLI = path.join(APP_DIR, "node_modules/wrangler/bin/wrangler.js");
 
 function parseArgs(argv: string[]): Options {
   // 引数の定義は、Node.js 標準の util.parseArgs に任せる（未定義の引数は、エラーになる）
@@ -77,7 +70,7 @@ function parseArgs(argv: string[]): Options {
     d1Name: values["d1-name"],
     d1Id: values["d1-id"],
     confirmProduction: values["confirm-production"],
-    persistTo: values["persist-to"] ? path.resolve(values["persist-to"]) : path.join(APP_DIR, ".wrangler/migration-rehearsal"),
+    persistTo: values["persist-to"] ? path.resolve(values["persist-to"]) : DEFAULT_PERSIST_TO,
   };
 }
 
@@ -86,16 +79,6 @@ function openSource(): { client: MigrationClient; close: () => Promise<void> } {
   assertSourceUrlIsLocal(url);
   const prisma = new MysqlClient({ datasourceUrl: url });
   return { client: prisma as unknown as MigrationClient, close: () => prisma.$disconnect() };
-}
-
-/** ローカルの D1 に、マイグレーションを適用する（リモートは、デプロイのコマンドが適用する）。 */
-function prepareLocalDatabase(configPath: string, persistTo: string): void {
-  const result = spawnSync(
-    process.execPath,
-    [WRANGLER_CLI, "d1", "migrations", "apply", "DB", "--local", "--config", configPath, "--persist-to", persistTo],
-    { cwd: APP_DIR, stdio: "inherit", windowsHide: true }
-  );
-  if (result.status !== 0) throw new Error("ローカルの D1 へのマイグレーションの適用に失敗しました。");
 }
 
 async function openTarget(options: Options): Promise<{ client: MigrationClient; close: () => Promise<void> }> {
@@ -107,42 +90,9 @@ async function openTarget(options: Options): Promise<{ client: MigrationClient; 
     confirmProduction: options.confirmProduction,
   });
   assertProfileMatchesTarget(options.profile, target);
-  const dir = mkdtempSync(path.join(os.tmpdir(), "mbl-etl-"));
-  const configPath = path.join(dir, "wrangler.jsonc");
-  const binding = {
-    binding: "DB",
-    database_name: target.name,
-    database_id: target.id,
-    migrations_dir: path.join(APP_DIR, "prisma/d1/migrations"),
-    ...(target.remote ? { remote: true } : {}),
-  };
-  writeFileSync(configPath, JSON.stringify({ name: "mbl-etl", compatibility_date: "2026-10-01", d1_databases: [binding] }), "utf8");
-
-  let proxy: Awaited<ReturnType<typeof getPlatformProxy<{ DB: object }>>> | undefined;
-  try {
-    if (!target.remote) {
-      mkdirSync(options.persistTo, { recursive: true });
-      // 照合（verify）・リセットは、移行先を変更する操作（マイグレーションの適用）を伴わない。適用は migrate のときだけ
-      if (options.command === "migrate") prepareLocalDatabase(configPath, options.persistTo);
-    }
-    proxy = await getPlatformProxy<{ DB: object }>({
-      configPath,
-      ...(target.remote ? { experimental: { remoteBindings: true } } : { persist: { path: path.join(options.persistTo, "v3") } }),
-    });
-  } catch (error) {
-    rmSync(dir, { recursive: true, force: true });
-    throw error;
-  }
-  const prisma = new D1Client({ adapter: new PrismaD1(proxy.env.DB as never) });
-  console.log(`移行先: ${target.remote ? `リモートの D1（${target.name}）` : "ローカルの D1（miniflare）"}`);
-  return {
-    client: prisma as unknown as MigrationClient,
-    close: async () => {
-      await prisma.$disconnect();
-      await proxy!.dispose();
-      rmSync(dir, { recursive: true, force: true });
-    },
-  };
+  // 照合（verify）・リセットは、移行先を変更する操作（マイグレーションの適用）を伴わない。適用は migrate のときだけ
+  const opened = await openD1Target(target, { applyMigrations: options.command === "migrate", persistTo: options.persistTo });
+  return { client: opened.client as unknown as MigrationClient, close: opened.close };
 }
 
 function printChecks(checks: Awaited<ReturnType<typeof verifyAll>>): boolean {
