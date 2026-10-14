@@ -1,3 +1,4 @@
+import { demoForbidden, isDemoMode } from "@/lib/demoMode";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { auth } from "@/auth";
@@ -5,6 +6,7 @@ import { auth } from "@/auth";
 const CATEGORIES = ["general", "bug", "feature", "account", "other"];
 
 export async function POST(req: Request) {
+  if (isDemoMode()) return demoForbidden();
   const { userId, error } = await getAuthenticatedUserId();
   if (error) return error;
 

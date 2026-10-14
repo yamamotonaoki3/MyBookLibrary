@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Users, Heart, Library, KeyRound, Trash2, Info, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { isDemoMode } from "@/lib/demoMode";
 import { getFollowsListData } from "@/lib/followsListData";
 import { getRecommendedUsers } from "@/lib/userRecommendations";
 import { AccountInfoCard } from "./_components/AccountInfoCard";
@@ -22,6 +23,8 @@ export default async function SettingsPage() {
   if (!session?.user) redirect("/login");
 
   const isAdmin = session.user.role === "admin";
+  // デモ環境では、合言葉の変更・退会は行えない（API も拒否される）
+  const demoMode = isDemoMode();
 
   const myUserId = Number(session.user.id);
 
@@ -70,7 +73,7 @@ export default async function SettingsPage() {
           </SettingsAccordionSection>
 
           {/* 秘密の言葉 */}
-          {hasPasswordLogin && (
+          {hasPasswordLogin && !demoMode && (
             <SettingsAccordionSection icon={<KeyRound className="h-4 w-4" />} title="秘密の言葉">
               <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
                 パスワードを忘れた際の本人確認に使用します。設定しない場合、パスワードリセットは行えません。
@@ -80,7 +83,7 @@ export default async function SettingsPage() {
           )}
 
           {/* アカウント削除 */}
-          {!isAdmin && (
+          {!isAdmin && !demoMode && (
             <SettingsAccordionSection
               icon={<Trash2 className="h-4 w-4" />}
               title="アカウント削除"

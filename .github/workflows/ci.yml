@@ -128,6 +128,10 @@ jobs:
       - name: E2E test
         run: npm run test:e2e
 
+      # デモ環境の保護（DEMO_MODE=true で、アプリを別に起動して確認する）
+      - name: E2E test (demo mode)
+        run: npm run test:e2e:demo
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -191,18 +195,24 @@ jobs:
           gzip_kib=$(grep -oE 'gzip: [0-9.]+' "$RUNNER_TEMP/dry-run.log" | grep -oE '[0-9.]+' | head -1)
           echo "Worker size (gzip): ${gzip_kib} KiB" | tee -a "$GITHUB_STEP_SUMMARY"
           awk -v size="$gzip_kib" 'BEGIN { exit !(size > 0 && size < 10240) }'
+          # デモ環境専用の保護（DEMO_MODE）は、本番に入れない
+          if grep -q 'DEMO_MODE' "$RUNNER_TEMP/dry-run.log"; then echo "DEMO_MODE が、デモ以外の設定に入っています"; exit 1; fi
 
       # ステージング環境の設定（Worker 名・D1・vars・Cron）が wrangler で解決できることを確認する。
       - name: Check staging config
         run: |
           npx wrangler deploy --dry-run --env staging --outdir "$RUNNER_TEMP/worker-dist-staging" 2>&1 | tee "$RUNNER_TEMP/dry-run-staging.log"
           grep -q 'mybooklibrary-staging-db' "$RUNNER_TEMP/dry-run-staging.log"
+          # デモ環境専用の保護（DEMO_MODE）は、ステージングに入れない
+          if grep -q 'DEMO_MODE' "$RUNNER_TEMP/dry-run-staging.log"; then echo "DEMO_MODE が、デモ以外の設定に入っています"; exit 1; fi
 
       # デモ環境の設定（Worker 名・D1・vars・Cron なし）が wrangler で解決できることを確認する。
       - name: Check demo config
         run: |
           npx wrangler deploy --dry-run --env demo --outdir "$RUNNER_TEMP/worker-dist-demo" 2>&1 | tee "$RUNNER_TEMP/dry-run-demo.log"
           grep -q 'mybooklibrary-demo-db' "$RUNNER_TEMP/dry-run-demo.log"
+          # デモ環境では、保護（DEMO_MODE）が有効であること
+          grep -q 'DEMO_MODE' "$RUNNER_TEMP/dry-run-demo.log"
 
       # ローカルの D1 + Worker で、ログイン・保護ページ・Cron まで確認する（認証情報は実行ごとに生成）。
       - name: Smoke test Worker

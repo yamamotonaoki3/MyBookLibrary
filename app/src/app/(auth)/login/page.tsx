@@ -1,3 +1,5 @@
+import { isDemoMode } from "@/lib/demoMode";
+import { DEMO_USER_PASSWORD } from "@/lib/demo/seedPlan";
 import { LoginForm } from "./_components/LoginForm";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { BookOpen } from "lucide-react";
@@ -10,6 +12,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; callbackUrl?: string; message?: string }>;
 }) {
   const params = await searchParams;
+  const demoMode = isDemoMode();
   return (
     <Card className="w-full max-w-sm lg:max-w-lg shadow-lg">
       <CardHeader className="pb-2 pt-6 text-center lg:pb-4 lg:pt-8">
@@ -25,7 +28,14 @@ export default async function LoginPage({
             パスワードを変更しました。新しいパスワードでログインしてください。
           </p>
         )}
-        <LoginForm error={params.error} callbackUrl={params.callbackUrl} />
+        {demoMode && (
+          <div data-testid="demo-login-hint" className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900 lg:px-4 lg:py-3 lg:text-sm">
+            <p className="font-medium">デモ環境です。次のデモアカウントでログインできます。</p>
+            <p className="mt-1">メールアドレス: demo_sakura@example.com</p>
+            <p>パスワード: {DEMO_USER_PASSWORD}</p>
+          </div>
+        )}
+        <LoginForm error={params.error} callbackUrl={params.callbackUrl} demoMode={demoMode} />
         <div className="mt-4 space-y-1 text-center text-[10px] text-muted-foreground">
           <p>
             本の書影・書誌情報の取得に楽天ブックスAPIを利用しています。{" "}

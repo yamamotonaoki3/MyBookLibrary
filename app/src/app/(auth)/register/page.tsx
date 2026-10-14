@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { isDemoMode } from "@/lib/demoMode";
 import { RegisterForm } from "./_components/RegisterForm";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { BookOpen } from "lucide-react";
@@ -5,6 +7,7 @@ import { BookOpen } from "lucide-react";
 export const metadata = { title: "新規登録 | MyBookLibrary" };
 
 export default function RegisterPage() {
+  const demoMode = isDemoMode();
   return (
     <Card className="w-full max-w-sm shadow-md">
       <CardHeader className="pb-2 text-center">
@@ -15,7 +18,16 @@ export default function RegisterPage() {
         <p className="text-sm text-muted-foreground">新規アカウントを作成</p>
       </CardHeader>
       <CardContent>
-        <RegisterForm />
+        {demoMode ? (
+          <div data-testid="demo-register-notice" className="space-y-3 text-center text-sm">
+            <p>デモ環境では、新規登録できません（個人情報を入力しないでください）。</p>
+            <Link href="/login" className="text-violet-600 underline underline-offset-4 hover:text-violet-700">
+              ログイン画面へ（デモアカウントを案内しています）
+            </Link>
+          </div>
+        ) : (
+          <RegisterForm />
+        )}
       </CardContent>
     </Card>
   );

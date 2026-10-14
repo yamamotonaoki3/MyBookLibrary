@@ -42,7 +42,9 @@ async function deleteDemoOwnedData(prisma: DemoClient, userIds: number[]): Promi
   await prisma.review.deleteMany({ where: { userId: { in: userIds } } });
   // デモのユーザー宛ての通知だけを消す（他のユーザー宛ての通知の actor は、ユーザーの削除で空になる）
   await prisma.notification.deleteMany({ where: { userId: { in: userIds } } });
-  await prisma.follow.deleteMany({ where: { OR: [{ followerId: { in: userIds } }, { followingId: { in: userIds } }] } });
+  // デモのユーザーが「フォローする」関係だけを消す（デモ以外のユーザーが、デモのユーザーをフォローする関係には触れない。
+  // ユーザー自身を削除するとき（resetDemoData）は、外部キーの連鎖で消える）
+  await prisma.follow.deleteMany({ where: { followerId: { in: userIds } } });
   await prisma.readingStatus.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.favoriteAuthor.deleteMany({ where: { userId: { in: userIds } } });
   await prisma.userLibrary.deleteMany({ where: { userId: { in: userIds } } });
@@ -83,8 +85,8 @@ export type SeedOptions = {
   /** 管理者のパスワード。省略（空）なら、管理者は作らない。値は、コードにも出力にも書かない。 */
   adminPassword?: string;
   now?: Date;
-  /** 選ぶ本の数の上限。 */
-  bookLimit?: number;
+  /** 真なら、管理者を作らない実行でも、既存の管理者（demo_admin）を消さない（定期的な初期化で使う）。 */
+  keepAdmin?: boolean;
 };
 
 export type SeedSummary = { users: number; counts: DemoCounts };
@@ -116,7 +118,7 @@ export async function seedDemoData(prisma: DemoClient, options: SeedOptions = {}
 
   // 管理者を作らない実行では、以前に作った管理者も、このあとのユーザー作成の前に、消えるようにする
   await deleteDemoOwnedData(prisma, await findDemoUserIds(prisma));
-  if (!includeAdmin) await prisma.user.deleteMany({ where: { email: "demo_admin@example.com", name: "demo_admin", role: "admin" } });
+  if (!includeAdmin && !options.keepAdmin) await prisma.user.deleteMany({ where: { email: "demo_admin@example.com", name: "demo_admin", role: "admin" } });
 
   const userPasswordHash = await bcrypt.hash(DEMO_USER_PASSWORD, BCRYPT_COST);
   const adminPasswordHash = includeAdmin ? await bcrypt.hash(adminPassword!, BCRYPT_COST) : undefined;

@@ -6,7 +6,7 @@
 //   ステージング: wrangler deploy --env staging … Worker 名 mybooklibrary-staging / D1 mybooklibrary-staging-db
 //   デモ:         wrangler deploy --env demo    … Worker 名 mybooklibrary-demo / D1 mybooklibrary-demo-db
 // wrangler では、バインディング（D1）と vars は環境に継承されないため、環境ごとに書く。triggers は継承されるため、
-// ステージングとデモでは Cron を空配列で上書きして無効にする（省略すると本番の Cron を引き継ぐ）。
+// ステージングでは Cron を空配列で上書きして無効にする（省略すると本番の Cron を引き継ぐ）。デモは、データの初期化の Cron だけを設定する。
 // ローカル実行（wrangler dev --local、npm run smoke:worker）はトップレベルを使い、D1 の ID は使われない。
 // secret（AUTH_SECRET・CRON_SECRET など）は、このファイルに書かず wrangler secret put で環境ごとに登録する。
 {
@@ -71,15 +71,17 @@
     },
     // ---- デモ（demo）。docs/demo-environment.md ----
     // Worker 名は mybooklibrary-demo。公開 URL は https://mybooklibrary-demo.nyproducts.workers.dev
-    // Cron なし。DEMO_MODE などの保護は #721 で vars に足す。
+    // デモのデータの初期化（Cron）。毎日 UTC 18:00 = JST 03:00。DEMO_MODE=true のとき、Cron は新刊チェックの代わりに初期化 API を呼ぶ。
     "demo": {
-      "triggers": { "crons": [] },
+      "triggers": { "crons": ["0 18 * * *"] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "vars": {
         "AUTH_URL": "https://mybooklibrary-demo.nyproducts.workers.dev",
         "AUTH_TRUST_HOST": "true",
         "CRON_TARGET_ORIGIN": "https://mybooklibrary-demo.nyproducts.workers.dev",
-        "RAKUTEN_ALLOWED_ORIGIN": "https://mybooklibrary-demo.nyproducts.workers.dev"
+        "RAKUTEN_ALLOWED_ORIGIN": "https://mybooklibrary-demo.nyproducts.workers.dev",
+        // デモ環境の保護（パスワード変更・退会・管理者操作の禁止、注意書き、定期初期化）。本番・ステージングには書かない（docs/demo-environment.md）
+        "DEMO_MODE": "true"
       },
       "d1_databases": [
         {

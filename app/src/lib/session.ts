@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { demoForbidden, isDemoMode } from "@/lib/demoMode";
 
 function mustChangePasswordError(): NextResponse {
   return NextResponse.json({ error: "MUST_CHANGE_PASSWORD" }, { status: 403 });
@@ -39,6 +40,8 @@ export async function getAuthenticatedUserId(options?: {
 export async function requireAdminSession(): Promise<
   { userId: number; error: null } | { userId: null; error: NextResponse }
 > {
+  // デモ環境では、管理者の操作を、すべて行えない（管理者は公開しないが、念のため）
+  if (isDemoMode()) return { userId: null, error: demoForbidden() };
   const session = await auth();
   if (!session?.user?.id) {
     return {

@@ -36,7 +36,8 @@ export const authConfig: NextAuthConfig = {
 
       if (
         nextUrl.pathname.startsWith("/admin") &&
-        (auth.user as { role?: string })?.role !== "admin"
+        // デモ環境（DEMO_MODE=true）では、管理者の画面を開かない（管理者の操作は API も拒否される）
+        (process.env.DEMO_MODE === "true" || (auth.user as { role?: string })?.role !== "admin")
       ) {
         return NextResponse.redirect(new URL("/", nextUrl.origin));
       }

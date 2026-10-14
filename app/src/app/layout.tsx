@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./_components/Providers";
 import { ConditionalLayout } from "./_components/ConditionalLayout";
+import { DemoBanner } from "./_components/DemoBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,7 +43,20 @@ export default function RootLayout({
     >
       <body className="flex min-h-screen bg-gray-50 lg:h-screen lg:overflow-hidden">
         <Providers>
-          <ConditionalLayout>{children}</ConditionalLayout>
+          <ConditionalLayout
+            authBanner={
+              <Suspense fallback={null}>
+                <DemoBanner variant="auth" />
+              </Suspense>
+            }
+            appBanner={
+              <Suspense fallback={null}>
+                <DemoBanner variant="app" />
+              </Suspense>
+            }
+          >
+            {children}
+          </ConditionalLayout>
         </Providers>
       </body>
     </html>
