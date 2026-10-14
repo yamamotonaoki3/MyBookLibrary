@@ -1,24 +1,24 @@
 /**
- * Worker のデプロイ（npm run deploy:staging / deploy:production）。
+ * Worker のデプロイ（npm run deploy:staging / deploy:production / deploy:demo）。
  *
  * リモート D1 にマイグレーションを適用してから、`wrangler deploy` で公開する。
  * バージョン名（package.json の version）とデプロイしたコミットを、Worker のバージョンのタグに付ける（例: `0.1.0-f64ec6c`。`/api/version` と `wrangler deployments list` に出る）。
  * コミットは、Workers Builds の WORKERS_CI_COMMIT_SHA、なければ手元の `git rev-parse HEAD` から取る。取れなければタグなしで公開する。
  *
- * 使い方: node scripts/deploy-worker.mjs <staging|production>
+ * 使い方: node scripts/deploy-worker.mjs <staging|production|demo>
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const target = process.argv[2];
-if (target !== "staging" && target !== "production") {
-  console.error("使い方: node scripts/deploy-worker.mjs <staging|production>");
+if (target !== "staging" && target !== "production" && target !== "demo") {
+  console.error("使い方: node scripts/deploy-worker.mjs <staging|production|demo>");
   process.exit(1);
 }
 
-// 本番はトップレベルの設定、ステージングは env.staging を使う
-const envArgs = target === "staging" ? ["--env", "staging"] : [];
+// 本番はトップレベルの設定、ステージングは env.staging、デモは env.demo を使う
+const envArgs = target === "production" ? [] : ["--env", target];
 
 const APP_VERSION = JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8")).version;
 

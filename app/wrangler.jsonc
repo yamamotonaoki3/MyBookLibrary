@@ -1,11 +1,12 @@
 // Cloudflare Workers / D1 の設定。docs/cloudflare-d1-migration-plan.md §6、手順は docs/cloudflare-deploy.md を参照。
 // Worker のビルドは npm run build:worker（OpenNext + Prisma の wasm の同梱。scripts/build-worker.mjs）。
 //
-// 環境は 2 つ。トップレベルが本番（production）、`env.staging` がステージング。
+// 環境は 3 つ。トップレベルが本番（production）、`env.staging` がステージング、`env.demo` がデモ。
 //   本番:         wrangler deploy                … Worker 名 mybooklibrary / D1 mybooklibrary-db
 //   ステージング: wrangler deploy --env staging … Worker 名 mybooklibrary-staging / D1 mybooklibrary-staging-db
+//   デモ:         wrangler deploy --env demo    … Worker 名 mybooklibrary-demo / D1 mybooklibrary-demo-db
 // wrangler では、バインディング（D1）と vars は環境に継承されないため、環境ごとに書く。triggers は継承されるため、
-// ステージングでは Cron を空配列で上書きして無効にする（省略すると本番の Cron を引き継ぐ）。
+// ステージングとデモでは Cron を空配列で上書きして無効にする（省略すると本番の Cron を引き継ぐ）。
 // ローカル実行（wrangler dev --local、npm run smoke:worker）はトップレベルを使い、D1 の ID は使われない。
 // secret（AUTH_SECRET・CRON_SECRET など）は、このファイルに書かず wrangler secret put で環境ごとに登録する。
 {
@@ -64,6 +65,28 @@
           "database_name": "mybooklibrary-staging-db",
           // wrangler d1 create mybooklibrary-staging-db で作成した D1 の ID（秘密情報ではない）。
           "database_id": "e788d5bf-9174-44f7-8ac0-934e81c08f32",
+          "migrations_dir": "prisma/d1/migrations"
+        }
+      ]
+    },
+    // ---- デモ（demo）。docs/demo-environment.md ----
+    // Worker 名は mybooklibrary-demo。公開 URL は https://mybooklibrary-demo.nyproducts.workers.dev
+    // Cron なし。DEMO_MODE などの保護は #721 で vars に足す。
+    "demo": {
+      "triggers": { "crons": [] },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "vars": {
+        "AUTH_URL": "https://mybooklibrary-demo.nyproducts.workers.dev",
+        "AUTH_TRUST_HOST": "true",
+        "CRON_TARGET_ORIGIN": "https://mybooklibrary-demo.nyproducts.workers.dev",
+        "RAKUTEN_ALLOWED_ORIGIN": "https://mybooklibrary-demo.nyproducts.workers.dev"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "mybooklibrary-demo-db",
+          // wrangler d1 create mybooklibrary-demo-db で作成した D1 の ID（秘密情報ではない）。
+          "database_id": "9db6893d-38e3-4795-b24d-1901d6a929ad",
           "migrations_dir": "prisma/d1/migrations"
         }
       ]
