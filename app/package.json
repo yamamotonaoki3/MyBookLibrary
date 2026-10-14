@@ -43,6 +43,7 @@
     "d1:migrate:production": "wrangler d1 migrations apply DB --remote",
     "deploy:staging": "node scripts/deploy-worker.mjs staging",
     "deploy:production": "node scripts/deploy-worker.mjs production",
+    "deploy:demo": "node scripts/deploy-worker.mjs demo",
     "schema:d1:check": "tsx prisma/scripts/generate-d1-schema.ts --check && prisma validate --schema prisma/d1/schema.prisma"
   },
   "dependencies": {

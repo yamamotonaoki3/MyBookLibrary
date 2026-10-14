@@ -198,6 +198,12 @@ jobs:
           npx wrangler deploy --dry-run --env staging --outdir "$RUNNER_TEMP/worker-dist-staging" 2>&1 | tee "$RUNNER_TEMP/dry-run-staging.log"
           grep -q 'mybooklibrary-staging-db' "$RUNNER_TEMP/dry-run-staging.log"
 
+      # デモ環境の設定（Worker 名・D1・vars・Cron なし）が wrangler で解決できることを確認する。
+      - name: Check demo config
+        run: |
+          npx wrangler deploy --dry-run --env demo --outdir "$RUNNER_TEMP/worker-dist-demo" 2>&1 | tee "$RUNNER_TEMP/dry-run-demo.log"
+          grep -q 'mybooklibrary-demo-db' "$RUNNER_TEMP/dry-run-demo.log"
+
       # ローカルの D1 + Worker で、ログイン・保護ページ・Cron まで確認する（認証情報は実行ごとに生成）。
       - name: Smoke test Worker
         run: npm run smoke:worker

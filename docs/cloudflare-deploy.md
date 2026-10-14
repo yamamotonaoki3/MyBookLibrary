@@ -8,8 +8,9 @@ Cloudflare Workers + D1 への移行（#609）で使う環境とデプロイの�
 |---|---|---|---|---|---|
 | ステージング | `mybooklibrary-staging` | `https://mybooklibrary-staging.nyproducts.workers.dev` | `mybooklibrary-staging-db` | なし（本番との二重通知を防ぐため。手動で確認する） | `wrangler deploy --env staging` |
 | 本番 | `mybooklibrary` | `https://mybooklibrary.nyproducts.workers.dev` | `mybooklibrary-db` | 毎日 UTC 00:00（JST 09:00） | `wrangler deploy` |
+| デモ | `mybooklibrary-demo` | `https://mybooklibrary-demo.nyproducts.workers.dev` | `mybooklibrary-demo-db` | なし | `wrangler deploy --env demo` |
 
-設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングでは Cron を空配列で上書きして無効にしている。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
+設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング、`env.demo` がデモ）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングとデモでは Cron を空配列で上書きして無効にしている。デモ環境の方針は [demo-environment.md](demo-environment.md)。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
 
 ## 初回準備（Cloudflare アカウントでの操作）
 
@@ -53,6 +54,7 @@ Cloudflare 公式の CI/CD（Workers Builds）で、GitHub のリポジトリと
 |---|---|---|
 | `mybooklibrary-staging` | `main` | `npm run deploy:staging` |
 | `mybooklibrary` | `production` | `npm run deploy:production` |
+| `mybooklibrary-demo` | `demo` | `npm run deploy:demo` |
 
 流れは「PR を `main` にマージ → ステージングへ自動デプロイ → ステージングで確認 → `main` を `production` ブランチへ反映 → 本番へ自動デプロイ」。`production` ブランチの更新は、GitHub で `main` から `production` への PR を作ってマージするか、`git push origin main:production`（早送り）で行う。
 
@@ -153,7 +155,7 @@ npx wrangler secret list
 | 項目 | 入力 |
 |---|---|
 | アプリケーション URL | `https://mybooklibrary.nyproducts.workers.dev` |
-| 許可された Web サイト（1 行に 1 ドメイン） | `mybooklibrary.nyproducts.workers.dev` と `mybooklibrary-staging.nyproducts.workers.dev` |
+| 許可された Web サイト（1 行に 1 ドメイン） | `mybooklibrary.nyproducts.workers.dev`、`mybooklibrary-staging.nyproducts.workers.dev`、`mybooklibrary-demo.nyproducts.workers.dev` |
 
 楽天 API は、許可された Web サイト以外のリクエストを **403 Forbidden** で拒否し、**サーバーからの呼び出しにも Referer / Origin を求める**。このため、`RAKUTEN_ALLOWED_ORIGIN`（環境ごとの公開 URL）がある環境では、アプリが Referer と Origin を付けて呼び出す（ヘッダーなしだと 403 になることを、ステージングで A/B 確認した）。ローカル開発・AWS は、従来のアプリ ID / アクセスキー（Cloudflare 用とは別の登録）を使い続ける限り、`RAKUTEN_ALLOWED_ORIGIN` を未設定のままにする（従来どおり何も付けない）。**Cloudflare 用に新しく登録したアプリ ID / アクセスキーを、ローカル・AWS でも使う場合は、そのアプリの「許可された Web サイト」にそれぞれのドメイン（ローカルなら `localhost`）を足し、`RAKUTEN_ALLOWED_ORIGIN` に対応する URL を設定する**（設定しないと 403 になる）。
 
@@ -227,12 +229,30 @@ npx wrangler tail --env staging
 - 同じアカウントを他のプロジェクトと共有している場合、クォータと請求は合算される。
 - 請求アラート（通知）の設定は、ダッシュボードの「請求」→「請求アラート」（#682）。
 
+## デモ環境
+
+デモ専用の Worker と D1。方針は [demo-environment.md](demo-environment.md)。ステージング・本番と同じ手順だが、次の点が異なる。
+
+- secret は **`--env demo`** で、デモ専用の値を登録する（`AUTH_SECRET`・`CRON_SECRET` は新しく生成する。本番・ステージングと使い回さない）。楽天の値は、上の「楽天ブックス API のアプリ登録」にデモのドメインを足したうえで、同じ値でよい。
+  ```bash
+  openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET --env demo
+  openssl rand -base64 32 | npx wrangler secret put CRON_SECRET --env demo
+  npx wrangler secret put RAKUTEN_APP_ID --env demo
+  npx wrangler secret put RAKUTEN_ACCESS_KEY --env demo
+  npx wrangler secret list --env demo
+  ```
+- Google ログインは、デモでは使わない（`AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` は登録しない）。
+- 初回は、先に Worker を作る（`npm run build:worker` のあと `npx wrangler deploy --env demo`）。D1 にマイグレーションを適用するのは `npm run deploy:demo`。
+- 自動デプロイは `demo` ブランチ。作成は `git push origin origin/main:refs/heads/demo`。以降の更新は `git push origin origin/main:demo`。連携の設定は上の「自動デプロイ」と同じ（プレビューのビルドは無効）。API トークンに D1 の編集権限が必要なのも同じ。
+- 確認: `curl https://mybooklibrary-demo.nyproducts.workers.dev/api/version`
+
 ## 確認
 
 ```bash
 # 設定が解決できるか（Worker 名・D1・vars）と、サイズの確認。事前に npm run build:worker が必要。
 npx wrangler deploy --dry-run --env staging
+npx wrangler deploy --dry-run --env demo
 npx wrangler deploy --dry-run
 ```
 
-CI（`worker` ジョブ）でも、本番・ステージングの両方の設定を `--dry-run` で確認している。
+CI（`worker` ジョブ）でも、本番・ステージング・デモの設定を `--dry-run` で確認している。
