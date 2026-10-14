@@ -159,3 +159,17 @@ npm run migration:d1 -- reset  --remote --d1-name <名前> --d1-id <ID> --yes
 - 書き込みに失敗したときのエラーは、Prisma のメッセージに含まれる値（メールアドレス・本文など）を出さず、表名・エラーの種類・コードだけを表示する。
 - 実データを扱うため、リハーサル用の D1 には、匿名化したデータだけを入れる（手順は [docs/d1-rehearsal-runbook.md](../../../../docs/d1-rehearsal-runbook.md)、#690）。移行元のダンプ・復元先の MySQL は、作業後に削除する。
 
+### デモ用 D1 へのマスターデータの投入（#719）
+
+公開するデモ環境（[docs/demo-environment.md](../../../../docs/demo-environment.md)）の D1 へは、`--profile demo` で、マスターデータ（賞・著者・本・ISBN・受賞）だけを投入する。ユーザー・レビュー・読書状況などは移さない。本の「登録者」（`created_by_user_id`）は空にする。
+
+```bash
+npm run migration:d1 -- migrate --profile demo --dry-run
+npm run migration:d1 -- migrate --profile demo --remote --d1-name mybooklibrary-demo-db --d1-id <デモの D1 の ID> --yes
+npm run migration:d1 -- verify  --profile demo --remote --d1-name mybooklibrary-demo-db --d1-id <デモの D1 の ID>
+```
+
+- `--profile demo` の移行先は、名前と ID の**両方**がデモの D1 と一致するリモート、またはローカルだけ。本番・ステージングなどの D1 は拒否する。
+- `--profile` を付けずにデモの D1 へ移行しようとすると拒否する（実データのユーザーなどを、公開するデモへ入れないため）。
+- 移行元は、これまでと同じく、ダンプを復元したローカルの MySQL。手順と後始末は [docs/d1-rehearsal-runbook.md](../../../../docs/d1-rehearsal-runbook.md) と同じ（実データを扱うため、匿名化は不要だが、作業後にダンプと MySQL を削除する）。
+- `reset` は、デモの D1 の全テーブルを空にする（マスターデータを入れ直すとき用）。

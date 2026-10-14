@@ -59,6 +59,15 @@ export const MIGRATION_TABLES: TableSpec[] = [
   { model: "bookEnrichmentItem", table: "book_enrichment_items", orderBy: ["id"], jsonColumns: ["resultDetail"] },
 ];
 
+/**
+ * デモ環境（#719）に投入するマスターデータ。賞・著者・本・ISBN・受賞。ユーザー関連のテーブルは含めない。
+ * 本の「登録者」（ユーザーへの参照）は、本番のユーザーとの対応を残さないよう空にする。
+ */
+export const DEMO_MASTER_TABLES: TableSpec[] = ["author", "award", "book", "bookIsbn", "awardEntry"].map((model) => {
+  const spec = MIGRATION_TABLES.find((table) => table.model === model)!;
+  return model === "book" ? { ...spec, transform: (row: Row) => ({ ...row, createdByUserId: null }) } : spec;
+});
+
 export function applyTransform(spec: TableSpec, row: Row): Row {
   return spec.transform ? spec.transform(row) : row;
 }
