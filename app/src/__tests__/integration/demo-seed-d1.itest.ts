@@ -132,6 +132,33 @@ describeD1("デモ用のデータの作成・初期化（ローカルの D1・�
     expect(await testPrisma.notification.findFirst({ where: { userId: outsider.id } })).toMatchObject({ actorId: null });
   });
 
+  it("keepAdmin: パスワードなしの再実行（定期的な初期化）でも、既存の管理者は消えない", async () => {
+    await seedDemoData(demo, { adminPassword: "test-admin-password-1" });
+    const before = await testPrisma.user.findUniqueOrThrow({ where: { email: "demo_admin@example.com" } });
+
+    const summary = await seedDemoData(demo, { keepAdmin: true });
+
+    expect(summary.users).toBe(8);
+    const after = await testPrisma.user.findUniqueOrThrow({ where: { email: "demo_admin@example.com" } });
+    expect(after).toMatchObject({ id: before.id, role: "admin", password: before.password });
+    expect(await testPrisma.user.count({ where: { email: { endsWith: "@example.com" } } })).toBe(9);
+  });
+
+  it("再実行（keepAdmin）しても、デモ以外のユーザーが、デモのユーザーをフォローする関係は消えない", async () => {
+    await seedDemoData(demo);
+    const sakura = await testPrisma.user.findUniqueOrThrow({ where: { email: "demo_sakura@example.com" } });
+    const outsider = await testPrisma.user.create({ data: { name: "testuser_follower", email: "testuser_follower@example.com" } });
+    await testPrisma.follow.create({ data: { followerId: outsider.id, followingId: sakura.id } });
+
+    await seedDemoData(demo, { keepAdmin: true });
+
+    expect(await testPrisma.follow.count({ where: { followerId: outsider.id, followingId: sakura.id } })).toBe(1);
+    // ユーザーを削除する初期化（reset）では、外部キーの連鎖で消える
+    await resetDemoData(demo);
+    expect(await testPrisma.follow.count({ where: { followerId: outsider.id } })).toBe(0);
+    expect(await testPrisma.user.findUnique({ where: { id: outsider.id } })).not.toBeNull();
+  });
+
   it("初期化の後に、もう一度作成できる", async () => {
     const first = await seedDemoData(demo);
     await resetDemoData(demo);

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { isDemoMode } from "@/lib/demoMode";
 import { ChangePasswordForm } from "./_components/ChangePasswordForm";
 
 export const metadata: Metadata = {
@@ -20,7 +21,13 @@ export default async function ChangePasswordPage() {
         </p>
       )}
       <div className="max-w-md">
-        <ChangePasswordForm forced={session.user.mustChangePassword} />
+        {isDemoMode() ? (
+          <p data-testid="demo-change-password-notice" className="text-sm text-zinc-600 dark:text-zinc-400">
+            デモ環境では、パスワードを変更できません。
+          </p>
+        ) : (
+          <ChangePasswordForm forced={session.user.mustChangePassword} />
+        )}
       </div>
     </div>
   );

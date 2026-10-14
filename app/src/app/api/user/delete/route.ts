@@ -1,3 +1,4 @@
+import { demoForbidden, isDemoMode } from "@/lib/demoMode";
 import { prisma } from "@/lib/prisma";
 import { deleteNonAdminUser } from "@/repositories/userDeletionRepository";
 import { getAuthenticatedUserId } from "@/lib/session";
@@ -5,6 +6,7 @@ import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(request: NextRequest) {
+  if (isDemoMode()) return demoForbidden();
   const { userId, error } = await getAuthenticatedUserId();
   if (error) return error;
 

@@ -1,3 +1,4 @@
+import { demoForbidden, isDemoMode } from "@/lib/demoMode";
 import { normalizeEmail } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
@@ -9,6 +10,7 @@ const SECRET_WORD_LOCK_THRESHOLD = 10;
 const SECRET_WORD_LOCK_DURATION_MS = 15 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
+  if (isDemoMode()) return demoForbidden();
   const body = (await req.json()) as {
     step: "check" | "verifySecretWord" | "reset";
     email?: string;

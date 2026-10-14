@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { demoForbidden, isDemoMode } from "@/lib/demoMode";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { searchBooksByIsbn, fetchBookPage } from "@/lib/rakuten";
 import { logger } from "@/lib/logger";
@@ -90,6 +91,7 @@ function parseRecords(xml: string): NdlBook[] {
 }
 
 export async function GET(request: NextRequest) {
+  if (isDemoMode()) return demoForbidden();
   const { error } = await getAuthenticatedUserId();
   if (error) return error;
 

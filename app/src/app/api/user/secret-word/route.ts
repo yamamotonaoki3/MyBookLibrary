@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { demoForbidden, isDemoMode } from "@/lib/demoMode";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { SecretWordSchema } from "@/lib/validations";
@@ -20,6 +21,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (isDemoMode()) return demoForbidden();
   const { userId, error } = await getAuthenticatedUserId();
   if (error) return error;
 

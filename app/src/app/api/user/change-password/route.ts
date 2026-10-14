@@ -1,10 +1,12 @@
 import bcrypt from "bcryptjs";
+import { demoForbidden, isDemoMode } from "@/lib/demoMode";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { ChangePasswordSchema } from "@/lib/validations";
 import { recordAuditEvent, getClientIp, AUDIT_EVENT } from "@/lib/auditLog";
 
 export async function POST(request: Request) {
+  if (isDemoMode()) return demoForbidden();
   const { userId, error } = await getAuthenticatedUserId({ allowMustChangePassword: true });
   if (error) return error;
 

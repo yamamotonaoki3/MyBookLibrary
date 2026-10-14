@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { demoForbidden, isDemoMode } from "@/lib/demoMode";
 import { prisma } from "@/lib/prisma";
 import { processEnrichmentJob } from "@/lib/bookEnrichmentWorker";
 import { logger } from "@/lib/logger";
@@ -9,6 +10,7 @@ const MIN_TICK_SECRET_LENGTH = 16;
 const STALE_THRESHOLD_MS = 3 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
+  if (isDemoMode()) return demoForbidden();
   const tickSecret = process.env.ENRICHMENT_TICK_SECRET;
   if (!tickSecret || tickSecret.length < MIN_TICK_SECRET_LENGTH) {
     logger.error("ENRICHMENT_TICK_SECRET is not configured or too short");

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { CHECK_NEW_BOOKS_PATH, createScheduledHandler, type CronEnv } from "@/lib/cronScheduler";
+import { CHECK_NEW_BOOKS_PATH, createScheduledHandler, RESET_DEMO_PATH, type CronEnv } from "@/lib/cronScheduler";
 
 // 秘密情報の検査（Gitleaks）の誤検知を避けるため、テスト用の値はリテラルで書かず実行時に生成する
 const SECRET = `s${randomBytes(12).toString("hex")}`;
@@ -40,6 +40,25 @@ describe("createScheduledHandler", () => {
     expect(request.url).toBe(`https://books.example.com${CHECK_NEW_BOOKS_PATH}`);
     expect(request.headers.get("authorization")).toBe(`Bearer ${SECRET}`);
     expect(passedEnv).toBe(env);
+  });
+
+  it("デモ環境（DEMO_MODE=true）では、新刊チェックの代わりに、デモの初期化 API を呼ぶ", async () => {
+    const { appFetch, waitUntil, handler, ctx } = setup();
+
+    await handler(controller, { CRON_SECRET: SECRET, CRON_TARGET_ORIGIN: "https://books.example.com", DEMO_MODE: "true" }, ctx);
+    await waitUntil.mock.calls[0][0];
+
+    expect(appFetch.mock.calls[0][0].url).toBe(`https://books.example.com${RESET_DEMO_PATH}`);
+    expect(appFetch.mock.calls[0][0].headers.get("authorization")).toBe(`Bearer ${SECRET}`);
+  });
+
+  it("DEMO_MODE が true 以外なら、新刊チェックを呼ぶ", async () => {
+    const { appFetch, waitUntil, handler, ctx } = setup();
+
+    await handler(controller, { CRON_SECRET: SECRET, CRON_TARGET_ORIGIN: "https://books.example.com", DEMO_MODE: "false" }, ctx);
+    await waitUntil.mock.calls[0][0];
+
+    expect(new URL(appFetch.mock.calls[0][0].url).pathname).toBe(CHECK_NEW_BOOKS_PATH);
   });
 
   it("実行はバックグラウンド（waitUntil）で完了まで待たれる", async () => {

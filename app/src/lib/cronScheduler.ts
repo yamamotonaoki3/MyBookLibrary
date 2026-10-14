@@ -8,6 +8,8 @@
  */
 
 export const CHECK_NEW_BOOKS_PATH = "/api/cron/check-new-books";
+/** デモ環境（DEMO_MODE=true）の定期的な初期化（#721）。デモ環境では、新刊チェックの代わりに、これを呼ぶ。 */
+export const RESET_DEMO_PATH = "/api/cron/reset-demo";
 
 /** Workers の環境（バインディング・変数・secret）のうち、Cron が使うもの。 */
 export type CronEnv = {
@@ -15,6 +17,8 @@ export type CronEnv = {
   CRON_SECRET?: string;
   /** 内部リクエストの URL の origin。未設定なら http://localhost。 */
   CRON_TARGET_ORIGIN?: string;
+  /** "true" のときは、デモ環境。新刊チェックの代わりに、デモの初期化 API を呼ぶ。 */
+  DEMO_MODE?: string;
 };
 
 type ExecutionContextLike = { waitUntil(promise: Promise<unknown>): void };
@@ -36,7 +40,9 @@ export function createScheduledHandler<Env extends CronEnv>(appFetch: AppFetch<E
       throw new Error("CRON_SECRET is not configured");
     }
 
-    const request = new Request(new URL(CHECK_NEW_BOOKS_PATH, env.CRON_TARGET_ORIGIN ?? DEFAULT_ORIGIN), {
+    // デモ環境は、楽天 API を使う新刊チェックを動かさず、デモのデータの初期化だけを行う
+    const path = env.DEMO_MODE === "true" ? RESET_DEMO_PATH : CHECK_NEW_BOOKS_PATH;
+    const request = new Request(new URL(path, env.CRON_TARGET_ORIGIN ?? DEFAULT_ORIGIN), {
       headers: { authorization: `Bearer ${env.CRON_SECRET}` },
     });
 
