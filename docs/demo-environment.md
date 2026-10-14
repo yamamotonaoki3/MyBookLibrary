@@ -70,6 +70,23 @@ README の「ライブデモ」を再開するための、デモ専用環境の�
 - 初期化は、スクリプトの手動実行と、Cron（#721）の両方で行えるようにする。
 - 初期化の後に、件数が想定と一致することを確かめる。
 
+## 架空のユーザーと関係のデータの作成・初期化（#720）
+
+`app/` で実行する。接続先は、デモの D1（名前と ID の両方が一致するリモート）か、ローカルの D1 だけ。本番・ステージングは、接続の前に拒否する。先に、マスターデータの投入（[migration の README](../app/prisma/scripts/migration/README.md) の「デモ用 D1 へのマスターデータの投入」）が必要。
+
+```bash
+npm run demo:seed -- status --remote --d1-name mybooklibrary-demo-db --d1-id <デモの D1 の ID>        # 件数の確認（読み取りのみ）
+npm run demo:seed -- seed   --remote --d1-name mybooklibrary-demo-db --d1-id <デモの D1 の ID> --yes  # 作成（何度実行しても同じ結果）
+npm run demo:seed -- reset  --remote --d1-name mybooklibrary-demo-db --d1-id <デモの D1 の ID> --yes  # デモのユーザーとデータだけを削除
+```
+
+- 一般ユーザーは 8 名（`demo_sakura` など。メールは `demo_<名前>@example.com`）。パスワードは、公開してよいデモ用の固定値（`DEMO_USER_PASSWORD`。README に載せる）。
+- 管理者（`demo_admin`）は、環境変数 `DEMO_ADMIN_PASSWORD`（12 文字以上）を設定して実行したときだけ作る。値は、コード・出力・リポジトリに書かない。設定しなければ作らない。
+- 関係: フォロー（相互フォローを含む）、読書状況（読了・読書中・読みたい）、レビュー（ネタバレあり・なし、非公開を含む）、いいね、通報、通知、お気に入り著者、図書館。「未読」は、アプリの仕様で、読書状況の行がない状態のため、行は作らない。
+- 本は、賞のある本を ID の昇順に選ぶ（ID は決め打ちしない）。
+- 削除の対象は、名前が `demo_` で始まり、メールが `@example.com` で終わるユーザーと、そのユーザーが持つデータだけ。疎通確認用のユーザー、マスターデータ（賞・本・著者）には触れない。
+- 楽天 API の確認: `npm run smoke:demo-rakuten`（デモの一般ユーザーでログインし、検索 API が楽天ブックスの結果を返すことだけを確認する）。
+
 ## 作業の順序
 
 | Issue | 内容 |
