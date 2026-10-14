@@ -18,6 +18,8 @@ export interface Delegate {
 export type MigrationClient = Record<string, Delegate> & { $queryRawUnsafe(sql: string): Promise<Row[]> };
 
 export type MigrateOptions = {
+  /** 移行する表。既定は全テーブル。デモ用のプロファイル（#719）はマスターデータだけ。 */
+  tables?: TableSpec[];
   /** 1 回の読み出し・書き込みの行数。D1 の 1 文あたりのサイズ上限（100 KB）に収めるため、既定は小さめ。 */
   pageSize?: number;
   /** Json 列の DB の NULL を表す値（書き込み先の Prisma の `Prisma.DbNull`）。 */
@@ -85,9 +87,9 @@ export async function assertNoJsonNullValues(source: MigrationClient): Promise<v
 }
 
 /** 書き込み先の全テーブルが空であることを確認する（既存のデータに上書き・重複して投入しないため）。 */
-export async function assertTargetEmpty(target: MigrationClient): Promise<void> {
+export async function assertTargetEmpty(target: MigrationClient, tables: TableSpec[] = MIGRATION_TABLES): Promise<void> {
   const nonEmpty: string[] = [];
-  for (const spec of MIGRATION_TABLES) {
+  for (const spec of tables) {
     if ((await target[spec.model].count()) > 0) nonEmpty.push(spec.table);
   }
   if (nonEmpty.length > 0) {
@@ -100,16 +102,26 @@ export async function resetTarget(target: MigrationClient): Promise<void> {
   for (const spec of [...MIGRATION_TABLES].reverse()) await target[spec.model].deleteMany();
 }
 
+function hasModel(tables: TableSpec[], model: string): boolean {
+  return tables.some((spec) => spec.model === model);
+}
+
+function hasJsonTables(tables: TableSpec[]): boolean {
+  return hasModel(tables, "auditLog") || hasModel(tables, "bookEnrichmentItem");
+}
+
 export async function migrate(source: MigrationClient, target: MigrationClient, options: MigrateOptions = {}): Promise<TableSummary[]> {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const log = options.onProgress ?? (() => {});
 
-  await assertTargetEmpty(target);
-  await assertNoEmailCollisions(source, pageSize);
-  await assertNoJsonNullValues(source);
+  const tables = options.tables ?? MIGRATION_TABLES;
+  await assertTargetEmpty(target, tables);
+  // 該当の表を移行するときだけ確認する（メールは users、JSON の null は audit_logs と book_enrichment_items）
+  if (hasModel(tables, "user")) await assertNoEmailCollisions(source, pageSize);
+  if (hasJsonTables(tables)) await assertNoJsonNullValues(source);
 
   const summaries: TableSummary[] = [];
-  for (const spec of MIGRATION_TABLES) {
+  for (const spec of tables) {
     const sourceCount = await source[spec.model].count();
     let written = 0;
     for await (const rows of readPages(source[spec.model], spec.orderBy, pageSize)) {
@@ -164,9 +176,9 @@ async function digestTable(client: MigrationClient, spec: TableSpec, pageSize: n
  * 移行元（変換後の値）と書き込み先を、表ごとに照合する。件数、キーの集合（欠落・余剰）、列ごとのハッシュ。
  * 結果には、値そのものを含めない（表名・列名・件数だけ）。
  */
-export async function verifyTables(source: MigrationClient, target: MigrationClient, pageSize = DEFAULT_PAGE_SIZE): Promise<VerificationCheck[]> {
+export async function verifyTables(source: MigrationClient, target: MigrationClient, pageSize = DEFAULT_PAGE_SIZE, tables: TableSpec[] = MIGRATION_TABLES): Promise<VerificationCheck[]> {
   const checks: VerificationCheck[] = [];
-  for (const spec of MIGRATION_TABLES) {
+  for (const spec of tables) {
     const expected = await digestTable(source, spec, pageSize, true);
     const actual = await digestTable(target, spec, pageSize, false);
 
@@ -205,11 +217,11 @@ export async function verifyForeignKeys(target: MigrationClient): Promise<Verifi
  * 書き込み先の採番（sqlite_sequence）が、各テーブルの最大 ID 以上であること。
  * 満たさないと、移行後の新規登録が、移行した行の ID と衝突する。
  */
-export async function verifySequences(target: MigrationClient): Promise<VerificationCheck[]> {
+export async function verifySequences(target: MigrationClient, tables: TableSpec[] = MIGRATION_TABLES): Promise<VerificationCheck[]> {
   const sequenceRows = await target.$queryRawUnsafe("SELECT name, seq FROM sqlite_sequence");
   const sequences = new Map(sequenceRows.map((row) => [String(row.name), Number(row.seq)]));
   const checks: VerificationCheck[] = [];
-  for (const spec of MIGRATION_TABLES) {
+  for (const spec of tables) {
     if (spec.orderBy.length !== 1 || spec.orderBy[0] !== "id") continue;
     const total = await target[spec.model].count();
     if (total === 0) continue;
@@ -237,6 +249,9 @@ export async function verifyJsonNulls(source: MigrationClient): Promise<Verifica
   }
 }
 
-export async function verifyAll(source: MigrationClient, target: MigrationClient, pageSize = DEFAULT_PAGE_SIZE): Promise<VerificationCheck[]> {
-  return [...(await verifyTables(source, target, pageSize)), await verifyForeignKeys(target), ...(await verifySequences(target)), await verifyJsonNulls(source)];
+export async function verifyAll(source: MigrationClient, target: MigrationClient, pageSize = DEFAULT_PAGE_SIZE, tables: TableSpec[] = MIGRATION_TABLES): Promise<VerificationCheck[]> {
+  const checks = [...(await verifyTables(source, target, pageSize, tables)), await verifyForeignKeys(target), ...(await verifySequences(target, tables))];
+  // JSON の null は、Json 列を持つ表を移行するときだけ確認する
+  if (hasJsonTables(tables)) checks.push(await verifyJsonNulls(source));
+  return checks;
 }

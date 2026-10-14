@@ -7,7 +7,7 @@
 import { testPrisma, resetDb, isD1 } from "../helpers/dbTest";
 import { FakeDb } from "../helpers/etlFakeDb";
 import { seedFictionalData } from "../helpers/etlFixtures";
-import { MIGRATION_TABLES } from "@/lib/migration/etl/tables";
+import { DEMO_MASTER_TABLES, MIGRATION_TABLES } from "@/lib/migration/etl/tables";
 import { assertTargetEmpty, migrate, resetTarget, verifyAll, type MigrationClient } from "@/lib/migration/etl/run";
 import { prisma } from "@/lib/prisma";
 
@@ -96,5 +96,26 @@ describeD1("MySQL → D1 のデータ移行（ローカルの D1・架空デー�
     await resetTarget(target);
     await migrate(source.client(), target, { dbNull });
     expect((await verifyAll(source.client(), target)).filter((c) => c.status === "FAIL")).toEqual([]);
+  });
+
+  it("デモ用のプロファイル: マスターデータの 5 表だけを移し、本の登録者は空で、ユーザー関連の表には何も書かない（照合は PASS）", async () => {
+    const source = await snapshot();
+    // 登録者が入っている本を用意する（空にされることの確認）
+    source.tables.get("book")![0].createdByUserId = 1;
+    await resetTarget(target);
+
+    const summaries = await migrate(source.client(), target, { tables: DEMO_MASTER_TABLES, pageSize: 2, dbNull });
+
+    expect(summaries.map((s) => s.table)).toEqual(["authors", "awards", "books", "book_isbns", "award_entries"]);
+    expect(await testPrisma.book.count({ where: { createdByUserId: { not: null } } })).toBe(0);
+    expect(await testPrisma.book.count()).toBe(source.tables.get("book")!.length);
+    for (const model of ["user", "review", "readingStatus", "follow", "like", "report", "notification", "auditLog", "userLibrary", "favoriteAuthor"]) {
+      expect(await (testPrisma as unknown as Record<string, { count: () => Promise<number> }>)[model].count()).toBe(0);
+    }
+    const checks = await verifyAll(source.client(), target, 2, DEMO_MASTER_TABLES);
+    expect(checks.filter((c) => c.status === "FAIL")).toEqual([]);
+    // 採番が追いついていて、続けて登録しても衝突しない
+    const created = await testPrisma.author.create({ data: { name: "[E2E_TEST] 新規著者" } });
+    expect(created.id).toBe(source.tables.get("author")!.length + 1);
   });
 });

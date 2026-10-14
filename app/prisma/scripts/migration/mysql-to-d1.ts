@@ -5,6 +5,7 @@
  *   npm run migration:d1 -- migrate --local                                    … ローカルの D1 へ移行（リハーサルの練習。migrate のときだけ、マイグレーションも自動で適用）
  *   npm run migration:d1 -- migrate --remote --d1-name <名前> --d1-id <ID> --yes  … リモートの D1 へ移行
  *   npm run migration:d1 -- verify  <移行先の指定>                              … 移行元と移行先を照合（読み取りのみ）
+ *   npm run migration:d1 -- migrate --profile demo --remote --d1-name mybooklibrary-demo-db --d1-id <ID> --yes … デモ用 D1 へ、マスターデータ（賞・著者・本・ISBN・受賞）だけを投入（#719）
  *   npm run migration:d1 -- reset   <移行先の指定> --yes                         … 移行先の全テーブルを空にする（リハーサルのやり直し）
  *
  * 移行元: 環境変数 MIGRATION_SOURCE_DATABASE_URL（取得済みのダンプを復元した、ローカルの MySQL。ホストは localhost のみ許可）。
@@ -23,12 +24,13 @@ import { getPlatformProxy } from "wrangler";
 import { PrismaD1 } from "@prisma/adapter-d1";
 import { PrismaClient as MysqlClient } from "@/generated/prisma";
 import { Prisma as D1Prisma, PrismaClient as D1Client } from "@/generated/prisma-d1";
-import { assertSourceUrlIsLocal, assertWritableTarget, safeErrorMessage } from "@/lib/migration/etl/guard";
-import { MIGRATION_TABLES } from "@/lib/migration/etl/tables";
+import { assertProfileMatchesTarget, assertSourceUrlIsLocal, assertWritableTarget, safeErrorMessage, type MigrationProfile } from "@/lib/migration/etl/guard";
+import { DEMO_MASTER_TABLES, MIGRATION_TABLES } from "@/lib/migration/etl/tables";
 import { assertNoEmailCollisions, assertNoJsonNullValues, migrate, resetTarget, verifyAll, type MigrationClient } from "@/lib/migration/etl/run";
 
 type Options = {
   command: string;
+  profile: MigrationProfile;
   local: boolean;
   remote: boolean;
   dryRun: boolean;
@@ -56,6 +58,7 @@ function parseArgs(argv: string[]): Options {
       "d1-id": { type: "string" },
       "confirm-production": { type: "string" },
       "persist-to": { type: "string" },
+      profile: { type: "string" },
     },
   });
   const [command, ...extra] = positionals;
@@ -63,8 +66,10 @@ function parseArgs(argv: string[]): Options {
     throw new Error("使い方: mysql-to-d1.ts <migrate|verify|reset> [--dry-run] (--local | --remote --d1-name <名前> --d1-id <ID>) [--yes]");
   }
   if (values["persist-to"] === "") throw new Error("--persist-to には、保存先のディレクトリを指定してください（空の値は指定できません）。");
+  if (values.profile !== undefined && values.profile !== "demo") throw new Error("--profile には demo だけを指定できます（省略すると全テーブルの移行）。");
   return {
     command,
+    profile: values.profile === "demo" ? "demo" : "full",
     local: values.local ?? false,
     remote: values.remote ?? false,
     dryRun: values["dry-run"] ?? false,
@@ -101,6 +106,7 @@ async function openTarget(options: Options): Promise<{ client: MigrationClient; 
     d1Id: options.d1Id,
     confirmProduction: options.confirmProduction,
   });
+  assertProfileMatchesTarget(options.profile, target);
   const dir = mkdtempSync(path.join(os.tmpdir(), "mbl-etl-"));
   const configPath = path.join(dir, "wrangler.jsonc");
   const binding = {
@@ -148,14 +154,19 @@ function printChecks(checks: Awaited<ReturnType<typeof verifyAll>>): boolean {
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
+  const tables = options.profile === "demo" ? DEMO_MASTER_TABLES : MIGRATION_TABLES;
 
   if (options.command === "migrate" && options.dryRun) {
     const source = openSource();
     try {
-      await assertNoEmailCollisions(source.client);
-      await assertNoJsonNullValues(source.client);
-      console.log("移行元: メールアドレスの重複（小文字化後）と、JSON の null はありません。件数:");
-      for (const spec of MIGRATION_TABLES) console.log(`  ${spec.table}: ${await source.client[spec.model].count()} 件`);
+      if (options.profile === "full") {
+        await assertNoEmailCollisions(source.client);
+        await assertNoJsonNullValues(source.client);
+        console.log("移行元: メールアドレスの重複（小文字化後）と、JSON の null はありません。件数:");
+      } else {
+        console.log("移行元（デモ用: マスターデータだけ）。件数:");
+      }
+      for (const spec of tables) console.log(`  ${spec.table}: ${await source.client[spec.model].count()} 件`);
       console.log("\n--dry-run のため、書き込みは行っていません。");
     } finally {
       await source.close();
@@ -178,10 +189,10 @@ async function main(): Promise<void> {
     const source = openSource();
     try {
       if (options.command === "migrate") {
-        const summaries = await migrate(source.client, target.client, { dbNull: D1Prisma.DbNull, onProgress: (message) => console.log(`  ${message}`) });
+        const summaries = await migrate(source.client, target.client, { tables, dbNull: D1Prisma.DbNull, onProgress: (message) => console.log(`  ${message}`) });
         console.log(`\n移行しました（${summaries.length} テーブル、${summaries.reduce((sum, s) => sum + s.written, 0)} 件）。続けて照合します。`);
       }
-      const ok = printChecks(await verifyAll(source.client, target.client));
+      const ok = printChecks(await verifyAll(source.client, target.client, undefined, tables));
       process.exitCode = ok ? 0 : 1;
     } finally {
       await source.close();

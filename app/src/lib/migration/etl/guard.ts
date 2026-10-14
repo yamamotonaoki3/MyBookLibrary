@@ -8,6 +8,10 @@ export const PRODUCTION_D1_NAME = "mybooklibrary-db";
 /** 本番の D1 の ID（wrangler.jsonc のトップレベル。秘密情報ではない）。名前を変えて指定されても、本番として扱うため。 */
 export const PRODUCTION_D1_ID = "dd2f0ed7-5d12-4d7d-8722-97765ff4089b";
 
+/** デモ環境の D1 の名前と ID（wrangler.jsonc の env.demo。秘密情報ではない）。デモ用のプロファイルは、この D1 にしか書き込まない。 */
+export const DEMO_D1_NAME = "mybooklibrary-demo-db";
+export const DEMO_D1_ID = "9db6893d-38e3-4795-b24d-1901d6a929ad";
+
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -50,6 +54,25 @@ export function assertWritableTarget(args: TargetArgs): WritableTarget {
     throw new Error(`名前が ${PRODUCTION_D1_NAME}、または ID が本番の D1 です。本番への投入は、最終投入の手順（#691）で、--confirm-production ${PRODUCTION_D1_NAME} を付けて行ってください。`);
   }
   return { remote: true, name: args.d1Name, id: args.d1Id };
+}
+
+export type MigrationProfile = "full" | "demo";
+
+/**
+ * 投入の種類（プロファイル）と、移行先の組み合わせを検証する。
+ * - demo（マスターデータだけ）: 名前と ID がデモの D1 と一致するリモート、またはローカルだけ。本番・ステージングなど、他の D1 へは書き込まない。
+ * - full（全テーブル）: デモの D1 は拒否する（ユーザーなどの実データを、公開するデモに入れないため）。
+ */
+export function assertProfileMatchesTarget(profile: MigrationProfile, target: WritableTarget): void {
+  if (profile === "demo") {
+    if (target.remote && (target.name !== DEMO_D1_NAME || target.id.toLowerCase() !== DEMO_D1_ID)) {
+      throw new Error(`--profile demo の移行先は、デモの D1（${DEMO_D1_NAME}）だけです。名前と ID の両方がデモの D1 と一致する必要があります。`);
+    }
+    return;
+  }
+  if (target.name === DEMO_D1_NAME || target.id.toLowerCase() === DEMO_D1_ID) {
+    throw new Error("デモの D1 には、全テーブルの移行はできません。--profile demo を付けて、マスターデータだけを投入してください。");
+  }
 }
 
 /**
