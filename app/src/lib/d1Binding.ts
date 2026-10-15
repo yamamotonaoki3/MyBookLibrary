@@ -18,6 +18,15 @@ export function registerD1Binding(binding: D1BindingLike | undefined): void {
   registered = binding;
 }
 
+/**
+ * いまのリクエストを表すオブジェクト（OpenNext がリクエストごとに作る `{ env, ctx, cf }`）。リクエスト外では undefined。
+ * Prisma クライアントを、リクエストごとに分けるためのキーとして使う（perBindingProxy.ts）。
+ */
+export function getRequestScope(): object | undefined {
+  const context = (globalThis as Record<symbol, object | undefined>)[CLOUDFLARE_CONTEXT];
+  return context && typeof context === "object" ? context : undefined;
+}
+
 export function getD1Binding(): D1BindingLike {
   const context = (globalThis as Record<symbol, { env?: Record<string, unknown> } | undefined>)[CLOUDFLARE_CONTEXT];
   const fromContext = context?.env?.[D1_BINDING_NAME];

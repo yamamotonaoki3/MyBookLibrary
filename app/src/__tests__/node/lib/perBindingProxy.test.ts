@@ -105,3 +105,65 @@ describe("createPerBindingProxy", () => {
     await expect((proxy as unknown as { $disconnect: () => Promise<void> }).$disconnect()).resolves.toBeUndefined();
   });
 });
+
+describe("createPerBindingProxy（リクエストごとのクライアント。#734）", () => {
+  function setupScoped() {
+    const binding = { n: 1 };
+    let scope: object | undefined = { request: 1 };
+    let created = 0;
+    const createClient = jest.fn(() => ({ id: ++created, $disconnect: jest.fn() }));
+    const proxy = createPerBindingProxy(() => binding, createClient, () => scope);
+    return {
+      proxy,
+      createClient,
+      newRequest: () => {
+        scope = { request: Math.random() };
+      },
+      leaveRequest: () => {
+        scope = undefined;
+      },
+    };
+  }
+
+  it("同じリクエストの中では、同じクライアントを使う", () => {
+    const { proxy, createClient } = setupScoped();
+
+    expect(proxy.id).toBe(1);
+    expect(proxy.id).toBe(1);
+    expect(createClient).toHaveBeenCalledTimes(1);
+  });
+
+  it("バインディングが同じでも、別のリクエストでは別のクライアントを作る（接続処理の待ちを共有しない）", () => {
+    const { proxy, createClient, newRequest } = setupScoped();
+
+    expect(proxy.id).toBe(1);
+    newRequest();
+    expect(proxy.id).toBe(2);
+    expect(createClient).toHaveBeenCalledTimes(2);
+  });
+
+  it("リクエスト外（スコープなし）では、従来どおり、バインディングが同じ間は使い回す", () => {
+    const { proxy, createClient, leaveRequest } = setupScoped();
+    leaveRequest();
+
+    expect(proxy.id).toBe(1);
+    expect(proxy.id).toBe(1);
+    expect(createClient).toHaveBeenCalledTimes(1);
+  });
+
+  it("$disconnect は、そのリクエストのクライアントだけを切断し、ほかのリクエストのクライアントには触れない", async () => {
+    const { proxy, createClient, newRequest } = setupScoped();
+    const firstDisconnect = jest.fn();
+    createClient.mockImplementationOnce(() => ({ id: 1, $disconnect: firstDisconnect }) as never);
+    expect(proxy.id).toBe(1);
+    newRequest();
+    const secondDisconnect = jest.fn();
+    createClient.mockImplementationOnce(() => ({ id: 2, $disconnect: secondDisconnect }) as never);
+    expect(proxy.id).toBe(2);
+
+    await proxy.$disconnect();
+
+    expect(secondDisconnect).toHaveBeenCalledTimes(1);
+    expect(firstDisconnect).not.toHaveBeenCalled();
+  });
+});

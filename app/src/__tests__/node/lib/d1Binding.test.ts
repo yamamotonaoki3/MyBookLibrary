@@ -1,4 +1,4 @@
-import { getD1Binding, registerD1Binding } from "@/lib/d1Binding";
+import { getD1Binding, getRequestScope, registerD1Binding } from "@/lib/d1Binding";
 
 const CONTEXT = Symbol.for("__cloudflare-context__");
 const globalScope = globalThis as unknown as Record<symbol, unknown>;
@@ -41,5 +41,22 @@ describe("getD1Binding", () => {
 
   it("どちらもなければ、原因が分かるエラーを投げる", () => {
     expect(() => getD1Binding()).toThrow(/D1 のバインディング（DB）が見つかりません/);
+  });
+});
+
+describe("getRequestScope（#734）", () => {
+  afterEach(() => {
+    delete globalScope[CONTEXT];
+  });
+
+  it("Workers のコンテキストがあれば、そのオブジェクトを返す（リクエストごとに別のオブジェクト）", () => {
+    const context = { env: { DB: {} } };
+    globalScope[CONTEXT] = context;
+
+    expect(getRequestScope()).toBe(context);
+  });
+
+  it("リクエスト外（コンテキストなし）では undefined", () => {
+    expect(getRequestScope()).toBeUndefined();
   });
 });
