@@ -145,6 +145,7 @@ https://mybooklibrary.nyproducts.workers.dev/api/auth/callback/google
 | 本の検索（楽天ブックス）| 結果が出る（初めての本番での確認。**出なければ、`RAKUTEN_ALLOWED_ORIGIN` と楽天のアプリ登録の「許可された Web サイト」を確認**）|
 | 管理者の機能（管理者のアカウントで）| 管理者としてログインでき、管理者向けの画面が使える |
 | Google ログイン | 本番の `accounts` は 0 件のため、**まだ登録されていない Google アカウント**で新規登録できることを確認する（**既存のメールと同じメールの Google アカウントは、`OAuthAccountNotLinked` になる**。アプリは現在アカウントの自動連携を行わない。AWS のときと同じ挙動）。確認で作ったユーザーは、退会（アカウント削除）で消す |
+| 賞別一覧（`/awards`。直木賞・全賞 `awardId=all`） | 作品リストが表示される（件数が多くても、「This page couldn’t load」にならない。#730） |
 | `/api/version` | 手順 6 のとおり |
 
 Cron（`check-new-books`、毎日 UTC 00:00）は、公開直後の翌朝（JST 9:00）の自動実行のログで確認する（ダッシュボードの Workers → `mybooklibrary` → Logs）。手動実行はしない。
