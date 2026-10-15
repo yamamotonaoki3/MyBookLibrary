@@ -168,7 +168,7 @@ export default async function Home() {
             <ul className="flex flex-col gap-4">
               {favoriteAuthorsWithProgress.map((fa) => (
                 <li key={fa.authorId}>
-                  <Link href={`/favorite-authors/${fa.authorId}`} className="text-sm font-medium hover:text-muted-foreground">
+                  <Link href={`/favorite-authors/${fa.authorId}`} prefetch={false} className="text-sm font-medium hover:text-muted-foreground">
                     {fa.name}
                   </Link>
                   {fa.dbTotal > 0 && (
@@ -281,7 +281,7 @@ export default async function Home() {
                   <ul className="flex flex-col gap-5">
                     {favoriteAuthorsWithProgress.map((fa) => (
                       <li key={fa.authorId}>
-                        <Link href={`/favorite-authors/${fa.authorId}`} className="text-sm font-medium transition-colors hover:text-muted-foreground">
+                        <Link href={`/favorite-authors/${fa.authorId}`} prefetch={false} className="text-sm font-medium transition-colors hover:text-muted-foreground">
                           {fa.name}
                         </Link>
                         {fa.dbTotal > 0 && (
