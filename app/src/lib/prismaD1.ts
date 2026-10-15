@@ -1,6 +1,6 @@
 import { PrismaD1 } from "@prisma/adapter-d1";
 import type { PrismaClient } from "@/generated/prisma";
-import { getD1Binding } from "@/lib/d1Binding";
+import { getD1Binding, getRequestScope } from "@/lib/d1Binding";
 import { createPerBindingProxy } from "@/lib/perBindingProxy";
 
 /**
@@ -28,8 +28,13 @@ const { PrismaClient: D1PrismaClient } = (
  * モデル定義の同一性は D1 版スキーマのドリフト検査（npm run schema:d1:check）で担保する。
  */
 export function createD1Prisma(): PrismaClient {
-  return createPerBindingProxy(getD1Binding, (binding) => {
-    const adapter = new PrismaD1(binding as ConstructorParameters<typeof PrismaD1>[0]);
-    return new D1PrismaClient({ adapter, log: ["error"] }) as unknown as PrismaClient;
-  });
+  // Workers 上では、リクエストごとにクライアントを作る（接続処理の待ちを、リクエスト間で共有しない。#734）
+  return createPerBindingProxy(
+    getD1Binding,
+    (binding) => {
+      const adapter = new PrismaD1(binding as ConstructorParameters<typeof PrismaD1>[0]);
+      return new D1PrismaClient({ adapter, log: ["error"] }) as unknown as PrismaClient;
+    },
+    getRequestScope
+  );
 }
