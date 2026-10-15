@@ -51,6 +51,7 @@ export function AuthorCard({ author }: Props) {
         <div className="flex items-center justify-between gap-2">
           <Link
             href={`/favorite-authors/${author.authorId}`}
+            prefetch={false}
             onClick={(e) => e.stopPropagation()}
             className="hidden min-w-0 truncate text-left font-semibold text-blue-600 hover:underline lg:block dark:text-blue-400"
           >
@@ -134,6 +135,7 @@ export function AuthorCard({ author }: Props) {
 
           <Link
             href={`/favorite-authors/${author.authorId}`}
+            prefetch={false}
             className="mt-4 block w-full rounded-md bg-zinc-900 py-2 text-center text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             作品一覧
