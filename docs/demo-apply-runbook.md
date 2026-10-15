@@ -102,14 +102,10 @@ npm run demo:seed -- seed --remote --d1-name mybooklibrary-demo-db --d1-id 9db68
 
 ## 7. 実データが入っていないことを、件数で確認する
 
+手順 6（`demo:seed`）の**あと**に実行する（手順 6 の前に実行すると、`users` は 0 になる）。**SQL は、改行を入れずに 1 行で実行する**（Windows では、`npx` が `cmd.exe` を経由し、引数の途中の改行で SQL が打ち切られて、`incomplete input: SQLITE_ERROR` になる）。長い 1 行が折り返されて表示されても、貼り付けるときにスペースが抜けないよう、そのままコピーする。
+
 ```bash
-npx wrangler d1 execute DB --remote --env demo --command "SELECT
- (SELECT count(*) FROM users) AS users,
- (SELECT count(*) FROM users WHERE name NOT LIKE 'demo\_%' ESCAPE '\') AS users_not_demo,
- (SELECT count(*) FROM users WHERE email NOT LIKE '%@example.com') AS users_real_domain,
- (SELECT count(*) FROM books WHERE created_by_user_id IS NOT NULL) AS books_with_owner,
- (SELECT count(*) FROM accounts) + (SELECT count(*) FROM sessions) + (SELECT count(*) FROM verification_tokens) AS auth_rows,
- (SELECT count(*) FROM audit_logs) + (SELECT count(*) FROM contact_inquiries) + (SELECT count(*) FROM book_enrichment_jobs) + (SELECT count(*) FROM book_enrichment_items) AS other_rows"
+npx wrangler d1 execute DB --remote --env demo --command "SELECT (SELECT count(*) FROM users) AS users, (SELECT count(*) FROM users WHERE substr(name,1,5) <> 'demo_') AS users_not_demo, (SELECT count(*) FROM users WHERE email NOT LIKE '%@example.com') AS users_real_domain, (SELECT count(*) FROM books WHERE created_by_user_id IS NOT NULL) AS books_with_owner, (SELECT count(*) FROM accounts) + (SELECT count(*) FROM sessions) + (SELECT count(*) FROM verification_tokens) AS auth_rows, (SELECT count(*) FROM audit_logs) + (SELECT count(*) FROM contact_inquiries) + (SELECT count(*) FROM book_enrichment_jobs) + (SELECT count(*) FROM book_enrichment_items) AS other_rows"
 ```
 
 `users` が 8、**それ以外がすべて 0** であること。0 でなければ、実データが入った可能性があるため、先へ進まず、`npm run migration:d1 -- reset --profile demo --remote --d1-name mybooklibrary-demo-db --d1-id 9db6893d-38e3-4795-b24d-1901d6a929ad --yes`（デモの D1 の**全テーブル**を空にする） で空にして、手順 4 からやり直す。
@@ -145,18 +141,20 @@ npm run smoke:demo-rakuten
 | ログイン画面 | 注意書きとデモアカウントの案内が出る。Google ログイン・新規登録・パスワード再設定の導線がない |
 | ログイン | できる。ダッシュボードが表示される |
 | 本の検索 | 楽天の結果が出る。賞の本（受賞作）が一覧に出る |
-| 読書状況 | 変更できる（読了・読書中・読みたい） |
+| 賞別一覧（`/awards`） | 作品リストが表示される（賞のタブ・年度・「すべて」）。「This page couldn't load」にならない（#730） |
+| 読書状況 | 変更できる（読了・読書中・読みたい）。変更のあとにスクロールしても、エラー画面が出ない |
 | レビュー | 投稿・表示できる。ネタバレありのレビューも出る |
 | フォロー | フォロー・フォロワーの一覧が出る。フォロー・解除ができる |
 | 通知 | 通知が出る。既読にできる |
 | お気に入り著者・図書館 | 出る |
 | 保護 | 設定に、合言葉・アカウント削除がない。パスワード変更は案内だけ。`/admin` は開けない。新規登録は案内だけ |
+| 楽天 API の回数制限 | ホームとお気に入り著者の一覧を表示しても、Worker のログ（`npx wrangler tail mybooklibrary-demo`）に、`/favorite-authors/N?_rsc` の呼び出しと `楽天API 429` が出ない（#732） |
 
 ### 9-3. 定期的な初期化（Cron）の動作確認
 
 #721 がデプロイされていること（手順 0）。`/api/cron/reset-demo` と、デモの Cron（毎日 JST 03:00）は、#721 で入る。
 
-**方法 A（すぐに確認）**: デモの `CRON_SECRET` を、値を知っているものに、いったん登録し直して、API を呼ぶ（値は画面に出さない。確認後も、そのままでよい）。
+**方法 A（すぐに確認）**: デモの `CRON_SECRET` を、値を知っているものに、いったん登録し直して、API を呼ぶ（値は画面に出さない。確認後も、そのままでよい）。**値は、16 文字以上の、デモ用に新しく作ったもの**にする（短いと `Cron secret is not configured` になる。AWS で使っていた本番用の値は使わない）。例: `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"`
 
 ```bash
 read -rs CRON; export CRON
@@ -185,4 +183,8 @@ unset CRON
 | `PrismaClientInitializationError`（手順 3・4） | ローカルの MySQL に繋がらない。Docker が止まっていることが多い。`docker start mbl-demo-mysql` で再開し、`ready for connections` を待つ |
 | `smoke:demo-rakuten` の 2 つ目が `NG` | 楽天の許可ドメインにデモのドメインがない、`RAKUTEN_*` の誤り、`RAKUTEN_ALLOWED_ORIGIN` の誤り。Worker のログ（`npx wrangler tail --env demo`）に「楽天API エラー」が出ていないか見る |
 | `smoke:demo-rakuten` の 1 つ目が `NG` | 手順 6 が済んでいない。または、デモの D1 のマイグレーションが未適用 |
+| `incomplete input: SQLITE_ERROR`（`wrangler d1 execute`） | `--command` の SQL に改行が入っている（Windows）。1 行にして実行する |
+| `/api/cron/reset-demo` が、404 の HTML ページを返す | デモに #721 がデプロイされていない。`demo` ブランチを `main` に揃え（`git push origin origin/main:demo`）、`/api/version` の `tag` が `main` の先頭と一致してから、もう一度行う |
+| `/api/cron/reset-demo` が `Cron secret is not configured` を返す | `CRON_SECRET` が空か、16 文字未満。16 文字以上の値で登録し直す |
+| 賞別一覧が「This page couldn't load」になる | `demo` ブランチに #730 の修正が入っていない。ログに `too many SQL variables` が出ていれば、これ |
 | 認証エラー | `npx wrangler login` をやり直す |
