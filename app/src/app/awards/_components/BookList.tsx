@@ -1,7 +1,6 @@
-import type { BookWithAwardEntry, ReadingStatus } from "@/types/award";
 import { BookCard } from "./BookCard";
-import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { getAwardBookEntries } from "@/lib/awardBookList";
 
 type Props = {
   awardId: number | "all";
@@ -11,68 +10,7 @@ type Props = {
 export async function BookList({ awardId, year }: Props) {
   const session = await auth();
   const userId = Number(session!.user.id);
-  const showAll = awardId === "all";
-
-  const awardEntries = await prisma.awardEntry.findMany({
-    where: {
-      ...(showAll ? {} : { awardId: awardId as number }),
-      ...(year !== undefined ? { year } : {}),
-    },
-    orderBy: [{ year: "desc" }, { type: "asc" }],
-    select: {
-      id: true,
-      year: true,
-      type: true,
-      award: showAll ? { select: { name: true } } : false,
-      book: {
-        select: {
-          id: true,
-          title: true,
-          isbn: true,
-          coverImageUrl: true,
-          publishedAt: true,
-          author: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          readingStatuses: {
-            where: { userId: userId },
-            select: { status: true },
-            take: 1,
-          },
-        },
-      },
-    },
-  });
-
-  const reviewedBookIds = new Set(
-    (await prisma.review.findMany({
-      where: { userId: userId },
-      select: { bookId: true },
-    })).map((r) => r.bookId)
-  );
-
-  const entries: BookWithAwardEntry[] = awardEntries.map((entry) => ({
-    awardEntryId: entry.id,
-    year: entry.year,
-    type: entry.type,
-    awardName: showAll && "award" in entry && entry.award ? (entry.award as { name: string }).name : undefined,
-    status: (entry.book.readingStatuses[0]?.status ?? "unread") as ReadingStatus,
-    hasReview: reviewedBookIds.has(entry.book.id),
-    book: {
-      id: entry.book.id,
-      title: entry.book.title,
-      isbn: entry.book.isbn,
-      coverImageUrl: entry.book.coverImageUrl,
-      publishedAt: entry.book.publishedAt.toISOString(),
-      author: {
-        id: entry.book.author.id,
-        name: entry.book.author.name,
-      },
-    },
-  }));
+  const entries = await getAwardBookEntries({ awardId, year, userId });
 
   if (entries.length === 0) {
     return (

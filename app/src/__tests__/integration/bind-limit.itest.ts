@@ -10,6 +10,7 @@ import { asAdmin, asUser } from "../helpers/sessionMock";
 import { routeCtx } from "../helpers";
 import { prisma } from "@/lib/prisma";
 import { countReadBooks } from "@/lib/readingProgress";
+import { getAwardBookEntries } from "@/lib/awardBookList";
 import { getMutualFollowerIds } from "@/lib/mutualFollows";
 import { mergeManualBook } from "@/repositories/manualBookRepository";
 import { createNotificationsInChunks } from "@/repositories/notificationRepository";
@@ -162,5 +163,26 @@ describe("DELETE /api/books/[id]（感想が多い本の削除）", () => {
     expect(await testPrisma.review.count()).toBe(0);
     expect(await testPrisma.like.count()).toBe(0);
     expect(await testPrisma.report.count()).toBe(0);
+  });
+});
+
+describe("getAwardBookEntries（作品が多い賞別一覧）", () => {
+  it("上限を超える件数の作品でも、読書状況と感想の有無を付けて返せる", async () => {
+    const [user] = await createUsers(1, "awardlist");
+    const books = await createBooks(MANY);
+    const award = await testPrisma.award.create({ data: { name: "[E2E_TEST] 架空の賞" } });
+    await testPrisma.awardEntry.createMany({ data: books.map((b) => ({ bookId: b.id, awardId: award.id, year: 2020, type: "winner" })) });
+    await testPrisma.readingStatus.createMany({ data: books.slice(0, 120).map((b) => ({ userId: user.id, bookId: b.id, status: "read" })) });
+    await testPrisma.review.create({ data: { userId: user.id, bookId: books[0].id, body: "[E2E_TEST] 感想です。十分な長さの文章です。" } });
+
+    const entries = await getAwardBookEntries({ awardId: award.id, userId: user.id });
+    const all = await getAwardBookEntries({ awardId: "all", year: 2020, userId: user.id });
+
+    expect(entries).toHaveLength(MANY);
+    expect(entries.filter((e) => e.status === "read")).toHaveLength(120);
+    expect(entries.filter((e) => e.status === "unread")).toHaveLength(MANY - 120);
+    expect(entries.filter((e) => e.hasReview)).toHaveLength(1);
+    expect(all).toHaveLength(MANY);
+    expect(all[0].awardName).toBe("[E2E_TEST] 架空の賞");
   });
 });
