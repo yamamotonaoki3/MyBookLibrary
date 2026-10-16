@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import { NextResponse } from "next/server";
+import { sessionMaxAgeOption } from "@/lib/sessionPolicy";
 
 // Edge Runtimeで動作するlightweight設定（PrismaなしのJWT検証のみ）
 export const authConfig: NextAuthConfig = {
@@ -7,7 +8,7 @@ export const authConfig: NextAuthConfig = {
     signIn: "/login",
     error: "/login",
   },
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", ...sessionMaxAgeOption() },
   callbacks: {
     async session({ session, token }) {
       if (token) {
