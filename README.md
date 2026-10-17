@@ -1,16 +1,27 @@
 # MyBookLibrary
 
-## シークレットの取り扱い
-
-環境変数の実値はリポジトリに置かない。配置先と Gitleaks / pre-commit の導入手順は [環境変数とシークレットの管理](docs/secrets-management.md) を参照する。
-
 文学賞の受賞・ノミネート作品の読書進捗管理と、お気に入り著者の管理を行う Web アプリケーション。
 
 ## ライブデモ
 
-> **現在、ライブデモは停止中です。**（AWS 無料枠の終了に伴い、本番環境を一時停止しています。）
+**https://mybooklibrary-demo.nyproducts.workers.dev**
+
+誰でも触れるデモ環境です（Cloudflare Workers + D1）。次のデモアカウントでログインできます。
+
+| 項目 | 内容 |
+| --- | --- |
+| メールアドレス | `demo_sakura@example.com` |
+| パスワード | ログイン画面に表示されています |
+
+> **ご利用上の注意**
 >
-> 画面の様子は下記の「[デモ](#デモ)」のスクリーンショット／GIF をご覧ください。再開手順は [AWS デプロイガイド](docs/aws-deploy-guide.md#8-停止再開手順) に記載しています。
+> - ユーザー・読書状況・レビューなどは、すべて**架空のデータ**です（賞・本・著者・受賞は、実在の作品のデータです）。共有のデモ環境のため、投稿やデータは**予告なく初期化されます**（毎日 JST 3:00 に初期化）。
+> - **個人情報・実在のメールアドレスを入力しないでください。**
+> - デモ用のため、新規登録・パスワード変更・退会・問い合わせの送信・Google ログインなど、一部の機能は制限されています。
+> - ログイン状態は、操作がなければ 15 分で切れます。
+> - 管理者機能は公開していません。下記の「[デモ](#デモ)」の GIF・スクリーンショットをご覧ください。
+
+構成と保護の方針は [デモ環境の方針と構成](docs/demo-environment.md) を参照してください。
 
 ## 主な機能
 
@@ -26,7 +37,7 @@
 - **PWA** — ホーム画面へのインストール・スタンドアロン起動対応
 - **お問い合わせ** — カテゴリ（バグ報告・機能要望など）を選択してフォームから問い合わせを送信できる
 - **設定** — アカウント情報（名前・メール・ロール）の確認・合言葉設定・アカウント削除
-- **管理者機能** — 受賞登録・CSV 一括インポート／エクスポート・手動書籍登録／マージ・通報レビュー削除・ユーザー管理・お問い合わせ管理・監査ログ閲覧・統計ダッシュボード
+- **管理者機能** — 受賞登録・CSV 一括インポート／エクスポート・手動書籍登録／マージ・通報レビュー削除・ユーザー管理・お問い合わせ管理・監査ログ閲覧・統計ダッシュボード。ほかのユーザーのメールアドレスは既定でマスク表示で、「表示」ボタンで確認したときは監査ログに記録される
 
 ## デモ
 
@@ -38,26 +49,42 @@
 
 ![バーコードスキャンで本を検索](docs/demos/barcode-scan-small.gif)
 
+### 管理者機能
+
+管理者の画面（ユーザー管理 → 手動登録本の管理 → 通報されたレビュー → お問い合わせ → 監査ログ）です。ローカル環境で、架空のデータを使って撮影しました。メールアドレスは既定でマスクされ、「表示」ボタンで全体を確認すると、監査ログに記録されます。
+
+![管理者機能](docs/images/demo/admin-demo.gif)
+
+| ユーザー管理（「表示」でメールを確認） | 監査ログ（表示の記録） |
+| --- | --- |
+| ![ユーザー管理](docs/images/demo/admin-03-users-revealed.png) | ![監査ログの詳細](docs/images/demo/admin-08-audit-logs-detail.png) |
+
+動画（[mp4](docs/images/demo/admin-demo.mp4)・[webm](docs/images/demo/admin-demo.webm)）と、各画面のスクリーンショット（`docs/images/demo/`）もあります。
+
 ## 技術スタック
 
 | 役割 | 技術 |
 | --- | --- |
 | フロントエンド | Next.js 16 (React 19) + TypeScript |
 | バックエンド | Next.js API Routes |
-| データベース | MySQL 8.4 |
+| データベース | Cloudflare D1（SQLite。本番・ステージング・デモ）／ MySQL 8.4（ローカル開発） |
 | ORM | Prisma 6 |
-| 認証 | NextAuth.js v5（メール＋パスワード・Google OAuth） |
+| 認証 | Auth.js (NextAuth.js) v5（メール＋パスワード・Google OAuth） |
 | バリデーション | Zod v4 |
 | スタイリング | Tailwind CSS v4 + shadcn/ui |
-| テスト | Jest + ts-jest |
+| テスト | Jest + ts-jest、Playwright（E2E） |
 | コンテナ | Docker（開発時の MySQL 用） |
 | 外部 API | 楽天ブックス API・国立国会図書館 API（NDL）・カーリル API |
 | PWA | @ducanh2912/next-pwa |
-| デプロイ | AWS（EC2 + RDS + CloudFront） |
+| デプロイ | Cloudflare Workers（OpenNext）+ D1。`main` → ステージング、`production` → 本番、`demo` → デモを、Workers Builds で自動デプロイ（[手順](docs/cloudflare-deploy.md)） |
+
+AWS（EC2 + RDS + CloudFront。Terraform 管理）は、現在すべて停止中です。いつでも再開できるよう、定義と手順だけ残しています（[AWS デプロイガイド](docs/aws-deploy-guide.md)）。
 
 E2E テストには Playwright を使用（詳細は下記「テスト」参照）。
 
 ## 開発環境の起動
+
+ローカル開発は、Docker の MySQL を使います。Cloudflare Workers での動作確認（ビルド・プレビュー・D1）は [Cloudflare へのデプロイ](docs/cloudflare-deploy.md) を参照してください。
 
 ```bash
 # 0. Docker Compose 用の環境変数を設定（初回のみ）
@@ -89,18 +116,20 @@ npm run dev
 ```
 MyBookLibrary/
 ├── app/                      # Next.js アプリケーション本体
-│   ├── prisma/               # Prisma スキーマ・マイグレーション
+│   ├── prisma/               # Prisma スキーマ・マイグレーション（MySQL 用と、D1 用の prisma/d1）
 │   ├── public/               # 静的ファイル・PWA アイコン
+│   ├── wrangler.jsonc        # Cloudflare Workers / D1 の設定
 │   └── src/
 │       ├── app/              # App Router（ページ・API Routes）
 │       │   ├── api/          # API エンドポイント
 │       │   ├── _components/  # 共通コンポーネント
 │       │   └── (auth)/       # 認証ページ（login・register・forgot-password）
-│       ├── lib/              # サーバーサイドユーティリティ
+│       ├── lib/              # サーバーサイドのユースケース・ユーティリティ
+│       ├── repositories/     # Prisma によるデータアクセス
 │       ├── types/            # TypeScript 型定義
 │       └── __tests__/        # Jest テスト
-├── docs/                     # ドキュメント（要件定義・ER図・画面遷移図など）
-├── terraform/                # AWS インフラ定義（Terraform）
+├── docs/                     # ドキュメント（要件定義・ER図・手順書など）
+├── terraform/                # AWS インフラ定義（Terraform。停止中）
 └── docker-compose.yml        # 開発用 MySQL コンテナ
 ```
 
@@ -112,9 +141,14 @@ MyBookLibrary/
 - [ER 図](docs/er-diagram.md)
 - [画面遷移図](docs/screen-transition.md)
 - [ワイヤーフレーム](docs/wireframes.md)
-- [AWS デプロイガイド](docs/aws-deploy-guide.md)
+- [Cloudflare へのデプロイ](docs/cloudflare-deploy.md)
+- [Cloudflare Workers と D1 への移行計画](docs/cloudflare-d1-migration-plan.md)
+- [本番切り替え手順書](docs/d1-cutover-runbook.md)
+- [デモ環境の方針と構成](docs/demo-environment.md)
+- [AWS デプロイガイド（停止中）](docs/aws-deploy-guide.md)
 - [テスト計画表](docs/test-plan.md)
 - [テスト依存関係マップ](docs/test-dependency-map.md)
+- [学び・手直しの記録](docs/lessons-learned.md)
 - [未使用 API 監査記録（#611）](docs/unused-api-audit-611.md)
 
 ## テスト
@@ -147,3 +181,7 @@ npm run test:e2e
 ```
 
 `app/.env.test` の接続情報を使い、DBは自動でリセット・シードされる。外部API（楽天・NDL・カーリル）はローカルのスタブサーバーに向くため、実際の外部通信は発生しない（詳細は [テスト依存関係マップ](docs/test-dependency-map.md) を参照）。
+
+## シークレットの取り扱い
+
+環境変数の実値はリポジトリに置かない。配置先と Gitleaks / pre-commit の導入手順は [環境変数とシークレットの管理](docs/secrets-management.md) を参照する。
