@@ -153,6 +153,7 @@ npm run migration:d1 -- reset  --remote --d1-name <名前> --d1-id <ID> --yes
 
 - `migrate` は、移行先の全テーブルが空でなければ、何も書かずに中断する（既存のデータへの上書き・重複投入を防ぐ）。やり直しは `reset` で空にしてから行う。リモートの D1 には、あらかじめマイグレーション（`wrangler d1 migrations apply`）を適用しておく。
 - `migrate` は、書き込みのあと、続けて照合する。照合は、表ごとの**件数・キーの集合（欠落・余剰）・列ごとの SHA-256**、外部キー違反（`PRAGMA foreign_key_check`）、採番（`sqlite_sequence`）が最大 ID 以上であること。変換する列（`users.email`）は、移行元を変換した値と比較する。1 つでも失敗すれば終了コード 1。
+- **移行元が空（`users` と `books` が 0 件。デモ用の `--profile demo` は `books` だけ）のときは、`migrate` は何も書かずに中断する**。ダンプの復元に失敗すると、移行元は、表だけあり、中身が空になる。空を空へ移しても、照合は「成功」と表示されるため、気づけない（本番の切り替えで起きた。#691・#755）。`--dry-run` も、空のときは警告を出し、終了コードを 1 にする。意図して空を移すときだけ、`--allow-empty-source` を付ける。
 - 出力は、表名・列名・件数・PASS/FAIL だけ。**値（メールアドレス・本文など）は出さない。**
 - 本番の D1 は、**名前（`mybooklibrary-db`）でも ID（`wrangler.jsonc` のトップレベルの `database_id`）でも**、`--confirm-production mybooklibrary-db` を付けない限り拒否する。最終投入の手順は #691。
 - 移行前に、移行元の確認を自動で行う: メールの小文字化後の重複、Json 列（`audit_logs.detail`、`book_enrichment_items.result_detail`）の **JSON の `null`**（SQL の NULL とは別の値。Prisma は区別できず、移行すると SQL の NULL になるため）。どちらかがあれば、何も書かずに中断する。

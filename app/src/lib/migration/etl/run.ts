@@ -24,6 +24,8 @@ export type MigrateOptions = {
   pageSize?: number;
   /** Json 列の DB の NULL を表す値（書き込み先の Prisma の `Prisma.DbNull`）。 */
   dbNull?: unknown;
+  /** 移行元が空（`users` と `books` が 0 件）でも、移行する。既定は中止（復元の失敗に気づけるようにするため）。 */
+  allowEmptySource?: boolean;
   onProgress?: (message: string) => void;
 };
 
@@ -86,6 +88,27 @@ export async function assertNoJsonNullValues(source: MigrationClient): Promise<v
   }
 }
 
+/** 移行元が空かどうかを判断する表（`users`・`books`）。デモ用のプロファイルは、`books` だけ。 */
+const SOURCE_PRESENCE_MODELS = ["user", "book"];
+
+/**
+ * 移行元の主要な表（`users`・`books`）が、すべて 0 件のときは、中断する。
+ *
+ * ダンプの復元に失敗すると、移行元は、表だけがあり、中身が空になる。空を空へ移しても、照合は「成功」と
+ * 表示されるため、気づけない（本番の切り替えで起きた。#691）。意図して空を移すときだけ、
+ * `allowEmptySource` を指定する。
+ */
+export async function assertSourceNotEmpty(source: MigrationClient, tables: TableSpec[] = MIGRATION_TABLES): Promise<void> {
+  const checked = tables.filter((spec) => SOURCE_PRESENCE_MODELS.includes(spec.model));
+  const targets = checked.length > 0 ? checked : tables;
+  for (const spec of targets) {
+    if ((await source[spec.model].count()) > 0) return;
+  }
+  throw new Error(
+    `移行元が空です（${targets.map((spec) => spec.table).join("・")} が 0 件）。ダンプの復元に失敗していないか、移行元の接続先を確認してください。意図して空を移すときは、--allow-empty-source を付けます。`
+  );
+}
+
 /** 書き込み先の全テーブルが空であることを確認する（既存のデータに上書き・重複して投入しないため）。 */
 export async function assertTargetEmpty(target: MigrationClient, tables: TableSpec[] = MIGRATION_TABLES): Promise<void> {
   const nonEmpty: string[] = [];
@@ -115,6 +138,7 @@ export async function migrate(source: MigrationClient, target: MigrationClient, 
   const log = options.onProgress ?? (() => {});
 
   const tables = options.tables ?? MIGRATION_TABLES;
+  if (!options.allowEmptySource) await assertSourceNotEmpty(source, tables);
   await assertTargetEmpty(target, tables);
   // 該当の表を移行するときだけ確認する（メールは users、JSON の null は audit_logs と book_enrichment_items）
   if (hasModel(tables, "user")) await assertNoEmailCollisions(source, pageSize);

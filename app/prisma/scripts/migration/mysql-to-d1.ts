@@ -6,6 +6,7 @@
  *   npm run migration:d1 -- migrate --remote --d1-name <名前> --d1-id <ID> --yes  … リモートの D1 へ移行
  *   npm run migration:d1 -- verify  <移行先の指定>                              … 移行元と移行先を照合（読み取りのみ）
  *   npm run migration:d1 -- migrate --profile demo --remote --d1-name mybooklibrary-demo-db --d1-id <ID> --yes … デモ用 D1 へ、マスターデータ（賞・著者・本・ISBN・受賞）だけを投入（#719）
+ *   （移行元が空のとき、migrate は中止する。意図して空を移すときだけ --allow-empty-source を付ける。#755）
  *   npm run migration:d1 -- reset   <移行先の指定> --yes                         … 移行先の全テーブルを空にする（リハーサルのやり直し）
  *
  * 移行元: 環境変数 MIGRATION_SOURCE_DATABASE_URL（取得済みのダンプを復元した、ローカルの MySQL。ホストは localhost のみ許可）。
@@ -22,7 +23,7 @@ import { Prisma as D1Prisma } from "@/generated/prisma-d1";
 import { assertProfileMatchesTarget, assertSourceUrlIsLocal, assertWritableTarget, safeErrorMessage, type MigrationProfile } from "@/lib/migration/etl/guard";
 import { DEMO_MASTER_TABLES, MIGRATION_TABLES } from "@/lib/migration/etl/tables";
 import { openD1Target, DEFAULT_PERSIST_TO } from "./d1Target";
-import { assertNoEmailCollisions, assertNoJsonNullValues, migrate, resetTarget, verifyAll, type MigrationClient } from "@/lib/migration/etl/run";
+import { assertNoEmailCollisions, assertNoJsonNullValues, assertSourceNotEmpty, migrate, resetTarget, verifyAll, type MigrationClient } from "@/lib/migration/etl/run";
 
 type Options = {
   command: string;
@@ -31,6 +32,7 @@ type Options = {
   remote: boolean;
   dryRun: boolean;
   yes: boolean;
+  allowEmptySource: boolean;
   d1Name?: string;
   d1Id?: string;
   confirmProduction?: string;
@@ -47,6 +49,7 @@ function parseArgs(argv: string[]): Options {
       remote: { type: "boolean" },
       "dry-run": { type: "boolean" },
       yes: { type: "boolean" },
+      "allow-empty-source": { type: "boolean" },
       "d1-name": { type: "string" },
       "d1-id": { type: "string" },
       "confirm-production": { type: "string" },
@@ -56,7 +59,7 @@ function parseArgs(argv: string[]): Options {
   });
   const [command, ...extra] = positionals;
   if (!["migrate", "verify", "reset"].includes(command) || extra.length > 0) {
-    throw new Error("使い方: mysql-to-d1.ts <migrate|verify|reset> [--dry-run] (--local | --remote --d1-name <名前> --d1-id <ID>) [--yes]");
+    throw new Error("使い方: mysql-to-d1.ts <migrate|verify|reset> [--dry-run] (--local | --remote --d1-name <名前> --d1-id <ID>) [--yes] [--allow-empty-source]");
   }
   if (values["persist-to"] === "") throw new Error("--persist-to には、保存先のディレクトリを指定してください（空の値は指定できません）。");
   if (values.profile !== undefined && values.profile !== "demo") throw new Error("--profile には demo だけを指定できます（省略すると全テーブルの移行）。");
@@ -67,6 +70,7 @@ function parseArgs(argv: string[]): Options {
     remote: values.remote ?? false,
     dryRun: values["dry-run"] ?? false,
     yes: values.yes ?? false,
+    allowEmptySource: values["allow-empty-source"] ?? false,
     d1Name: values["d1-name"],
     d1Id: values["d1-id"],
     confirmProduction: values["confirm-production"],
@@ -118,6 +122,15 @@ async function main(): Promise<void> {
       }
       for (const spec of tables) console.log(`  ${spec.table}: ${await source.client[spec.model].count()} 件`);
       console.log("\n--dry-run のため、書き込みは行っていません。");
+      // 移行元が空のときは、警告して失敗にする（ダンプの復元の失敗に、移行の前に気づくため）
+      if (!options.allowEmptySource) {
+        try {
+          await assertSourceNotEmpty(source.client, tables);
+        } catch (error) {
+          console.error(`\n警告: ${safeErrorMessage(error)}`);
+          process.exitCode = 1;
+        }
+      }
     } finally {
       await source.close();
     }
@@ -126,6 +139,16 @@ async function main(): Promise<void> {
 
   if ((options.command === "migrate" || options.command === "reset") && !options.yes) {
     throw new Error("書き込みを伴う操作です。移行先を確認のうえ、--yes を付けて再実行してください。");
+  }
+
+  // 移行元が空のときは、移行先を開く前に中断する（--local は、開くときにマイグレーションを適用するため）
+  if (options.command === "migrate" && !options.allowEmptySource) {
+    const source = openSource();
+    try {
+      await assertSourceNotEmpty(source.client, tables);
+    } finally {
+      await source.close();
+    }
   }
 
   const target = await openTarget(options);
@@ -139,7 +162,12 @@ async function main(): Promise<void> {
     const source = openSource();
     try {
       if (options.command === "migrate") {
-        const summaries = await migrate(source.client, target.client, { tables, dbNull: D1Prisma.DbNull, onProgress: (message) => console.log(`  ${message}`) });
+        const summaries = await migrate(source.client, target.client, {
+          tables,
+          dbNull: D1Prisma.DbNull,
+          allowEmptySource: options.allowEmptySource,
+          onProgress: (message) => console.log(`  ${message}`),
+        });
         console.log(`\n移行しました（${summaries.length} テーブル、${summaries.reduce((sum, s) => sum + s.written, 0)} 件）。続けて照合します。`);
       }
       const ok = printChecks(await verifyAll(source.client, target.client, undefined, tables));
