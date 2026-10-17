@@ -12,7 +12,7 @@ export type BookIsbnCandidate = {
 /**
  * 指定した Book のISBNを代表ISBN(isPrimary)として設定する。
  * その Book の全ISBNの isPrimary を 1 つの UPDATE で付け替えるため、常に代表は1件のみになる
- * （複数文のトランザクションを使わず原子化する。docs/cloudflare-d1-migration-plan.md §5-3）。
+ * （複数文のトランザクションを使わず原子化する。docs/archive/cloudflare-d1-migration-plan.md §5-3）。
  * isbn が bookId に紐づく BookIsbn としてまだ登録されていない場合は例外を投げる。
  */
 export async function setPrimaryIsbn(bookId: number, isbn: string): Promise<void> {

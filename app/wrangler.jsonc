@@ -1,4 +1,4 @@
-// Cloudflare Workers / D1 の設定。docs/cloudflare-d1-migration-plan.md §6、手順は docs/cloudflare-deploy.md を参照。
+// Cloudflare Workers / D1 の設定。docs/archive/cloudflare-d1-migration-plan.md §6、手順は docs/cloudflare-deploy.md を参照。
 // Worker のビルドは npm run build:worker（OpenNext + Prisma の wasm の同梱。scripts/build-worker.mjs）。
 //
 // 環境は 3 つ。トップレベルが本番（production）、`env.staging` がステージング、`env.demo` がデモ。

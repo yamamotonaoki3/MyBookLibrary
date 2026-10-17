@@ -105,7 +105,7 @@ docs: 要件定義書を追加
 | コンテナ | Docker |
 | 認証 | 未定（NextAuth.js 候補） |
 | 外部API | 楽天ブックスAPI（候補） |
-| デプロイ | Cloudflare Workers（OpenNext）+ D1。GitHub から Workers Builds で自動デプロイ（`main` → ステージング、`production` ブランチ → 本番）。手順は [docs/cloudflare-deploy.md](docs/cloudflare-deploy.md)。AWS（EC2 / RDS MySQL / CloudFront / Lambda + EventBridge / SSM、Terraform 管理）は現在すべて停止中で、いつでも再起動できるようファイルだけ残している（[docs/aws-deploy-plan.md](docs/aws-deploy-plan.md)）。本番 Worker と本番 D1 へ、2026-10-17 に切り替え済み（手順は [docs/d1-cutover-runbook.md](docs/d1-cutover-runbook.md)。後始末は #692） |
+| デプロイ | Cloudflare Workers（OpenNext）+ D1。GitHub から Workers Builds で自動デプロイ（`main` → ステージング、`production` ブランチ → 本番）。手順は [docs/cloudflare-deploy.md](docs/cloudflare-deploy.md)。AWS（EC2 / RDS MySQL / CloudFront / Lambda + EventBridge / SSM、Terraform 管理）は現在すべて停止中で、いつでも再起動できるようファイルだけ残している（[docs/aws/aws-deploy-plan.md](docs/aws/aws-deploy-plan.md)）。本番 Worker と本番 D1 へ、2026-10-17 に切り替え済み（手順は [docs/d1-cutover-runbook.md](docs/d1-cutover-runbook.md)。後始末は #692） |
 
 ---
 

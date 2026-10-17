@@ -2,7 +2,7 @@
  * dump.sqlを移行先DBへrestoreし、必要に応じて`prisma migrate deploy`で未適用migrationを
  * 適用するオーケストレータ（Issue #478）。
  *
- * docs/data-migration-spec-481.md の方式（ETL不要、dump restore + migrate deployのみ）
+ * docs/archive/data-migration-spec-481.md の方式（ETL不要、dump restore + migrate deployのみ）
  * に従う。データの中身を変換するロジックは持たない。
  *
  * 使い方:

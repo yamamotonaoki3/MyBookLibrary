@@ -1,5 +1,7 @@
 # AWS 無料枠 Terraform デプロイ構成プラン
 
+> **AWS 構成は、現在停止中。** 本番は Cloudflare Workers + D1 へ切り替え済み。入口と再開の手順は [AWS 構成（停止中）](README.md) を参照。
+
 ## Context
 
 MyBookLibrary（Next.js 16 フルスタック + MySQL 8.4）を AWS にデプロイするため、  

@@ -37,7 +37,7 @@ export const d1Timestamp = (date: Date = new Date()): string => date.toISOString
  *
  * D1 では Prisma の `$transaction` が**エラーにならず非原子的に実行される**ため、原子化が必要な
  * 複数文の書き込みは必ずこの関数を経由させる。MySQL では `$transaction` の配列形式、
- * D1 では D1 の `batch`（原子的）で実行する（docs/cloudflare-d1-migration-plan.md §5-3）。
+ * D1 では D1 の `batch`（原子的）で実行する（docs/archive/cloudflare-d1-migration-plan.md §5-3）。
  *
  * 途中の読み取り結果に依存する処理（読み取り→判定→更新）は渡せない。その場合は条件付きの単一文に畳むこと。
  * Prisma を直接呼ぶ箇所は repositories に置く（責務分離ルール）。

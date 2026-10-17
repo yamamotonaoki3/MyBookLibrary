@@ -162,7 +162,7 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 | コンテナ | Docker（開発時の MySQL 用） |
 | 外部 API | 楽天ブックス API・国立国会図書館 SRU API（NDL）・カーリル API |
 | PWA | @ducanh2912/next-pwa（Service Worker 自動生成） |
-| デプロイ | Cloudflare Workers（OpenNext）+ D1（[手順](./cloudflare-deploy.md)）。AWS（EC2 + RDS + CloudFront。Terraform 管理）は現在停止中（[AWS デプロイガイド](./aws-deploy-guide.md)） |
+| デプロイ | Cloudflare Workers（OpenNext）+ D1（[手順](./cloudflare-deploy.md)）。AWS（EC2 + RDS + CloudFront。Terraform 管理）は現在停止中（[AWS デプロイガイド](./aws/aws-deploy-guide.md)） |
 
 ---
 

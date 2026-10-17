@@ -1,5 +1,7 @@
 # AWS デプロイ構成 解説ガイド
 
+> **AWS 構成は、現在停止中。** 本番は Cloudflare Workers + D1 へ切り替え済み。入口と再開の手順は [AWS 構成（停止中）](README.md) を参照。
+
 > このドキュメントは [aws-deploy-plan.md](./aws-deploy-plan.md) の内容を、
 > AWS・Terraform が初めての方向けに詳しく解説したものです。
 

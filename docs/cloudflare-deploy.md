@@ -1,6 +1,6 @@
 # Cloudflare Workers へのデプロイ手順
 
-Cloudflare Workers + D1 への移行（#609）で使う環境とデプロイの手順。計画の全体は [cloudflare-d1-migration-plan.md](cloudflare-d1-migration-plan.md)。AWS 側の構成（`terraform/`・`docs/aws-*.md`）は停止中のまま併存させ、この手順では触れない。
+Cloudflare Workers + D1 への移行（#609）で使う環境とデプロイの手順。計画の全体は [cloudflare-d1-migration-plan.md](archive/cloudflare-d1-migration-plan.md)。AWS 側の構成（`terraform/`・[`docs/aws/`](aws/README.md)）は停止中のまま併存させ、この手順では触れない。
 
 ## 環境
 
@@ -207,7 +207,7 @@ npx wrangler deployments status --env staging
 - **ロールバックしたあとも、`main`（または `production`）に次のコミットがマージされれば、自動デプロイで最新に戻る**。不具合を直す前に、マージを止めておく。
 - 恒久的に戻すときは、ダッシュボードで戻すのではなく、Git で該当の変更を `git revert` して、通常のデプロイの流れに乗せる。
 - ステージングで、1 つ前のバージョンへ戻して `npm run smoke:remote` が通ること、元のバージョンへ戻して通ることを確認した（#687）。本番も同じ手順（`--env staging` なし）。
-- **D1 のデータを戻したいとき**（誤更新・破損）は、Worker のロールバックではなく、D1 の Time Travel（時点復元）を使う。AWS は停止中のため、旧環境へ戻す前提はない。データの不整合への対応は、移行計画書（[cloudflare-d1-migration-plan.md](cloudflare-d1-migration-plan.md)）の §9-3 に従う。
+- **D1 のデータを戻したいとき**（誤更新・破損）は、Worker のロールバックではなく、D1 の Time Travel（時点復元）を使う。AWS は停止中のため、旧環境へ戻す前提はない。データの不整合への対応は、移行計画書（[cloudflare-d1-migration-plan.md](archive/cloudflare-d1-migration-plan.md)）の §9-3 に従う。
 
 ### ログの確認
 

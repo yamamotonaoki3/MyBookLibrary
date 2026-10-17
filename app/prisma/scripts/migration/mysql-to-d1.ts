@@ -1,5 +1,5 @@
 /**
- * MySQL → D1 のデータ移行・照合・リセット（docs/cloudflare-d1-migration-plan.md §7、#689）。
+ * MySQL → D1 のデータ移行・照合・リセット（docs/archive/cloudflare-d1-migration-plan.md §7、#689）。
  *
  *   npm run migration:d1 -- migrate --dry-run                                  … 移行元の件数と、メールの重複・JSON の null だけを確認（書き込まない）
  *   npm run migration:d1 -- migrate --local                                    … ローカルの D1 へ移行（リハーサルの練習。migrate のときだけ、マイグレーションも自動で適用）

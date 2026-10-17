@@ -1,6 +1,6 @@
 # D1 移行リハーサル手順書（#690）
 
-本番相当のデータ（取得済みの暗号化ダンプ）を匿名化して、リハーサル専用の D1 へ移行し、照合・所要時間・やり直しを確認する手順。方針は [移行計画書 §7-3 / §7-4](cloudflare-d1-migration-plan.md)、ツールの詳細は [移行ツールの README](../app/prisma/scripts/migration/README.md) の「D1 への移行（#689）」。
+本番相当のデータ（取得済みの暗号化ダンプ）を匿名化して、リハーサル専用の D1 へ移行し、照合・所要時間・やり直しを確認する手順。方針は [移行計画書 §7-3 / §7-4](archive/cloudflare-d1-migration-plan.md)、ツールの詳細は [移行ツールの README](../app/prisma/scripts/migration/README.md) の「D1 への移行（#689）」。
 
 > **実行するのは所有者本人**です（パスフレーズ・`wrangler login` が必要なため）。パスフレーズ・復号したダンプの中身・接続情報の値は、チャットや Issue・PR に書かない。
 

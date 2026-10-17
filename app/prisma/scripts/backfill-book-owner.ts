@@ -1,7 +1,7 @@
 /**
  * 移行前に作成された手動登録本(source="manual", createdByUserId=null)について、
  * その本に対する最古のReadingStatusのユーザーを登録者と推定し、承認済みのものだけ
- * createdByUserIdへ反映する（docs/data-migration-spec-481.md 3章の運用に対応）。
+ * createdByUserIdへ反映する（docs/archive/data-migration-spec-481.md 3章の運用に対応）。
  *
  * 自動実行はしない。必ず --dry-run で対応表を出力し、人手で1件ずつ確認・承認した
  * うえで、承認済みファイルを作り --apply-from に渡して本更新する。
@@ -130,7 +130,7 @@ async function runApplyFrom(approvedFilePath: string): Promise<void> {
 
   // 更新後、対象になりうる全ての手動登録本（今回のtoApplyに限らない）を再取得し、
   // 承認したbookIdはそのuserIdに更新され、それ以外は更新前の値から一切変化していない
-  // ことを完全に確認する（docs/data-migration-spec-481.md 3章の要件）。
+  // ことを完全に確認する（docs/archive/data-migration-spec-481.md 3章の要件）。
   const approvedByBookId = new Map(toApply.map((entry) => [entry.bookId, entry.userId]));
   const afterManualBooks = await prisma.book.findMany({
     where: { source: "manual" },

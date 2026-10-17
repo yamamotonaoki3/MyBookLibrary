@@ -1,6 +1,6 @@
 /**
  * 実DB統合テスト。トランザクションを使わない形（原子的な一括実行・冪等化）に置き換えた
- * 3 つの処理を検証する。docs/cloudflare-d1-migration-plan.md §5-3
+ * 3 つの処理を検証する。docs/archive/cloudflare-d1-migration-plan.md §5-3
  *   - ユーザー削除（本人退会・管理者による削除）… deleteNonAdminUser
  *   - 手動登録本の統合 … POST /api/admin/manual-books/merge
  *   - 受賞登録の更新 … PATCH /api/admin/award-entries/[id]

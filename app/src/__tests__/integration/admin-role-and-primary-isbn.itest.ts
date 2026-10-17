@@ -5,7 +5,7 @@
  *
  * 特に「同時に複数のリクエストが来ても、管理者が 0 人にならない／上限を超えない」ことを
  * 並行実行で確認する（FOR UPDATE を使わずに MySQL でも成立することの検証）。
- * docs/cloudflare-d1-migration-plan.md §5-3
+ * docs/archive/cloudflare-d1-migration-plan.md §5-3
  */
 jest.mock("@/lib/session");
 

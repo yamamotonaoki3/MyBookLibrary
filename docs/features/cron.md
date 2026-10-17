@@ -42,11 +42,11 @@ GET /api/cron/check-new-books（Bearer = Worker の secret CRON_SECRET）
 | ステージング | なし（本番との二重通知を防ぐ） | — |
 | デモ | `0 18 * * *`（UTC 18:00 = JST 03:00） | 新刊チェックの代わりに、デモのデータの初期化（`GET /api/cron/reset-demo`。[デモ環境の方針](../demo-environment.md)） |
 
-`scheduled` ハンドラ（エントリは `app/worker/index.mjs`）は、secret `CRON_SECRET` が未設定のとき、または API が 2xx 以外を返したときは、失敗として記録する。Cloudflare の Cron は自動で再試行しないが、API は重複通知を作らない冪等な作りのため、次の定時実行で回復する。ローカルでの手動実行は `wrangler dev --test-scheduled`。詳細は [Cloudflare へのデプロイ](../cloudflare-deploy.md) と [移行計画](../cloudflare-d1-migration-plan.md) §4-4 の実装メモ（#668）を参照。
+`scheduled` ハンドラ（エントリは `app/worker/index.mjs`）は、secret `CRON_SECRET` が未設定のとき、または API が 2xx 以外を返したときは、失敗として記録する。Cloudflare の Cron は自動で再試行しないが、API は重複通知を作らない冪等な作りのため、次の定時実行で回復する。ローカルでの手動実行は `wrangler dev --test-scheduled`。詳細は [Cloudflare へのデプロイ](../cloudflare-deploy.md) と [移行計画](../archive/cloudflare-d1-migration-plan.md) §4-4 の実装メモ（#668）を参照。
 
 ### AWS 構成（停止中）
 
-EventBridge ルール（毎日 UTC 00:00）が Lambda を起動し、Lambda が同じ `GET /api/cron/check-new-books` を Bearer 認証で呼ぶ。設定は [AWS デプロイガイド](../aws-app-deploy-guide.md) を参照。
+EventBridge ルール（毎日 UTC 00:00）が Lambda を起動し、Lambda が同じ `GET /api/cron/check-new-books` を Bearer 認証で呼ぶ。設定は [AWS デプロイガイド](../aws/aws-app-deploy-guide.md) を参照。
 
 ### セキュリティ
 
@@ -66,4 +66,4 @@ EventBridge ルール（毎日 UTC 00:00）が Lambda を起動し、Lambda が�
 - [通知機能定義書](./notifications.md) — 生成された通知の表示
 - [お気に入り著者管理定義書](./favorite-authors.md) — 通知 ON/OFF 設定
 - [Cloudflare へのデプロイ](../cloudflare-deploy.md) — Cron Trigger の設定
-- [AWS デプロイガイド](../aws-app-deploy-guide.md) — Lambda・EventBridge の設定（停止中）
+- [AWS デプロイガイド](../aws/aws-app-deploy-guide.md) — Lambda・EventBridge の設定（停止中）

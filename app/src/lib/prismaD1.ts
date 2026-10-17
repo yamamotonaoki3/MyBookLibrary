@@ -5,7 +5,7 @@ import { createPerBindingProxy } from "@/lib/perBindingProxy";
 
 /**
  * DB_PROVIDER=d1 のときだけ読み込まれる、D1 用の Prisma クライアント。
- * Workers で動くよう、エンジン不要（wasm）の生成物を使う（`engineType = "client"`。docs/cloudflare-d1-migration-plan.md §4-7）。
+ * Workers で動くよう、エンジン不要（wasm）の生成物を使う（`engineType = "client"`。docs/archive/cloudflare-d1-migration-plan.md §4-7）。
  * 生成: `npm run prisma:generate:d1`（postinstall でも実行される）。
  */
 type D1ClientModule = { PrismaClient: new (options: { adapter: unknown; log?: string[] }) => unknown };

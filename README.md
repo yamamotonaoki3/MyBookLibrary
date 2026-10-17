@@ -78,7 +78,7 @@
 | PWA | @ducanh2912/next-pwa |
 | デプロイ | Cloudflare Workers（OpenNext）+ D1。`main` → ステージング、`production` → 本番、`demo` → デモを、Workers Builds で自動デプロイ（[手順](docs/cloudflare-deploy.md)） |
 
-AWS（EC2 + RDS + CloudFront。Terraform 管理）は、現在すべて停止中です。いつでも再開できるよう、定義と手順だけ残しています（[AWS デプロイガイド](docs/aws-deploy-guide.md)）。
+AWS（EC2 + RDS + CloudFront。Terraform 管理）は、現在すべて停止中です。いつでも再開できるよう、定義と手順だけ残しています（[AWS デプロイガイド](docs/aws/aws-deploy-guide.md)）。
 
 E2E テストには Playwright を使用（詳細は下記「テスト」参照）。
 
@@ -135,21 +135,15 @@ MyBookLibrary/
 
 ## ドキュメント
 
-- [要件定義書](docs/requirements.md)
-- [機能別定義書一覧](docs/features/)
-- [API 仕様書](docs/api-spec.md)
-- [ER 図](docs/er-diagram.md)
-- [画面遷移図](docs/screen-transition.md)
-- [ワイヤーフレーム](docs/wireframes.md)
-- [Cloudflare へのデプロイ](docs/cloudflare-deploy.md)
-- [Cloudflare Workers と D1 への移行計画](docs/cloudflare-d1-migration-plan.md)
-- [本番切り替え手順書](docs/d1-cutover-runbook.md)
-- [デモ環境の方針と構成](docs/demo-environment.md)
-- [AWS デプロイガイド（停止中）](docs/aws-deploy-guide.md)
-- [テスト計画表](docs/test-plan.md)
-- [テスト依存関係マップ](docs/test-dependency-map.md)
+一覧は [ドキュメント索引](docs/README.md) を参照する（現役の文書・停止中の AWS 構成・作業が完了した記録に分けている）。主なもの:
+
+- [要件定義書](docs/requirements.md)・[機能別定義書](docs/features/)・[API 仕様書](docs/api-spec.md)・[ER 図](docs/er-diagram.md)
+- [画面遷移図](docs/screen-transition.md)・[ワイヤーフレーム](docs/wireframes.md)
+- [Cloudflare へのデプロイ](docs/cloudflare-deploy.md)・[本番切り替え手順書](docs/d1-cutover-runbook.md)・[デモ環境の方針と構成](docs/demo-environment.md)
+- [テスト計画表](docs/test-plan.md)・[テスト依存関係マップ](docs/test-dependency-map.md)
 - [学び・手直しの記録](docs/lessons-learned.md)
-- [未使用 API 監査記録（#611）](docs/unused-api-audit-611.md)
+- [AWS 構成（停止中）](docs/aws/README.md)
+- [移行計画（アーカイブ）](docs/archive/cloudflare-d1-migration-plan.md)
 
 ## テスト
 
