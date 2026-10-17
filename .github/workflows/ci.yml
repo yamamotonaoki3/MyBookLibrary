@@ -74,6 +74,10 @@ jobs:
       - name: D1 migrations check
         run: npm run d1:migration:check
 
+      # ドキュメントのリンク切れ・存在しないパスの検出（#754）。ファイルを移動・削除したときの直し忘れを防ぐ。
+      - name: Docs link check
+        run: npm run check:docs
+
       - name: Typecheck
         run: npm run typecheck
 
