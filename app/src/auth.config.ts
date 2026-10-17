@@ -1,6 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import { NextResponse } from "next/server";
 import { sessionMaxAgeOption } from "@/lib/sessionPolicy";
+import { encodeSessionToken } from "@/lib/sessionJwt";
 
 // Edge Runtimeで動作するlightweight設定（PrismaなしのJWT検証のみ）
 export const authConfig: NextAuthConfig = {
@@ -9,6 +10,8 @@ export const authConfig: NextAuthConfig = {
     error: "/login",
   },
   session: { strategy: "jwt", ...sessionMaxAgeOption() },
+  // ログイン保持なしのセッションは、サーバー側でも 8 時間で切る（#737）
+  jwt: { encode: encodeSessionToken },
   callbacks: {
     async session({ session, token }) {
       if (token) {
