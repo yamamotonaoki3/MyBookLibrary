@@ -1,10 +1,11 @@
 import { Prisma } from "@/generated/prisma";
 import { canonicalize, combineDigests, sha256 } from "@/lib/migration/etl/canonical";
-import { MIGRATION_TABLES } from "@/lib/migration/etl/tables";
+import { DEMO_MASTER_TABLES, MIGRATION_TABLES } from "@/lib/migration/etl/tables";
 import { FakeDb } from "../../helpers/etlFakeDb";
 import {
   assertNoEmailCollisions,
   assertNoJsonNullValues,
+  assertSourceNotEmpty,
   migrate,
   resetTarget,
   verifyAll,
@@ -93,6 +94,51 @@ function sourceDb(): FakeDb {
   ]);
   return db;
 }
+
+describe("移行元が空のとき（ダンプの復元の失敗に気づく。#755）", () => {
+  it("users も books も 0 件なら、何も書かずに中断する", async () => {
+    const target = new FakeDb();
+
+    await expect(migrate(new FakeDb().client(), target.client())).rejects.toThrow("移行元が空です");
+    expect(target.tables.get("user")).toEqual([]);
+    expect(target.tables.get("book")).toEqual([]);
+  });
+
+  it("メッセージに、確認する点と、例外の指定方法を示す", async () => {
+    const error = await migrate(new FakeDb().client(), new FakeDb().client()).catch((e: Error) => e);
+    expect((error as Error).message).toContain("users・books");
+    expect((error as Error).message).toContain("--allow-empty-source");
+  });
+
+  it("allowEmptySource を指定すれば、空を移せる", async () => {
+    const summaries = await migrate(new FakeDb().client(), new FakeDb().client(), { allowEmptySource: true });
+    expect(summaries.every((s) => s.written === 0)).toBe(true);
+  });
+
+  it("users か books のどちらかが 1 件でもあれば、中断しない", async () => {
+    const onlyUsers = new FakeDb();
+    onlyUsers.tables.set("user", [{ id: 1 }]);
+    await expect(assertSourceNotEmpty(onlyUsers.client())).resolves.toBeUndefined();
+
+    const onlyBooks = new FakeDb();
+    onlyBooks.tables.set("book", [{ id: 1 }]);
+    await expect(assertSourceNotEmpty(onlyBooks.client())).resolves.toBeUndefined();
+  });
+
+  it("users 以外の表（authors など）だけにデータがあっても、users と books が空なら中断する", async () => {
+    const db = new FakeDb();
+    db.tables.set("author", [{ id: 1, name: "テスト著者" }]);
+    await expect(assertSourceNotEmpty(db.client())).rejects.toThrow("移行元が空です");
+  });
+
+  it("デモ用の表（users を移さない）は、books だけで判断する", async () => {
+    await expect(assertSourceNotEmpty(new FakeDb().client(), DEMO_MASTER_TABLES)).rejects.toThrow("books が 0 件");
+
+    const db = new FakeDb();
+    db.tables.set("book", [{ id: 1 }]);
+    await expect(assertSourceNotEmpty(db.client(), DEMO_MASTER_TABLES)).resolves.toBeUndefined();
+  });
+});
 
 const DB_NULL = Symbol("DbNull");
 
