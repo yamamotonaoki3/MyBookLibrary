@@ -1,5 +1,40 @@
 import { prisma } from "@/lib/prisma";
 import { atomically, type AtomicStep, type D1Statement } from "@/lib/atomically";
+import { flatMapInChunks } from "@/lib/chunk";
+
+/**
+ * 管理画面の「受賞登録一覧」用に、受賞登録を、本・著者・賞・ISBN つきで全件取り出す。
+ *
+ * 本の ISBN（1 対多）を `include` で一緒に読むと、Prisma が全件の本 ID を `IN (...)` に並べ、
+ * D1 の 1 クエリの変数の上限（100 個）を超えて失敗する（受賞登録が 100 件を超えると）。
+ * そのため、ISBN は本 ID を分けて取り、本ごとにまとめる。応答の形は、`include` のときと同じ。
+ * （本・著者・賞は、1 対 1 の関連で、JOIN で読むため、上限に当たらない）
+ */
+export async function listAwardEntriesForAdmin() {
+  const entries = await prisma.awardEntry.findMany({
+    include: { book: { include: { author: true } }, award: true },
+    orderBy: [{ award: { name: "asc" } }, { year: "desc" }],
+  });
+
+  const bookIds = [...new Set(entries.map((entry) => entry.bookId))];
+  const isbns = await flatMapInChunks(bookIds, (ids) =>
+    prisma.bookIsbn.findMany({
+      where: { bookId: { in: ids } },
+      orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+    })
+  );
+  const isbnsByBookId = new Map<number, typeof isbns>();
+  for (const isbn of isbns) {
+    const list = isbnsByBookId.get(isbn.bookId);
+    if (list) list.push(isbn);
+    else isbnsByBookId.set(isbn.bookId, [isbn]);
+  }
+
+  return entries.map((entry) => ({
+    ...entry,
+    book: { ...entry.book, bookIsbns: isbnsByBookId.get(entry.bookId) ?? [] },
+  }));
+}
 
 export type BookFieldChanges = { title?: string; authorId?: number };
 export type AwardEntryFieldChanges = { type?: string; year?: number; awardId?: number };
