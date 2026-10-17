@@ -116,7 +116,7 @@ EC2 起動・デプロイ時に `aws ssm get-parameters-by-path` で一括取得
 
 1. **`app/next.config.ts`**: `output: "standalone"` を追加（Docker イメージ軽量化）
 2. **`app/prisma/schema.prisma`**: DATABASE_URL に `?connection_limit=5` を付与（db.t3.micro の接続数上限対策）
-3. **`terraform/scripts/Dockerfile`** を新規作成（本番用マルチステージビルド）
+3. 本番用のマルチステージビルドの Dockerfile を新規作成（この計画では terraform/scripts/Dockerfile としたが、作成しなかった。マルチステージビルドの Dockerfile は `app/Dockerfile`）
 
 ---
 
