@@ -41,6 +41,27 @@ export async function recordAuditEvent(input: RecordAuditEventInput): Promise<vo
   }
 }
 
+/**
+ * 監査ログを記録し、DB への保存に失敗したら例外を投げる。
+ * 「記録できないなら、操作させない」場合（メールアドレスの表示など）に使う。
+ */
+export async function recordAuditEventOrThrow(input: RecordAuditEventInput): Promise<number> {
+  logger.info({ audit: true, ...input }, `audit: ${input.eventType}`);
+  const created = await prisma.auditLog.create({
+    data: {
+      eventType: input.eventType,
+      actorUserId: input.actorUserId ?? null,
+      actorEmail: input.actorEmail ?? null,
+      targetType: input.targetType ?? null,
+      targetId: input.targetId ?? null,
+      detail: input.detail ?? undefined,
+      ipAddress: input.ipAddress ?? null,
+    },
+    select: { id: true },
+  });
+  return created.id;
+}
+
 /** CloudFront等のプロキシ経由のX-Forwarded-Forからクライアント実IPを取り出す */
 export function getClientIp(req: Request): string | null {
   const xff = req.headers.get("x-forwarded-for");

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
 import { AuditLogQuerySchema } from "@/lib/validations";
 import { logger } from "@/lib/logger";
+import { maskEmail, maskEmailOrNull } from "@/lib/maskEmail";
 
 export async function GET(req: NextRequest) {
   const { error } = await requireAdminSession();
@@ -54,7 +55,12 @@ export async function GET(req: NextRequest) {
       prisma.auditLog.count({ where }),
     ]);
 
-    return NextResponse.json({ items, total, page, pageSize });
+    const masked = items.map((item) => ({
+      ...item,
+      actorEmail: maskEmailOrNull(item.actorEmail),
+      actorUser: item.actorUser && { ...item.actorUser, email: maskEmail(item.actorUser.email) },
+    }));
+    return NextResponse.json({ items: masked, total, page, pageSize });
   } catch (error) {
     logger.error({ err: error }, "[GET /api/admin/audit-logs]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
