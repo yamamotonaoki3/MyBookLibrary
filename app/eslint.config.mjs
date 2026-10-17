@@ -14,7 +14,7 @@ const eslintConfig = defineConfig([
   },
   // Prisma の $transaction は、D1 ではエラーにならず非原子的に実行されるため使わない。
   // 複数の書き込みを原子的に実行するときは、MySQL と D1 の両方で成立する atomically（src/lib/atomically.ts）を使う。
-  // （docs/cloudflare-d1-migration-plan.md §5-3）
+  // （docs/archive/cloudflare-d1-migration-plan.md §5-3）
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/lib/atomically.ts", "src/__tests__/**", "src/lib/__mocks__/**"],

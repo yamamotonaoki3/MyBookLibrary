@@ -4,7 +4,7 @@
  * D1（SQLite）への移行に備え、MySQL と SQLite のどちらでも同じ結果になる書き方にしてある
  * （整数除算の切り捨て、GROUP_CONCAT の方言を避ける）。
  * このテストは MySQL に対して実行される。SQLite 側の確認は P2-3（両 DB の結合テスト基盤）で自動化する。
- * docs/cloudflare-d1-migration-plan.md §5-4
+ * docs/archive/cloudflare-d1-migration-plan.md §5-4
  */
 import { testPrisma, resetDb } from "../helpers/dbTest";
 import { prisma } from "@/lib/prisma";

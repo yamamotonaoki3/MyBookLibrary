@@ -4,7 +4,7 @@
 
 > **注記（#609）**: 本ディレクトリの restore/verify は MySQL → MySQL 用。D1 への移行は、末尾の「D1 への移行（#689）」の `mysql-to-d1.ts` を使う。
 
-前提となる仕様は [`docs/data-migration-spec-481.md`](../../../../docs/data-migration-spec-481.md) を参照。**ETL変換は行わない**。方式は「dump復元 → 未適用migrationを`prisma migrate deploy`で適用」のみ。
+前提となる仕様は [`docs/archive/data-migration-spec-481.md`](../../../../docs/archive/data-migration-spec-481.md) を参照。**ETL変換は行わない**。方式は「dump復元 → 未適用migrationを`prisma migrate deploy`で適用」のみ。
 
 ## 全体の流れ
 
@@ -131,7 +131,7 @@ npx dotenv -e .env.migration-target -o --no-expand -- npx tsx prisma/scripts/bac
 
 ## D1 への移行（#689）
 
-Cloudflare D1 への移行は、`mysql-to-d1.ts`（`npm run migration:d1`）で行う。方式は、Prisma で「MySQL から読み → D1 へ書く」ETL（[移行計画書 §7](../../../../docs/cloudflare-d1-migration-plan.md)）。ID・bcrypt ハッシュ・日時（ミリ秒）・日本語をそのまま移し、メールアドレスだけ小文字化・前後の空白除去（`normalizeEmail`）する。投入順は外部キーの親 → 子。
+Cloudflare D1 への移行は、`mysql-to-d1.ts`（`npm run migration:d1`）で行う。方式は、Prisma で「MySQL から読み → D1 へ書く」ETL（[移行計画書 §7](../../../../docs/archive/cloudflare-d1-migration-plan.md)）。ID・bcrypt ハッシュ・日時（ミリ秒）・日本語をそのまま移し、メールアドレスだけ小文字化・前後の空白除去（`normalizeEmail`）する。投入順は外部キーの親 → 子。
 
 **移行元**は、取得済みのダンプを**ローカルの MySQL（Docker）へ復元したもの**。環境変数 `MIGRATION_SOURCE_DATABASE_URL` に接続文字列を渡す（ホストは localhost / 127.0.0.1 のみ許可。アプリの `DATABASE_URL` は読まない）。復元の手順は上の「3. restore」。復元後は、未適用の MySQL マイグレーションも適用しておく（`follows`・`audit_logs` などの新しいテーブルが必要）。**移行先**は wrangler のログイン（`npx wrangler login`）で接続する。
 

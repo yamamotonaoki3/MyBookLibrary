@@ -7,7 +7,7 @@
  *
  * 2 の後処理が必要な理由: OpenNext のビルドは Prisma の wasm（query compiler）を Worker に同梱せず、
  * webpack は wasm を `fs` で読む形に変換するため、Workers 上では「ファイルが見つからない」で失敗する。
- * docs/cloudflare-d1-migration-plan.md §4-7 を参照。ビルド・デプロイは CI（Linux）で行う前提
+ * docs/archive/cloudflare-d1-migration-plan.md §4-7 を参照。ビルド・デプロイは CI（Linux）で行う前提
  * （Windows は OpenNext が公式にはサポートしていない）。
  */
 import { spawnSync } from "node:child_process";

@@ -2,7 +2,7 @@
  * 移行先DBの照合(verify)ロジック本体。DB接続は `VerificationDb` インターフェース経由で
  * 注入するため、実際のDB接続を伴わずにunitテストできる。
  *
- * docs/data-migration-spec-481.md の照合方針:
+ * docs/archive/data-migration-spec-481.md の照合方針:
  *   - 16のアプリケーションテーブルは、dumpから導出した件数・AUTO_INCREMENT値と
  *     移行先の実測値を直接比較する。
  *   - `_prisma_migrations` はrestore直後12件・migrate deploy後18件をアサートする

@@ -4,7 +4,7 @@
  * OpenNext が作る Worker は `fetch` しか持たないため、カスタムの Worker エントリ（worker/index.mjs）で
  * `scheduled` を足す。AWS の EventBridge + Lambda と同じく、`GET /api/cron/check-new-books` を Bearer 認証で
  * 呼び出す。HTTP を介さず Worker 内の `fetch` ハンドラを直接呼ぶ。
- * docs/features/cron.md、docs/cloudflare-d1-migration-plan.md §4-7 を参照。
+ * docs/features/cron.md、docs/archive/cloudflare-d1-migration-plan.md §4-7 を参照。
  */
 
 export const CHECK_NEW_BOOKS_PATH = "/api/cron/check-new-books";

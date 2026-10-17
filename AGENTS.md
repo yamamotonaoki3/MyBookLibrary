@@ -115,5 +115,5 @@
 - API仕様・テスト計画: [`docs/api-spec.md`](docs/api-spec.md)、[`docs/test-plan.md`](docs/test-plan.md)
 - 開発背景・技術構成・責務分離: [`CLAUDE.md`](CLAUDE.md)
 - 秘密情報の管理: [`docs/secrets-management.md`](docs/secrets-management.md)
-- AWSデプロイ構成・停止/再開手順: [`docs/aws-deploy-guide.md`](docs/aws-deploy-guide.md)
+- AWSデプロイ構成・停止/再開手順: [`docs/aws/aws-deploy-guide.md`](docs/aws/aws-deploy-guide.md)
 - 学び・過去の手直し: [`docs/lessons-learned.md`](docs/lessons-learned.md)

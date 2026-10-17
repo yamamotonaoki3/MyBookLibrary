@@ -1,6 +1,6 @@
 /**
  * MySQL 版の Prisma スキーマ（正）から、D1（SQLite）版のスキーマを作る純粋関数。
- * 生成のしくみは docs/cloudflare-d1-migration-plan.md §4-4 を参照。
+ * 生成のしくみは docs/archive/cloudflare-d1-migration-plan.md §4-4 を参照。
  *
  * 変換内容:
  *   - generator: 出力先を `src/generated/prisma-d1` にし、エンジン不要の `engineType = "client"` にする

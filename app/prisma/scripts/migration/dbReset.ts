@@ -1,7 +1,7 @@
 /**
  * 移行先DBを「テーブルが1つも存在しない状態」へ初期化する。
  *
- * docs/data-migration-spec-481.md の必須前提条件:
+ * docs/archive/data-migration-spec-481.md の必須前提条件:
  *   dump復元前に、移行先DBを完全に空の状態にする（_prisma_migrations・follows・
  *   audit_logs を含む全テーブルをDROPする。TRUNCATEやアプリケーションテーブルのみの
  *   DROPでは要件を満たさない）。

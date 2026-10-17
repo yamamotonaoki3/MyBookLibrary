@@ -1,5 +1,5 @@
 /**
- * MySQL → D1 のデータ移行（ETL）の対象テーブルと、変換の定義（docs/cloudflare-d1-migration-plan.md §7）。
+ * MySQL → D1 のデータ移行（ETL）の対象テーブルと、変換の定義（docs/archive/cloudflare-d1-migration-plan.md §7）。
  * 移行ツールと照合ツールの両方がここを参照する（変換の定義を 1 か所に置き、検証側で「期待される変換」を共有するため）。
  */
 import { normalizeEmail } from "@/lib/email";

@@ -3,7 +3,7 @@
  * それを使う 4 つのルート（フォロー解除・管理者パスワードリセット・管理者による感想削除・
  * 監査ログ一覧）を検証する。
  *
- * D1 への移行（docs/cloudflare-d1-migration-plan.md §5-3）に備え、
+ * D1 への移行（docs/archive/cloudflare-d1-migration-plan.md §5-3）に備え、
  * 「途中で失敗したら先の書き込みも残らない」性質をここで固定する。
  */
 jest.mock("@/lib/session");

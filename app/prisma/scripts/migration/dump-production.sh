@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 本番DBのdumpを取得する（Issue #478 / docs/data-migration-spec-481.md準拠）。
+# 本番DBのdumpを取得する（Issue #478 / docs/archive/data-migration-spec-481.md準拠）。
 #
 # 使い方:
 #   cd app

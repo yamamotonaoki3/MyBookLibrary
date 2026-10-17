@@ -1,5 +1,7 @@
 # 未使用 API 監査記録（#611）
 
+> **アーカイブ（作業が完了した記録）**: 現状の説明ではない。現在の構成・手順は、[ドキュメント索引](../README.md) の現役の文書を参照する。
+
 使用されていない Route Handler を、静的解析と読み取り専用のブラウザ通信確認で判定するための記録。確定した 6 件は [#612](https://github.com/yamamotonaoki3/MyBookLibrary/issues/612) で削除済み。
 
 > **方針変更（2026-10-08）**: AWS 無料枠の終了に伴い本番環境を停止したため、通信確認は現行 AWS 本番ではなく、**main 最新（`2d3a4ae`）をローカル起動した環境**で実施した。削除対象のコードそのものを検証できる。Cloudflare 移行 [#609](https://github.com/yamamotonaoki3/MyBookLibrary/issues/609) の完了は待たない。

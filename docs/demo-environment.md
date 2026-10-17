@@ -108,5 +108,5 @@ npm run demo:seed -- reset  --remote --d1-name mybooklibrary-demo-db --d1-id <�
 ## 関連文書
 
 - [cloudflare-deploy.md](cloudflare-deploy.md): Worker・D1・Workers Builds・secret の手順
-- [cloudflare-d1-migration-plan.md](cloudflare-d1-migration-plan.md): 移行計画
+- [cloudflare-d1-migration-plan.md](archive/cloudflare-d1-migration-plan.md): 移行計画
 - [d1-rehearsal-runbook.md](d1-rehearsal-runbook.md): 実データを扱うときの手順と後始末

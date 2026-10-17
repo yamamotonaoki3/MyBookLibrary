@@ -2,7 +2,7 @@
  * schema.prisma（`app/prisma/schema.prisma`）に定義された全UNIQUE制約の一覧。
  * dump restore後の重複検査（照合ツール）で使用する。
  *
- * 移行方式（docs/data-migration-spec-481.md）上、6件の未反映migrationは
+ * 移行方式（docs/archive/data-migration-spec-481.md）上、6件の未反映migrationは
  * 新規UNIQUE制約を既存データへ追加するものを含まないため、理論上は重複は
  * 発生しない前提だが、念のため実測で検査する。
  */

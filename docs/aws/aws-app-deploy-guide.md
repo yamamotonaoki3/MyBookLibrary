@@ -1,5 +1,7 @@
 # EC2 アプリデプロイガイド
 
+> **AWS 構成は、現在停止中。** 本番は Cloudflare Workers + D1 へ切り替え済み。入口と再開の手順は [AWS 構成（停止中）](README.md) を参照。
+
 ## このドキュメントについて
 
 Terraform で構築した AWS インフラ（EC2 + RDS）に Next.js アプリをデプロイする手順をまとめたガイドです。
@@ -193,4 +195,4 @@ sudo systemctl restart mybooklibrary
 | `terraform/modules/ssm/main.tf` | SSM Parameter Store の定義 |
 | `scripts/deploy.sh` | （現在は未使用）Docker ベースのデプロイスクリプト |
 | `scripts/init-db.sh` | （現在は未使用）手動マイグレーション実行スクリプト |
-| `docs/aws-deploy-plan.md` | Terraform インフラ設計書 |
+| `docs/aws/aws-deploy-plan.md` | Terraform インフラ設計書 |

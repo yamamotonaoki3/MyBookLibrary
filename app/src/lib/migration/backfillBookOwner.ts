@@ -1,6 +1,6 @@
 /**
  * 手動登録本（source="manual", createdByUserId=null）の所有者推定ロジック。
- * docs/data-migration-spec-481.md の「dry-run → 人手承認 → 承認分のみ本更新」運用を
+ * docs/archive/data-migration-spec-481.md の「dry-run → 人手承認 → 承認分のみ本更新」運用を
  * 支えるための純粋関数群（DB接続を持たない）。
  */
 

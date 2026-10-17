@@ -1,6 +1,6 @@
 # 本番切り替え手順書（#691）
 
-取得済みの暗号化ダンプ（実データ）を、本番の D1（`mybooklibrary-db`）へ移し、本番 Worker を公開できる状態にする手順。方針は [移行計画書 §9](cloudflare-d1-migration-plan.md)、ツールは [移行ツールの README](../app/prisma/scripts/migration/README.md)、リハーサルは [リハーサル手順書](d1-rehearsal-runbook.md)（#690、匿名化データで 2 回成功済み）。
+取得済みの暗号化ダンプ（実データ）を、本番の D1（`mybooklibrary-db`）へ移し、本番 Worker を公開できる状態にする手順。方針は [移行計画書 §9](archive/cloudflare-d1-migration-plan.md)、ツールは [移行ツールの README](../app/prisma/scripts/migration/README.md)、リハーサルは [リハーサル手順書](d1-rehearsal-runbook.md)（#690、匿名化データで 2 回成功済み）。
 
 > **本番の実データを扱います。** 実行するのは所有者本人です。パスフレーズ・接続情報・メール・パスワードなどの値は、チャット・Issue・PR・コミットに書かない。リハーサルと違い、**匿名化はしません**（本番にそのまま入れるため）。作業後は、復元した MySQL と平文のダンプを必ず消す。
 

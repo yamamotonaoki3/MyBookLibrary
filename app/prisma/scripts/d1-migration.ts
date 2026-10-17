@@ -1,5 +1,5 @@
 /**
- * D1（SQLite）用マイグレーションの作成と検査。docs/cloudflare-d1-migration-plan.md §4-4 を参照。
+ * D1（SQLite）用マイグレーションの作成と検査。docs/archive/cloudflare-d1-migration-plan.md §4-4 を参照。
  *
  *   npm run d1:migration:new -- <名前>   … D1 版スキーマ（prisma/d1/schema.prisma）との差分から、次の番号のマイグレーションを作る
  *   npm run d1:migration:check           … 既存のマイグレーションを順に適用した結果が D1 版スキーマと一致するか検査（CI で実行）

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
  * 管理者数に条件を付けたロール変更。
  *
  * 「管理者数を数える → 判定する → 更新する」を 1 つの UPDATE 文に畳んで原子化する
- * （FOR UPDATE による行ロックは MySQL 固有のため使わない。docs/cloudflare-d1-migration-plan.md §4-4・§5-3）。
+ * （FOR UPDATE による行ロックは MySQL 固有のため使わない。docs/archive/cloudflare-d1-migration-plan.md §4-4・§5-3）。
  * 管理者数の副問い合わせは、MySQL の「更新対象テーブルを副問い合わせで参照できない」制約
  * （エラー 1093）を避けるため、導出テーブル（LIMIT 付きで必ず実体化させる）経由で数える。
  */

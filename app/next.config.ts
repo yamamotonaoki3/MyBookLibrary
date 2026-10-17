@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
   turbopack: {},
   images: {
     // Next.js の画像最適化（sharp）に依存しない。Cloudflare Workers では動かせないため、
-    // 書影は外部の URL（楽天等）をそのまま <img> で表示する（docs/cloudflare-d1-migration-plan.md §3）。
+    // 書影は外部の URL（楽天等）をそのまま <img> で表示する（docs/archive/cloudflare-d1-migration-plan.md §3）。
     unoptimized: true,
   },
 };

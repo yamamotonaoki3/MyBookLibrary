@@ -1,5 +1,5 @@
 /**
- * MySQL → D1 のデータ移行（ETL）と照合の本体（docs/cloudflare-d1-migration-plan.md §7）。
+ * MySQL → D1 のデータ移行（ETL）と照合の本体（docs/archive/cloudflare-d1-migration-plan.md §7）。
  * DB には、Prisma のモデル操作（`findMany` / `createMany` など）の最小限のインターフェース越しにつなぐため、
  * 読み出し元を差し替えられる（MySQL、テスト用のデータ）。
  */
