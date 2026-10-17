@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
+import { maskEmail } from "@/lib/maskEmail";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -17,5 +18,5 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(users);
+  return NextResponse.json(users.map((u) => ({ ...u, email: maskEmail(u.email) })));
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { maskEmail, maskEmailOrNull, maskEmailsDeep } from "@/lib/maskEmail";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -25,7 +26,15 @@ export async function GET(_request: NextRequest, { params }: Props) {
     if (!item) {
       return NextResponse.json({ error: "監査ログが見つかりません。" }, { status: 404 });
     }
-    return NextResponse.json({ item });
+    return NextResponse.json({
+      item: {
+        ...item,
+        actorEmail: maskEmailOrNull(item.actorEmail),
+        actorUser: item.actorUser && { ...item.actorUser, email: maskEmail(item.actorUser.email) },
+        // 保存済みの detail に、メールアドレスが入っていることがある
+        detail: maskEmailsDeep(item.detail),
+      },
+    });
   } catch (error) {
     logger.error({ err: error }, "[GET /api/admin/audit-logs/[id]]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });

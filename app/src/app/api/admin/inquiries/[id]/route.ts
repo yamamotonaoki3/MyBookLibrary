@@ -22,7 +22,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       data: { status },
     });
 
-    return Response.json(inquiry);
+    // 送信者のメールを含む行をそのまま返さない（メールは「表示」ボタンの API でだけ取得できる）
+    return Response.json({ id: inquiry.id, status: inquiry.status });
   } catch {
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }

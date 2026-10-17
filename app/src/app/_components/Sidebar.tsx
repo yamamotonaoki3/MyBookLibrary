@@ -39,7 +39,6 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { data: session, status } = useSession();
   const userName = status === "loading" ? "" : (session?.user?.name ?? "ゲスト");
-  const userEmail = status === "loading" ? "" : (session?.user?.email ?? "");
   const isAdmin = status !== "loading" && session?.user?.role === "admin";
   const initial = userName.charAt(0).toUpperCase();
 
@@ -285,7 +284,6 @@ export function Sidebar() {
           {!isCollapsed && (
             <div className="flex flex-1 flex-col min-w-0">
               <span className="text-sm font-medium text-white leading-none">{userName}</span>
-              <span className="text-xs text-white/50 leading-none mt-1 truncate">{userEmail}</span>
             </div>
           )}
         </div>

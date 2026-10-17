@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AUDIT_EVENT_LABEL, type AuditEventType } from "@/lib/auditEvents";
 import { useAdminFetch } from "@/lib/adminFetch";
+import { MaskedEmail } from "../_components/MaskedEmail";
 
 type AuditLogRow = {
   id: number;
@@ -415,7 +416,13 @@ export function AuditLogsView({ embedded = false }: { embedded?: boolean } = {})
                     <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">実行者</p>
                     <p className="text-zinc-800 dark:text-zinc-200">
                       {selected.actorUser?.name ?? "-"}
-                      {selected.actorEmail && ` (${selected.actorEmail})`}
+                      {selected.actorEmail && (
+                        <>
+                          {" ("}
+                          <MaskedEmail masked={selected.actorEmail} target={{ kind: "audit-log", id: selected.id }} />
+                          {")"}
+                        </>
+                      )}
                     </p>
                   </div>
                   <div>

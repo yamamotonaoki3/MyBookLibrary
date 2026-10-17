@@ -41,6 +41,7 @@ import type { RecommendedUser } from "@/lib/userRecommendations";
 import { AuditLogsView } from "./audit-logs/AuditLogsView";
 import { useAdminFetch } from "@/lib/adminFetch";
 import { BookEnrichmentPanel } from "./_components/BookEnrichmentPanel";
+import { MaskedEmail } from "./_components/MaskedEmail";
 
 type AdminTab = "settings" | "audit" | "management";
 
@@ -1479,7 +1480,13 @@ export default function AdminPage() {
                         <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{book.author.name}</td>
                         <td className="px-4 py-3 text-zinc-500">{book.isbn ?? "-"}</td>
                         <td className="px-4 py-3 text-zinc-500">
-                          {book.createdByUser ? `${book.createdByUser.name}（${book.createdByUser.email}）` : "不明"}
+                          {book.createdByUser ? (
+                            <>
+                              {book.createdByUser.name}（
+                              <MaskedEmail masked={book.createdByUser.email} target={{ kind: "user", id: book.createdByUser.id }} />
+                              ）
+                            </>
+                          ) : "不明"}
                         </td>
                         <td className="px-4 py-3 text-zinc-500">
                           読書{book._count.readingStatuses}／レビュー{book._count.reviews}
@@ -1556,7 +1563,7 @@ export default function AdminPage() {
                               {user.name}
                             </td>
                             <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                              {user.email}
+                              <MaskedEmail masked={user.email} target={{ kind: "user", id: user.id }} />
                             </td>
                             <td className="px-4 py-3">
                               <span
@@ -1735,7 +1742,9 @@ export default function AdminPage() {
                           </td>
                           <td className="px-4 py-3">
                             <p className="font-medium text-zinc-700 dark:text-zinc-300">{inquiry.name}</p>
-                            <p className="text-xs text-zinc-400">{inquiry.email}</p>
+                            <p className="text-xs text-zinc-400">
+                              <MaskedEmail masked={inquiry.email} target={{ kind: "inquiry", id: inquiry.id }} />
+                            </p>
                           </td>
                           <td className="px-4 py-3">
                             <span
@@ -1909,7 +1918,9 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">メールアドレス</dt>
-                      <dd className="text-zinc-800 dark:text-zinc-200">{user.email}</dd>
+                      <dd className="text-zinc-800 dark:text-zinc-200">
+                        <MaskedEmail masked={user.email} target={{ kind: "user", id: user.id }} />
+                      </dd>
                     </div>
                     <div>
                       <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">ロール</dt>
@@ -2234,9 +2245,16 @@ export default function AdminPage() {
                   <div>
                     <dt className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">登録者</dt>
                     <dd className="text-zinc-800 dark:text-zinc-200">
-                      {selectedManualBookForDetail.createdByUser
-                        ? `${selectedManualBookForDetail.createdByUser.name}（${selectedManualBookForDetail.createdByUser.email}）`
-                        : "不明"}
+                      {selectedManualBookForDetail.createdByUser ? (
+                        <>
+                          {selectedManualBookForDetail.createdByUser.name}（
+                          <MaskedEmail
+                            masked={selectedManualBookForDetail.createdByUser.email}
+                            target={{ kind: "user", id: selectedManualBookForDetail.createdByUser.id }}
+                          />
+                          ）
+                        </>
+                      ) : "不明"}
                     </dd>
                   </div>
                   <div>
@@ -2326,7 +2344,9 @@ export default function AdminPage() {
               <div>
                 <p className="mb-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">送信者</p>
                 <p className="text-zinc-800 dark:text-zinc-200">{selectedInquiry.name}</p>
-                <p className="text-zinc-500 dark:text-zinc-400">{selectedInquiry.email}</p>
+                <p className="text-zinc-500 dark:text-zinc-400">
+                  <MaskedEmail masked={selectedInquiry.email} target={{ kind: "inquiry", id: selectedInquiry.id }} />
+                </p>
               </div>
 
               {/* 本文 */}

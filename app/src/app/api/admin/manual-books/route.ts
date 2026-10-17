@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { maskEmail } from "@/lib/maskEmail";
 
 export async function GET() {
   const { error } = await requireAdminSession();
@@ -17,7 +18,12 @@ export async function GET() {
       },
       orderBy: { id: "desc" },
     });
-    return NextResponse.json(books);
+    return NextResponse.json(
+      books.map((b) => ({
+        ...b,
+        createdByUser: b.createdByUser && { ...b.createdByUser, email: maskEmail(b.createdByUser.email) },
+      }))
+    );
   } catch (error) {
     logger.error({ err: error }, "[GET /api/admin/manual-books]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
