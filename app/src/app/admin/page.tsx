@@ -42,6 +42,7 @@ import { AuditLogsView } from "./audit-logs/AuditLogsView";
 import { useAdminFetch } from "@/lib/adminFetch";
 import { BookEnrichmentPanel } from "./_components/BookEnrichmentPanel";
 import { MaskedEmail } from "./_components/MaskedEmail";
+import { useAdminLoad } from "./_components/useAdminLoad";
 
 type AdminTab = "settings" | "audit" | "management";
 
@@ -176,6 +177,8 @@ export default function AdminPage() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ? Number(session.user.id) : null;
   const adminFetch = useAdminFetch();
+  // 読み込みに失敗した API は、画面の上部に表示する（失敗した応答でデータを書き換えない。#744）
+  const { failedLoads, load } = useAdminLoad(adminFetch);
 
   const [activeTab, setActiveTab] = useState<AdminTab>("management");
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -313,40 +316,28 @@ export default function AdminPage() {
   }, [entries, selectedAwardTab, selectedYear]);
 
   useEffect(() => {
-    adminFetch("/api/admin/stats")
-      .then((res) => res.json())
-      .then((data) => setStats(data));
-  }, [adminFetch]);
+    load("/api/admin/stats", "統計", setStats);
+  }, [load]);
 
   useEffect(() => {
-    adminFetch("/api/admin/reported-reviews")
-      .then((res) => res.json())
-      .then((data: ReportedReview[]) => setReportedReviews(data));
-  }, [adminFetch]);
+    load("/api/admin/reported-reviews", "通報されたレビュー", setReportedReviews);
+  }, [load]);
 
   useEffect(() => {
-    adminFetch("/api/admin/inquiries")
-      .then((res) => res.json())
-      .then((data: Inquiry[]) => setInquiries(data));
-  }, [adminFetch]);
+    load("/api/admin/inquiries", "お問い合わせ", setInquiries);
+  }, [load]);
 
   useEffect(() => {
-    adminFetch("/api/admin/users")
-      .then((res) => res.json())
-      .then((data: UserRow[]) => setUsers(data));
-  }, [adminFetch]);
+    load("/api/admin/users", "ユーザー", setUsers);
+  }, [load]);
 
   useEffect(() => {
-    adminFetch("/api/admin/follows")
-      .then((res) => res.json())
-      .then((data: { following: UserItem[]; followers: UserItem[] }) => setFollowsData(data));
-  }, [followsRefreshKey, adminFetch]);
+    load("/api/admin/follows", "フォロー", setFollowsData);
+  }, [followsRefreshKey, load]);
 
   useEffect(() => {
-    adminFetch("/api/admin/follows/recommendations")
-      .then((res) => res.json())
-      .then((data: RecommendedUser[]) => setFollowRecommendations(data));
-  }, [followsRefreshKey, adminFetch]);
+    load("/api/admin/follows/recommendations", "おすすめユーザー", setFollowRecommendations);
+  }, [followsRefreshKey, load]);
 
   useEffect(() => {
     fetch("/api/user/secret-word")
@@ -461,20 +452,16 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    adminFetch("/api/admin/award-entries")
-      .then((res) => res.json())
-      .then((data: AwardEntry[]) => setEntries(data));
-  }, [refreshKey, adminFetch]);
+    load("/api/admin/award-entries", "受賞登録", setEntries);
+  }, [refreshKey, load]);
 
   function refreshEntries() {
     setRefreshKey((k) => k + 1);
   }
 
   useEffect(() => {
-    adminFetch("/api/admin/manual-books")
-      .then((res) => res.json())
-      .then((data: ManualBook[]) => setManualBooks(data));
-  }, [manualBooksRefreshKey, adminFetch]);
+    load("/api/admin/manual-books", "手動登録本", setManualBooks);
+  }, [manualBooksRefreshKey, load]);
 
   function refreshManualBooks() {
     setManualBooksRefreshKey((k) => k + 1);
@@ -803,6 +790,15 @@ export default function AdminPage() {
         <Settings className="h-6 w-6 lg:h-7 lg:w-7" />
         管理画面
       </h1>
+
+      {failedLoads.length > 0 && (
+        <p
+          role="alert"
+          className="mb-4 shrink-0 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+        >
+          読み込めなかったデータがあります（{failedLoads.join("、")}）。時間をおいて、画面を再読み込みしてください。
+        </p>
+      )}
 
       <div
         role="tablist"

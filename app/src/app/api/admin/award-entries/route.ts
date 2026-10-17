@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
 import { requireAdminSession } from "@/lib/session";
 import { logger } from "@/lib/logger";
+import { listAwardEntriesForAdmin } from "@/repositories/awardEntryRepository";
 import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 
 export async function GET() {
@@ -11,19 +12,7 @@ export async function GET() {
   if (error) return error;
 
   try {
-    const entries = await prisma.awardEntry.findMany({
-      include: {
-        book: {
-          include: {
-            author: true,
-            bookIsbns: { orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
-          },
-        },
-        award: true,
-      },
-      orderBy: [{ award: { name: "asc" } }, { year: "desc" }],
-    });
-    return NextResponse.json(entries);
+    return NextResponse.json(await listAwardEntriesForAdmin());
   } catch (error) {
     logger.error({ err: error }, "[GET /api/admin/award-entries]");
     return NextResponse.json({ error: "サーバーエラーが発生しました。" }, { status: 500 });
