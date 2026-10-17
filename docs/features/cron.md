@@ -4,7 +4,7 @@
 
 ## 概要
 
-AWS EventBridge ルール + Lambda で毎日定期実行し、お気に入り著者の新刊を自動検出してユーザーに通知する機能。
+Cloudflare Workers の Cron Trigger で毎日定期実行し、お気に入り著者の新刊を自動検出してユーザーに通知する機能。（AWS の EventBridge + Lambda でも、同じ API を呼べる。AWS は現在停止中）
 
 ## 対象ユーザー
 
@@ -12,18 +12,18 @@ AWS EventBridge ルール + Lambda で毎日定期実行し、お気に入り著
 
 ## 機能仕様
 
-- 定期実行（AWS EventBridge ルール + Lambda）でお気に入り著者の新刊（1週間以内）を楽天ブックス API で検索する
+- 定期実行（Cloudflare Cron Trigger）でお気に入り著者の新刊（1週間以内）を楽天ブックス API で検索する
 - 新刊が見つかった場合、通知 ON のユーザーに通知を作成する
 - 同じ新刊で重複通知は作成しない（`Notification` テーブルに `@@unique([userId, type, bookId])` 制約）
 
 ### 実行フロー
 
 ```
-EventBridge ルール（毎日 UTC 00:00 = JST 09:00）
+Cloudflare Cron Trigger（毎日 UTC 00:00 = JST 09:00。本番のみ）
   ↓
-Lambda 関数が起動
+Worker の scheduled ハンドラ（src/lib/cronScheduler.ts）が、Worker 内の fetch を直接呼ぶ
   ↓
-GET /api/cron/check-new-books（Bearer 認証）
+GET /api/cron/check-new-books（Bearer = Worker の secret CRON_SECRET）
   ↓
 お気に入り著者一覧を取得
   ↓
@@ -34,9 +34,19 @@ GET /api/cron/check-new-books（Bearer 認証）
 重複チェック（同 userId・type・bookId の通知が既存なら作成しない）
 ```
 
-### Cloudflare Workers での実行（移行後・併存）
+### 環境ごとの Cron
 
-AWS の EventBridge + Lambda に加えて、Cloudflare Workers の Cron Trigger（`0 0 * * *` UTC）でも同じ API を実行できる。`scheduled` ハンドラ（`src/lib/cronScheduler.ts`、エントリは `app/worker/index.mjs`）が、Worker の secret `CRON_SECRET` を Bearer にして `GET /api/cron/check-new-books` を内部呼び出しする。失敗（secret 未設定・2xx 以外）は実行の失敗として記録される。ローカルでの手動実行は `wrangler dev --test-scheduled`。詳細は [移行計画](../cloudflare-d1-migration-plan.md) §4-4 の実装メモ（#668）を参照。
+| 環境 | Cron | 実行内容 |
+| --- | --- | --- |
+| 本番 | `0 0 * * *`（UTC 00:00 = JST 09:00） | 新刊チェック |
+| ステージング | なし（本番との二重通知を防ぐ） | — |
+| デモ | `0 18 * * *`（UTC 18:00 = JST 03:00） | 新刊チェックの代わりに、デモのデータの初期化（`GET /api/cron/reset-demo`。[デモ環境の方針](../demo-environment.md)） |
+
+`scheduled` ハンドラ（エントリは `app/worker/index.mjs`）は、secret `CRON_SECRET` が未設定のとき、または API が 2xx 以外を返したときは、失敗として記録する。Cloudflare の Cron は自動で再試行しないが、API は重複通知を作らない冪等な作りのため、次の定時実行で回復する。ローカルでの手動実行は `wrangler dev --test-scheduled`。詳細は [Cloudflare へのデプロイ](../cloudflare-deploy.md) と [移行計画](../cloudflare-d1-migration-plan.md) §4-4 の実装メモ（#668）を参照。
+
+### AWS 構成（停止中）
+
+EventBridge ルール（毎日 UTC 00:00）が Lambda を起動し、Lambda が同じ `GET /api/cron/check-new-books` を Bearer 認証で呼ぶ。設定は [AWS デプロイガイド](../aws-app-deploy-guide.md) を参照。
 
 ### セキュリティ
 
@@ -48,10 +58,12 @@ AWS の EventBridge + Lambda に加えて、Cloudflare Workers の Cron Trigger�
 | メソッド | パス | 説明 |
 | --- | --- | --- |
 | GET | `/api/cron/check-new-books` | 新刊チェック（Bearer 認証必須） |
+| GET | `/api/cron/reset-demo` | デモ環境のデータの初期化（Bearer 認証必須。`DEMO_MODE` のときだけ動く） |
 
 ## 関連ドキュメント
 
 - [ER 図](../er-diagram.md) — Notification テーブル構成
 - [通知機能定義書](./notifications.md) — 生成された通知の表示
 - [お気に入り著者管理定義書](./favorite-authors.md) — 通知 ON/OFF 設定
-- [AWS デプロイガイド](../aws-app-deploy-guide.md) — Lambda・EventBridge の設定
+- [Cloudflare へのデプロイ](../cloudflare-deploy.md) — Cron Trigger の設定
+- [AWS デプロイガイド](../aws-app-deploy-guide.md) — Lambda・EventBridge の設定（停止中）

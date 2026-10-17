@@ -56,9 +56,9 @@
 | 項目 | 内容 |
 | --- | --- |
 | なぜ困難か | `authorize` / `jwt` / `session` が設定オブジェクト内のクロージャで外から掴みにくい。bcrypt と Prisma に密結合している |
-| どうテストするか | 既に `src/__tests__/lib/auth.test.ts` が `authorizeCredentials` を export させて単体テストしている。この方式を踏襲する |
+| どうテストするか | 既に `src/__tests__/node/lib/auth.test.ts` が `authorizeCredentials` を export させて単体テストしている。この方式を踏襲する |
 | 改善案 | さらに難しくなるようなら、`authorize` の中身を `lib/authenticateUser.ts` として切り出し、設定側を薄いアダプタにする |
-| 状態 | `src/__tests__/lib/auth.test.ts` で `authorizeCredentials` を8ケース（未入力、ユーザー不存在、パスワード未設定、ロック中、ロック期限切れ、パスワード不一致の閾値未満／到達、正常系のカウンタリセット）網羅済み。未対応は `jwt` / `session` コールバック |
+| 状態 | `src/__tests__/node/lib/auth.test.ts` で `authorizeCredentials` を8ケース（未入力、ユーザー不存在、パスワード未設定、ロック中、ロック期限切れ、パスワード不一致の閾値未満／到達、正常系のカウンタリセット）網羅済み。未対応は `jwt` / `session` コールバック |
 | 補足 | `api/auth/reset-password` の合言葉（秘密の言葉）照合ロックは、`secretWordFailCount`/`secretWordLockedUntil` を使った同じ「N回失敗でロック」パターンをパスワード認証ロックとは別カラムで実装している。テストする際はこのロジック共通性を踏まえ、`authorizeCredentials` のロック関連ケースと同じ観点（閾値未満／到達、ロック期限切れ後のカウンタリセット）で `app/api/auth/reset-password` の結合テストを設計する |
 
 ### 1-4. 全 API Route の Prisma 直依存
@@ -121,7 +121,7 @@
 | なぜ困難か | 各 Route の副作用として発火するため、呼び出し元のテストで存在を意識しづらい |
 | どうテストするか | 呼び出し元では `jest.mock` して「呼ばれたか＋イベント種別＋対象ID」を検証する。`recordAuditEvent` 自体は Prisma モックで単体テストする |
 | 必ず入れるケース | **DB書き込みが失敗しても呼び出し元の本処理を巻き込まない**こと。これは実装のコメントで明示されている設計意図なので、テストで固定する |
-| 状態 | 部分的に対応済み。`src/__tests__/api/admin-users.test.ts` で管理者昇格時の監査ログ作成を検証済み。`recordAuditEvent` 自体の単体テスト、他の呼び出し元、DB書き込み失敗時の継続動作は未対応（Phase 12 で実施） |
+| 状態 | 部分的に対応済み。`src/__tests__/node/api/admin-users.test.ts` で管理者昇格時の監査ログ作成を検証済み。`recordAuditEvent` 自体の単体テスト、他の呼び出し元、DB書き込み失敗時の継続動作は未対応（Phase 12 で実施） |
 
 ### 1-9-1. `app/api/admin/audit-logs`（監査ログ閲覧API）と `/admin/audit-logs` ページ
 
