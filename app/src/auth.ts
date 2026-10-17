@@ -139,6 +139,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.name = (user as { name?: string | null }).name ?? null;
         token.role = (user as { role?: string }).role ?? "user";
         token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
+        // ログイン保持の有無（保持なしは、サーバー側でも 8 時間で切る。#737）。Google ログインや旧トークンは、保持あり
+        token.rememberMe = (user as { rememberMe?: boolean }).rememberMe ?? true;
       }
       // update() が呼ばれた時点でのDBの最新role・mustChangePasswordを反映する
       // （Issue #417のクライアント側キャッシュ問題への対応）
