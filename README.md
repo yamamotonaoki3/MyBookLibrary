@@ -139,6 +139,7 @@ MyBookLibrary/
 
 - [要件定義書](docs/requirements.md)・[機能別定義書](docs/features/)・[API 仕様書](docs/api-spec.md)・[ER 図](docs/er-diagram.md)
 - [画面遷移図](docs/screen-transition.md)・[ワイヤーフレーム](docs/wireframes.md)
+- [アーキテクチャ概要](docs/architecture.md)・[運用手順書](docs/operations.md)
 - [Cloudflare へのデプロイ](docs/cloudflare-deploy.md)・[本番切り替え手順書](docs/d1-cutover-runbook.md)・[デモ環境の方針と構成](docs/demo-environment.md)
 - [テスト計画表](docs/test-plan.md)・[テスト依存関係マップ](docs/test-dependency-map.md)
 - [学び・手直しの記録](docs/lessons-learned.md)
