@@ -51,9 +51,10 @@
 | GET | `/api/books/search` | 楽天 API で書籍検索 |
 | GET | `/api/books/isbn` | ISBN で書籍情報を取得 |
 | GET | `/api/books/reading` | 読書中・読了の本一覧 |
-| GET | `/api/books/[id]` | 本の詳細取得 |
 | PATCH | `/api/books/[id]` | 本の編集（手動登録のみ） |
 | DELETE | `/api/books/[id]` | 本の削除（手動登録のみ） |
+
+本の詳細（`/books/[id]`）は、ページ側（サーバー）で取得する。取得用の API（`GET /api/books/[id]`）は、ない。
 
 ## 関連ドキュメント
 

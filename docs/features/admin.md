@@ -86,6 +86,7 @@
 | GET | `/api/admin/reported-reviews` | 通報レビュー一覧 |
 | DELETE | `/api/admin/reviews/[id]` | 通報レビュー削除 |
 | GET | `/api/admin/users` | ユーザー一覧（メールはマスク） |
+| PATCH | `/api/admin/users/[id]` | ユーザーのロール変更（管理者への昇格・降格。自分自身は不可。管理者は最大 5 人まで、最後の管理者は降格不可） |
 | DELETE | `/api/admin/users/[id]` | ユーザー削除 |
 | GET | `/api/admin/inquiries` | お問い合わせ一覧（メールはマスク） |
 | PATCH | `/api/admin/inquiries/[id]` | お問い合わせ更新（ステータス変更） |
