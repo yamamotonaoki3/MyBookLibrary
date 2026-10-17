@@ -4,15 +4,18 @@
 
 > **本番の実データを扱います。** 実行するのは所有者本人です。パスフレーズ・接続情報・メール・パスワードなどの値は、チャット・Issue・PR・コミットに書かない。リハーサルと違い、**匿名化はしません**（本番にそのまま入れるため）。作業後は、復元した MySQL と平文のダンプを必ず消す。
 
-## 現在の状態（2026-10-14 に確認）
+## 現在の状態（2026-10-17: 切り替え完了）
+
+本番の切り替えは、2026-10-17 に完了した（結果は #691 のコメント）。この手順書は、**再実行や、同じ作業をやり直すときの記録**として残す。
 
 | 項目 | 状態 |
 | --- | --- |
-| 本番 D1（`mybooklibrary-db`）| スキーマ適用済み（未適用のマイグレーションなし）。**全テーブルが空** |
-| 本番 Worker の secret | `AUTH_SECRET`、`CRON_SECRET`、`RAKUTEN_APP_ID`、`RAKUTEN_ACCESS_KEY`、`CALIL_API_KEY`、`AUTH_GOOGLE_ID`、`AUTH_GOOGLE_SECRET` が登録済み（名前のみ確認。値は見ていない）|
-| 本番 Worker のコード | `production` ブランチは古いコミット（`/api/version` より前）。**データを入れたあとで、最新の `main` に更新する** |
-| ダンプ | `app/prisma/scripts/migration/dumps/dump_20261011T145445Z.sql.enc`（暗号化。2026-10-11 時点。AWS は停止中のため、これが最新）|
-| リハーサル | 2 回成功（移行 + 照合 173 項目。所要 3〜5 分）|
+| 本番 D1（`mybooklibrary-db`）| 移行済み（14,793 件。照合は 173 項目すべて成功）|
+| 本番 Worker | `main` の最新（`production` ブランチ）で稼働。利用者へ周知済み |
+| ダンプ | `app/prisma/scripts/migration/dumps/dump_20261011T145445Z.sql.enc`（暗号化。2026-10-11 時点）。保管して残す。復号した平文と、復元した MySQL は削除済み |
+| 公開後の監視 | 最初の 1 週間（下記）|
+
+> 以降の「現在の状態」を前提にした記述（本番 D1 が空であること、`production` ブランチが古いこと）は、**移行前の状態**を指す。再実行するときは、手順 0 で、現状を必ず確認する。
 
 ## 方針
 
@@ -60,21 +63,41 @@ docker logs mbl-cutover-mysql 2>&1 | tail -2    # ready for connections が出�
 
 ## 3. ダンプを復号して復元する
 
+**4 つのブロックに分け、ブロックごとに実行する。まとめて貼り付けない。** `read -rs` は、次に入力された 1 行をパスフレーズとして読む。他の行と一緒に貼ると、次の行がパスフレーズになり、復号に失敗する（切り替えの当日に起きた）。また、失敗しても次の行が実行され、壊れたデータを復元しようとする。**各ブロックの期待する出力を確認してから、次へ進む。**
+
+**A. パスフレーズを入力する**（この 2 行だけを貼る。画面には何も出ない。そのまま、パスフレーズを入力して Enter）
+
 ```bash
 cd prisma/scripts/migration/dumps
 read -rs MBL_BACKUP_PP; export MBL_BACKUP_PP
-openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
-  -in dump_20261011T145445Z.sql.enc -out dump_20261011T145445Z.decrypted.sql -pass env:MBL_BACKUP_PP
+```
+
+**B. 復号する**（失敗したら、壊れたファイルを消す）
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in dump_20261011T145445Z.sql.enc -out dump_20261011T145445Z.decrypted.sql -pass env:MBL_BACKUP_PP && echo "復号OK" || { echo "復号失敗"; rm -f dump_20261011T145445Z.decrypted.sql; }
 unset MBL_BACKUP_PP
 cd ../../../..
-cat prisma/scripts/migration/dumps/dump_20261011T145445Z.sql.sha256
-sha256sum prisma/scripts/migration/dumps/dump_20261011T145445Z.decrypted.sql     # 2 つのハッシュが同じであること
-
-CID=$(docker ps -q -f name=mbl-cutover-mysql)
-time docker exec -i "$CID" sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 cutover' \
-  < prisma/scripts/migration/dumps/dump_20261011T145445Z.decrypted.sql
-npx dotenv -e .env.migration-target -o --no-expand -- npx prisma migrate deploy      # 20261012000000_lowercase_user_emails だけが適用される
 ```
+
+`復号OK` が出ること。`復号失敗`（`bad decrypt`）なら、A からやり直す。
+
+**C. ハッシュを照合する**
+
+```bash
+E=$(cut -d' ' -f1 prisma/scripts/migration/dumps/dump_20261011T145445Z.sql.sha256); A=$(sha256sum prisma/scripts/migration/dumps/dump_20261011T145445Z.decrypted.sql | cut -d' ' -f1); [ "$E" = "$A" ] && echo "一致: 続行してよい" || echo "不一致: 中止（先へ進まない）"
+```
+
+`一致: 続行してよい` が出たときだけ、D へ進む。
+
+**D. MySQL に復元して、マイグレーションを適用する**
+
+```bash
+CID=$(docker ps -q -f name=mbl-cutover-mysql)
+time docker exec -i "$CID" sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 cutover'   < prisma/scripts/migration/dumps/dump_20261011T145445Z.decrypted.sql   && npx dotenv -e .env.migration-target -o --no-expand -- npx prisma migrate deploy      # 20261012000000_lowercase_user_emails だけが適用される
+```
+
+復元が失敗したときは、`&&` で、マイグレーションは実行されない。エラーなく終わり、上のマイグレーションだけが適用されること。
 
 ## 4. 事前確認（書き込まない）
 
@@ -84,6 +107,8 @@ npm run migration:d1 -- migrate --dry-run
 ```
 
 メールの重複・JSON の `null` がないこと、件数がリハーサルと同じ（**合計 14,793 件**）であること。違えば、先へ進まない。
+
+**`users` などが 0 件のときは、移行元が空（復元の失敗）。手順 5 に進まない**（空を移しても、照合は「成功」と表示されるため、気づけない）。手順 3 へ戻る。
 
 ## 5. 本番 D1 へ移行する
 
@@ -118,7 +143,7 @@ git push origin origin/main:production
 Cloudflare ダッシュボードの Workers & Pages → `mybooklibrary` → Deployments（または Builds）で、ビルドが成功するのを待つ。そのあと、バージョンを確認する。
 
 ```bash
-curl https://mybooklibrary.nyproducts.workers.dev/api/version
+curl https://mybooklibrary.nyproducts.workers.dev/api/version      # PowerShell では、curl.exe と書く（curl は Invoke-WebRequest の別名）
 ```
 
 `name` が `0.0.0`、`tag` が `0.0.0-<main の先頭 7 文字>` であること（`git rev-parse --short origin/main` と比べる）。`production` ブランチの更新が拒否されたら（早送りでない）、強制はせずに相談する。
