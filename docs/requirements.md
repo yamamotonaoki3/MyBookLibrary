@@ -75,7 +75,7 @@
 
 ### 3.10 新刊チェック（Cron）
 
-AWS EventBridge ルール + Lambda で毎日定期実行し、お気に入り著者の新刊を自動検出してユーザーに通知する機能。
+Cloudflare Workers の Cron Trigger（毎日 UTC 00:00 = JST 09:00）で定期実行し、お気に入り著者の新刊を自動検出してユーザーに通知する機能。（AWS 構成では EventBridge ルール + Lambda が同じ API を呼ぶ。AWS は現在停止中）
 
 → 詳細は [新刊チェック（Cron）機能定義書](./features/cron.md) を参照。
 
@@ -123,7 +123,7 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 ### セキュリティ
 
 - パスワードのハッシュ化（bcryptjs、salt: 12）
-- HTTPS 通信（AWS CloudFront が対応）
+- HTTPS 通信（Cloudflare が対応。AWS 構成では CloudFront）
 - SQL インジェクション対策（Prisma ORM が対応）
 - 不正ログイン対策（10回失敗で 15 分ロック）
 - Cron エンドポイントを Bearer トークンで保護
@@ -142,7 +142,8 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 
 ### 監視
 
-- AWS CloudWatch でエラーアラート・アクセス数・パフォーマンスを監視する
+- Cloudflare ダッシュボードで、Workers のエラー率・CPU 時間、D1 の使用量、Cron の実行ログを確認する（公開後 1 週間の確認項目は [本番切り替え手順書](./d1-cutover-runbook.md) を参照）
+- （AWS 構成では、CloudWatch でエラーアラート・アクセス数・パフォーマンスを監視する。AWS は現在停止中）
 
 ---
 
@@ -152,16 +153,16 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 | --- | --- |
 | フロントエンド | Next.js 16 (React 19) + TypeScript |
 | バックエンド | Next.js API Routes（同一プロジェクト内） |
-| データベース | MySQL 8.4 |
+| データベース | Cloudflare D1（SQLite。本番・ステージング・デモ）／ MySQL 8.4（ローカル開発） |
 | ORM | Prisma 6 |
-| 認証 | NextAuth.js v5（メール＋パスワード・Google OAuth） |
+| 認証 | Auth.js (NextAuth.js) v5（メール＋パスワード・Google OAuth） |
 | バリデーション | Zod v4 |
 | スタイリング | Tailwind CSS v4 + shadcn/ui |
-| テスト | Jest + ts-jest |
+| テスト | Jest + ts-jest、Playwright（E2E） |
 | コンテナ | Docker（開発時の MySQL 用） |
 | 外部 API | 楽天ブックス API・国立国会図書館 SRU API（NDL）・カーリル API |
 | PWA | @ducanh2912/next-pwa（Service Worker 自動生成） |
-| デプロイ | AWS（EC2 + RDS + CloudFront） |
+| デプロイ | Cloudflare Workers（OpenNext）+ D1（[手順](./cloudflare-deploy.md)）。AWS（EC2 + RDS + CloudFront。Terraform 管理）は現在停止中（[AWS デプロイガイド](./aws-deploy-guide.md)） |
 
 ---
 

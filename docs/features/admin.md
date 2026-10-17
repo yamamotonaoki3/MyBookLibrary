@@ -32,6 +32,17 @@
 
 - 管理者操作（ユーザー削除・受賞登録の編集など）や合言葉の更新といった重要イベントを記録する
 - 管理者パネルの「監査ログ」タブから、イベント種別・操作者・対象・日時を確認できる
+- 一覧・詳細に出る実行者のメールアドレスと、詳細（`detail`）に保存されたメールアドレスは、マスクして返す（保存データは変えない）
+- 管理者がメールアドレスを「表示」したことも、イベント `admin_email_revealed`（管理者: メールアドレスを表示）として記録する（メールの値は記録しない）
+
+### メールアドレスのマスク表示
+
+- 管理者の画面と API は、ほかのユーザーのメールアドレスを、既定ではマスクして返す（例: `de***@e***.com`）。対象は、ユーザー一覧・詳細、手動登録書籍の登録者、お問い合わせの送信者、監査ログの実行者。お問い合わせの更新（PATCH）の応答には、メールアドレスを含めない
+- 全体の表示は、管理者が「表示」ボタンを押したときだけ、専用の API（`POST /api/admin/email-reveal`）で取得する。取得のたびに、監査ログへ記録する。記録できなかったときは、メールアドレスを返さない
+- 1 人の管理者が「表示」できるのは、1 分あたり 20 回まで（超えると 429）。先に記録してから数えるため、並列のリクエストでも上限を超えない
+- 画面は、「表示」で全体を出し、30 秒で（または「隠す」で）マスクに戻す
+- 本人が自分のメールアドレスを見る画面（設定のアカウント情報、お問い合わせ）と、サイドバー（アカウント名だけを表示）は、この対象外
+- デモ環境（`DEMO_MODE`）では、管理者の API をすべて 403 にする（[デモ環境の方針](../demo-environment.md)）
 
 ### ユーザー管理
 
@@ -74,23 +85,27 @@
 | POST | `/api/admin/import-csv` | CSV 一括インポート |
 | GET | `/api/admin/reported-reviews` | 通報レビュー一覧 |
 | DELETE | `/api/admin/reviews/[id]` | 通報レビュー削除 |
-| GET | `/api/admin/users` | ユーザー一覧 |
+| GET | `/api/admin/users` | ユーザー一覧（メールはマスク） |
 | DELETE | `/api/admin/users/[id]` | ユーザー削除 |
-| GET | `/api/admin/inquiries` | お問い合わせ一覧 |
+| GET | `/api/admin/inquiries` | お問い合わせ一覧（メールはマスク） |
 | PATCH | `/api/admin/inquiries/[id]` | お問い合わせ更新（ステータス変更） |
 | DELETE | `/api/admin/inquiries/[id]` | お問い合わせ削除 |
 | GET | `/api/admin/ndl-search` | 国立国会図書館 SRU API で書籍検索 |
 | GET | `/api/admin/award-entries/export` | 受賞データ CSV エクスポート |
-| GET | `/api/admin/manual-books` | 手動登録書籍の一覧（手動登録は `POST /api/reading-status` で行う） |
+| GET | `/api/admin/manual-books` | 手動登録書籍の一覧（登録者のメールはマスク。手動登録は `POST /api/reading-status` で行う） |
 | PATCH | `/api/admin/manual-books/[id]` | 手動登録書籍の編集 |
 | DELETE | `/api/admin/manual-books/[id]` | 手動登録書籍の削除 |
 | POST | `/api/admin/manual-books/merge` | 重複書籍のマージ |
-| GET | `/api/admin/audit-logs` | 監査ログ一覧 |
+| GET | `/api/admin/audit-logs` | 監査ログ一覧（実行者のメールはマスク） |
+| GET | `/api/admin/audit-logs/[id]` | 監査ログ詳細（実行者のメール・`detail` 内のメールはマスク） |
+| POST | `/api/admin/email-reveal` | 「表示」ボタン用。メールアドレス全体を返し、監査ログへ記録する（`user` / `inquiry` / `audit-log` と対象 ID を指定。1 分 20 回まで） |
 | POST | `/api/admin/users/[id]/reset-password` | ユーザーのパスワード強制リセット |
 | GET | `/api/admin/follows` | 管理者自身のフォロー中・フォロワー一覧取得 |
 | GET | `/api/admin/follows/recommendations` | 管理者向けおすすめフォロー候補の取得 |
 | POST | `/api/admin/book-enrichment/start` | 書籍情報補完ジョブの開始 |
 | GET | `/api/admin/book-enrichment/status` | 書籍情報補完ジョブの進捗取得 |
+| POST | `/api/admin/book-enrichment/cancel` | 書籍情報補完ジョブの中断 |
+| GET | `/api/admin/book-enrichment/tick` | 止まった補完ジョブの再開（Bearer 認証。定期呼び出し用） |
 
 ## 関連ドキュメント
 
