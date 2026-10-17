@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Credentials from "next-auth/providers/credentials";
 import { isDemoMode } from "@/lib/demoMode";
+import { sessionMaxAgeOption } from "@/lib/sessionPolicy";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -106,7 +107,7 @@ export function createAdapter(): Adapter {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: createAdapter(),
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", ...sessionMaxAgeOption() },
   providers: [
     // デモ環境（DEMO_MODE）では、Google ログインを有効にしない（実在のメールアドレス・氏名が、デモの DB に入るのを防ぐ。#721）
     ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET && !isDemoMode()
