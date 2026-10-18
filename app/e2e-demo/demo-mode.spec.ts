@@ -39,6 +39,8 @@ test("ログイン後: 設定に、合言葉・アカウント削除は出ない
   await expect(page.getByRole("heading", { name: "設定" })).toBeVisible();
   await expect(page.getByText("秘密の言葉", { exact: true })).toHaveCount(0);
   await expect(page.getByText("アカウント削除", { exact: true })).toHaveCount(0);
+  // パスワード変更へのリンクも出ない（変更できないため）
+  await expect(page.getByRole("link", { name: "パスワードを変更する" })).toHaveCount(0);
 
   await page.goto("/settings/change-password");
   await expect(page.getByTestId("demo-change-password-notice")).toBeVisible();
