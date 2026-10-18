@@ -13,6 +13,7 @@ erDiagram
         int loginFailCount "ログイン失敗回数"
         datetime lockedUntil "nullable ロック解除時刻"
         string secretWordHash "nullable 合言葉ハッシュ"
+        boolean mustChangePassword "管理者による強制リセット後、パスワードの変更を求める（default: false）"
         int secretWordFailCount "合言葉照合の失敗回数"
         datetime secretWordLockedUntil "nullable 合言葉ロック解除時刻"
         datetime createdAt
@@ -104,10 +105,11 @@ erDiagram
     Notification {
         int id PK
         int userId FK
-        string type "new_book or like"
+        string type "通知の種別（new_book・like・follow・report・review_deleted・password_reset_by_admin・secret_word_required・mutual_favorite_author・mutual_want_to_read。詳細は api-spec）"
         string content
         string bookIsbn "nullable"
         string bookTitle "nullable"
+        int actorId FK "nullable 通知のきっかけを作ったユーザー（ユーザー削除時は null）"
         boolean isRead
         datetime expiresAt "nullable"
         datetime createdAt
@@ -116,6 +118,7 @@ erDiagram
     Account {
         string id PK "cuid"
         int userId FK
+        string type "アカウントの種別（oauth など）"
         string provider "google など"
         string providerAccountId
         string refresh_token "nullable"
@@ -210,7 +213,8 @@ erDiagram
     User ||--o{ Review : "感想投稿"
     User ||--o{ Like : "いいね"
     User ||--o{ Report : "通報"
-    User ||--o{ Notification : "通知"
+    User ||--o{ Notification : "通知の受信者"
+    User |o--o{ Notification : "通知のきっかけ（actor。任意）"
     User ||--o{ Account : "OAuthアカウント"
     User ||--o{ Session : "セッション"
     Author ||--o{ Book : "著作"
@@ -245,7 +249,7 @@ erDiagram
 | Review | ユーザーの感想（10〜2000文字）。`isSpoiler` でネタバレ、`isPublic` で公開/非公開を管理 |
 | Like | 感想へのいいね。1ユーザーにつき1いいね（`userId_reviewId` で unique） |
 | Report | 感想への通報。1ユーザーにつき1通報（`userId_reviewId` で unique） |
-| Notification | アプリ内通知。`type` で `new_book`（新刊）/ `like`（いいね）を区別する。`bookIsbn` で通知の重複防止に使用 |
+| Notification | アプリ内通知。`type` で通知の種別（新刊・いいね・フォロー・通報・レビュー削除・パスワード強制リセット・合言葉の設定の案内・相互フォロー活動）を区別する（値は [api-spec](api-spec.md) の NotificationType）。`bookIsbn` で通知の重複防止に使用 |
 | Account | NextAuth.js の OAuth 連携情報（Google など） |
 | Session | NextAuth.js のセッション管理（JWT 戦略のため通常は未使用） |
 | UserLibrary | ユーザーが登録した近隣図書館。`systemid` と `libkey` で一意識別。1ユーザー最大 5 件 |

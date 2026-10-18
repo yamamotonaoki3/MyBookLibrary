@@ -33,6 +33,7 @@
 | --- | --- | --- |
 | POST | `/api/follows` | ユーザーをフォロー |
 | DELETE | `/api/follows` | フォロー解除 |
+| GET | `/api/users/[id]/favorite-authors` | 他のユーザーの、お気に入り著者と、読んでいる本（読みたい・読書中・読了）の取得（認証が必要） |
 
 ## 関連ドキュメント
 
