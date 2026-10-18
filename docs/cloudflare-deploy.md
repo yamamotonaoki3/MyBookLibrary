@@ -8,9 +8,9 @@ Cloudflare Workers + D1 への移行（#609）で使う環境とデプロイの�
 |---|---|---|---|---|---|
 | ステージング | `mybooklibrary-staging` | `https://mybooklibrary-staging.nyproducts.workers.dev` | `mybooklibrary-staging-db` | なし（本番との二重通知を防ぐため。手動で確認する） | `wrangler deploy --env staging` |
 | 本番 | `mybooklibrary` | `https://mybooklibrary.nyproducts.workers.dev` | `mybooklibrary-db` | 毎日 UTC 00:00（JST 09:00） | `wrangler deploy` |
-| デモ | `mybooklibrary-demo` | `https://mybooklibrary-demo.nyproducts.workers.dev` | `mybooklibrary-demo-db` | なし | `wrangler deploy --env demo` |
+| デモ | `mybooklibrary-demo` | `https://mybooklibrary-demo.nyproducts.workers.dev` | `mybooklibrary-demo-db` | 毎日 UTC 18:00（JST 03:00。デモのデータの初期化） | `wrangler deploy --env demo` |
 
-設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング、`env.demo` がデモ）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングとデモでは Cron を空配列で上書きして無効にしている。デモ環境の方針は [demo-environment.md](demo-environment.md)。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
+設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング、`env.demo` がデモ）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングでは Cron を空配列で上書きして無効にしている（デモは、データの初期化だけの Cron `0 18 * * *` を設定している）。デモ環境の方針は [demo-environment.md](demo-environment.md)。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
 
 ## 初回準備（Cloudflare アカウントでの操作）
 

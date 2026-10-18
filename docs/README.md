@@ -7,6 +7,7 @@ MyBookLibrary のドキュメント一覧。**現役の文書**と、**停止中
 | 文書 | 内容 |
 | --- | --- |
 | [requirements.md](requirements.md) | 要件定義書（機能・非機能・技術スタック） |
+| [architecture.md](architecture.md) | アーキテクチャ概要（構成図・環境・リクエストの流れ・データ・デプロイの流れ） |
 | [features/](features/) | 機能別定義書（下の表） |
 | [api-spec.md](api-spec.md) | バリデーション・列挙型・エラーレスポンス・CSV フォーマットなどの技術仕様 |
 | [er-diagram.md](er-diagram.md) | ER 図 |
@@ -36,6 +37,7 @@ MyBookLibrary のドキュメント一覧。**現役の文書**と、**停止中
 
 | 文書 | 内容 |
 | --- | --- |
+| [operations.md](operations.md) | 運用手順書（日々の確認・障害時の初動・復旧・secret の更新） |
 | [cloudflare-deploy.md](cloudflare-deploy.md) | Cloudflare Workers + D1 へのデプロイ（環境・secret・ロールバック・デモ） |
 | [d1-cutover-runbook.md](d1-cutover-runbook.md) | 本番切り替え手順書（2026-10-17 に完了。再実行の記録と、公開後の監視） |
 | [d1-rehearsal-runbook.md](d1-rehearsal-runbook.md) | 匿名化データでの、D1 への移行リハーサル手順書 |
