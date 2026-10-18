@@ -2,12 +2,14 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Users, Heart, Library, KeyRound, Trash2, Info, ChevronRight } from "lucide-react";
+import { Users, Heart, Library, KeyRound, Lock, Trash2, Info, ChevronRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { isDemoMode } from "@/lib/demoMode";
+import { canChangeOwnPassword } from "@/lib/accountPolicy";
 import { getFollowsListData } from "@/lib/followsListData";
 import { getRecommendedUsers } from "@/lib/userRecommendations";
 import { AccountInfoCard } from "./_components/AccountInfoCard";
+import { ChangePasswordLink } from "./_components/ChangePasswordLink";
 import { DeleteAccountButton } from "./_components/DeleteAccountButton";
 import { LibrarySettings } from "./_components/LibrarySettings";
 import { SecretWordForm } from "./_components/SecretWordForm";
@@ -71,6 +73,16 @@ export default async function SettingsPage() {
             </p>
             <LibrarySettings />
           </SettingsAccordionSection>
+
+          {/* パスワード（パスワードでログインしているアカウントだけ。デモ環境では変更できない） */}
+          {canChangeOwnPassword({ hasPasswordLogin, demoMode }) && (
+            <SettingsAccordionSection icon={<Lock className="h-4 w-4" />} title="パスワード">
+              <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+                現在のパスワードを確認したうえで、新しいパスワードに変更します。
+              </p>
+              <ChangePasswordLink />
+            </SettingsAccordionSection>
+          )}
 
           {/* 秘密の言葉 */}
           {hasPasswordLogin && !demoMode && (

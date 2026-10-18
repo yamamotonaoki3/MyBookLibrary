@@ -50,7 +50,8 @@ flowchart TD
     SETTINGS -.->|モバイル幅のみ・モーダル：アカウント情報| ACCOUNTMODAL[[アカウント情報モーダル]]
     ACCOUNTMODAL -.-> SETTINGS
     SETTINGS --> LIBSETTINGS[近隣図書館の登録\n/settings#libraries]
-    FORCED([管理者による強制リセット後]) -.->|自動で移動| CHANGEPW[パスワード変更\n/settings/change-password]
+    SETTINGS --> |パスワードでログイン中のみ| CHANGEPW[パスワード変更\n/settings/change-password]
+    FORCED([管理者による強制リセット後]) -.->|自動で移動| CHANGEPW
     SETTINGS --> FOLLOWS[フォロー一覧\n/settings/follows]
     FOLLOWS --> USERPROFILE
     USERPROFILE --> |フォロー/フォロー解除| USERPROFILE
@@ -94,7 +95,7 @@ flowchart TD
 | `/contact` | お問い合わせ | 必要 |
 | `/about` | このアプリについて（利用している外部 API の案内） | 必要 |
 | `/settings` | 設定（アカウント情報はモバイル幅のみモーダル表示、PC幅は常時インライン表示） | 必要 |
-| `/settings/change-password` | パスワード変更（管理者による強制リセット後は、自動でここへ移動し、変更するまで、ほかの画面へ進めない。通常のナビゲーションからのリンクは、現在ない） | 必要 |
+| `/settings/change-password` | パスワード変更（設定画面の「パスワード」の欄から開く。パスワードでログインしているアカウントのみ。管理者による強制リセット後は、自動でここへ移動し、変更するまで、ほかの画面へ進めない） | 必要 |
 | `/settings/follows` | フォロー一覧・おすすめフォロー候補 | 必要 |
 | `/users/[id]` | ユーザー詳細（フォロー/フォロー解除。お気に入り著者・読んでいる本は誰でも閲覧可、相互フォロー時は活動通知が届く） | 必要 |
 

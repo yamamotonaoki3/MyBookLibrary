@@ -50,6 +50,31 @@ test("パスワード変更: 確認欄が一致しない場合、クライアン
   expect(changePasswordCalled).toBe(false);
 });
 
+test("設定画面の「パスワード」の欄から、パスワード変更画面へ移動できる（PC 幅）", async ({ page }) => {
+  await login(page);
+  await page.goto("/settings");
+
+  await page.getByRole("link", { name: "パスワードを変更する" }).click();
+
+  await expect(page).toHaveURL(/\/settings\/change-password$/);
+  await expect(page.getByRole("heading", { name: "パスワードの変更" })).toBeVisible();
+});
+
+test("設定画面の「パスワード」の欄を開いて、パスワード変更画面へ移動できる（モバイル幅のアコーディオン）", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await login(page);
+  await page.goto("/settings");
+
+  // モバイル幅では、各欄が折りたたまれている。開くまで、中のリンクは見えない
+  const link = page.getByRole("link", { name: "パスワードを変更する" });
+  await expect(link).toBeHidden();
+  await page.getByRole("button", { name: "パスワード", exact: true }).click();
+  await expect(link).toBeVisible();
+  await link.click();
+
+  await expect(page).toHaveURL(/\/settings\/change-password$/);
+});
+
 async function setSecretWord(page: import("@playwright/test").Page, secretWord: string) {
   await page.goto("/settings");
   // SecretWordFormの入力はlabelとhtmlFor/idで関連付けられていないため、
