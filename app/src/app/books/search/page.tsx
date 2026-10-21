@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { SearchResult, SearchResponse } from "@/app/api/books/search/route";
 import BarcodeScannerModal from "./_components/BarcodeScannerModal";
 import ManualBookRegisterModal from "./_components/ManualBookRegisterModal";
-import { LibraryAvailability } from "@/components/ui/library-availability";
+import LibraryAvailabilityButton from "@/components/ui/LibraryAvailabilityButton";
 import { CoverLoadingOverlay } from "@/frontend/readingStatus/CoverLoadingOverlay";
 import { ReadingStatusControls } from "@/frontend/readingStatus/ReadingStatusControls";
 import { useReadingStatus } from "@/frontend/readingStatus/useReadingStatus";
@@ -112,9 +112,9 @@ function SearchResultCard({ book }: { book: SearchResult }) {
           </div>
         </div>
 
-        {book.isbn && (
+        {(bookId != null || book.isbn) && (
           <div className="mt-1 mb-1">
-            <LibraryAvailability isbn={book.isbn} title={book.title} />
+            <LibraryAvailabilityButton bookId={bookId} isbn={book.isbn} bookTitle={book.title} />
           </div>
         )}
 

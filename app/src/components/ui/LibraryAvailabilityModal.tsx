@@ -13,12 +13,13 @@ type AvailabilityResult = {
 };
 
 type Props = {
-  bookId: number;
+  bookId?: number | null;
+  isbn?: string | null;
   bookTitle: string;
   onClose: () => void;
 };
 
-export function LibraryAvailabilityModal({ bookId, bookTitle, onClose }: Props) {
+export function LibraryAvailabilityModal({ bookId, isbn, bookTitle, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState<Record<string, AvailabilityResult[]> | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -28,13 +29,15 @@ export function LibraryAvailabilityModal({ bookId, bookTitle, onClose }: Props) 
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch(`/api/calil/check-book?bookId=${bookId}`);
+        const query = bookId != null ? `bookId=${bookId}` : `isbn=${encodeURIComponent(isbn ?? "")}`;
+        const res = await fetch(`/api/calil/check-book?${query}`);
         if (cancelled) return;
         if (!res.ok) {
           setError("確認に失敗しました");
           return;
         }
         const data = await res.json();
+        if (cancelled) return;
         if (data.message) {
           setMessage(data.message);
           return;
@@ -50,7 +53,7 @@ export function LibraryAvailabilityModal({ bookId, bookTitle, onClose }: Props) 
     return () => {
       cancelled = true;
     };
-  }, [bookId]);
+  }, [bookId, isbn]);
 
   const isbns = results ? Object.keys(results) : [];
 

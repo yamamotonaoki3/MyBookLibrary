@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { LibraryAvailability } from "@/components/ui/library-availability";
+import LibraryAvailabilityButton from "@/components/ui/LibraryAvailabilityButton";
 import { ReadingStatusControls } from "@/frontend/readingStatus/ReadingStatusControls";
 import { useReadingStatus, type ReadingStatusValue } from "@/frontend/readingStatus/useReadingStatus";
 
@@ -82,9 +82,9 @@ export function BookCard({ book, initialStatus, hasReview }: Props) {
               </p>
             </div>
 
-            {book.isbn && (
+            {(book.id != null || book.isbn) && (
               <div className="mt-1">
-                <LibraryAvailability isbn={book.isbn} title={book.title} />
+                <LibraryAvailabilityButton bookId={book.id} isbn={book.isbn} bookTitle={book.title} />
               </div>
             )}
 

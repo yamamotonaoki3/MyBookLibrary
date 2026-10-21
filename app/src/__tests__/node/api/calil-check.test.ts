@@ -125,6 +125,67 @@ describe("GET /api/calil/check-book", () => {
   const makeRequest = (query: string) =>
     new NextRequest(`http://localhost/api/calil/check-book?${query}`);
 
+  it("ISBNで見つかった本の全版を確認する", async () => {
+    prismaMock.book.findFirst.mockResolvedValue({
+      id: 1, isbn: "9784000000001",
+      bookIsbns: [{ isbn: "9784000000001" }, { isbn: "9784101010014" }],
+    });
+    mockFetchJson({ continue: 0, books: {} });
+    const res = await GET(makeRequest("isbn=9784101010014"));
+    expect(res.status).toBe(200);
+    expect(Object.keys((await res.json()).results)).toEqual(["9784000000001", "9784101010014"]);
+    expect(prismaMock.book.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { OR: [{ isbn: "9784101010014" }, { bookIsbns: { some: { isbn: "9784101010014" } } }] },
+    }));
+    expect(prismaMock.book.create).not.toHaveBeenCalled();
+    expect(prismaMock.readingStatus.upsert).not.toHaveBeenCalled();
+  });
+
+  it("未登録ISBNは登録せず単一版として確認する", async () => {
+    prismaMock.book.findFirst.mockResolvedValue(null);
+    mockFetchJson({ continue: 0, books: {} });
+    const res = await GET(makeRequest("isbn=9784101010014"));
+    expect(res.status).toBe(200);
+    expect(Object.keys((await res.json()).results)).toEqual(["9784101010014"]);
+    expect(prismaMock.book.create).not.toHaveBeenCalled();
+    expect(prismaMock.readingStatus.upsert).not.toHaveBeenCalled();
+  });
+
+  it.each(["", "bookId=-1", "bookId=1.5", "isbn=invalid", "bookId=abc&isbn=9784101010014"])("不正な確認対象を拒否する: %s", async (query) => {
+    const res = await GET(makeRequest(query));
+    expect(res.status).toBe(400);
+  });
+
+  it("存在しない本IDは404を返す", async () => {
+    prismaMock.book.findUnique.mockResolvedValue(null);
+    expect((await GET(makeRequest("bookId=999"))).status).toBe(404);
+  });
+
+  it("代表ISBNなしでも登録された版をすべて確認する", async () => {
+    prismaMock.book.findUnique.mockResolvedValue({
+      id: 1, isbn: null, bookIsbns: [{ isbn: "9784101010014" }, { isbn: "9784000000001" }],
+    });
+    mockFetchJson({ continue: 0, books: {} });
+    const res = await GET(makeRequest("bookId=1"));
+    expect(Object.keys((await res.json()).results)).toEqual(["9784101010014", "9784000000001"]);
+  });
+
+  it("ISBN-10でのみ見つかる蔵書も元の版にまとめて表示する", async () => {
+    prismaMock.book.findUnique.mockResolvedValue({
+      id: 1, isbn: "9784101010014", bookIsbns: [{ isbn: "9784101010014" }],
+    });
+    mockFetchJson({ continue: 0, books: {
+      "9784101010014": { Tokyo_Setagaya: { status: "OK", reserveurl: "", libkey: {} } },
+      "4101010013": { Tokyo_Setagaya: { status: "OK", reserveurl: "https://example.com/reserve", libkey: { 玉川台: "貸出可" } } },
+    } });
+    const res = await GET(makeRequest("bookId=1"));
+    const json = await res.json();
+    expect(Object.keys(json.results)).toEqual(["9784101010014"]);
+    expect(json.results["9784101010014"]).toEqual([
+      expect.objectContaining({ loanStatus: "貸出可", libkey: "玉川台" }),
+    ]);
+  });
+
   it("正常系: ISBNごとの在庫状況をマップで返す", async () => {
     mockFetchJson({
       continue: 0,

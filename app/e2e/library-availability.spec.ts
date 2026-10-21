@@ -148,7 +148,7 @@ test.describe("在庫確認モーダル（本詳細ページ）", () => {
     const book = await seedBookWithStubIsbn();
     await login(page);
     await page.goto(`/books/${book.id}`);
-    await page.getByRole("button", { name: "登録されている版ごとの在庫を見る" }).click();
+    await page.getByRole("button", { name: "貸出チェック" }).click();
 
     await expect(page.getByText("近隣図書館が登録されていません")).toBeVisible();
   });
@@ -171,7 +171,7 @@ test.describe("在庫確認モーダル（本詳細ページ）", () => {
 
     await login(page);
     await page.goto(`/books/${book.id}`);
-    await page.getByRole("button", { name: "登録されている版ごとの在庫を見る" }).click();
+    await page.getByRole("button", { name: "貸出チェック" }).click();
 
     await expect(page.getByText(`ISBN: ${STUB_ISBN}`)).toBeVisible();
     await expect(page.getByText("貸出可")).toBeVisible();
@@ -206,7 +206,7 @@ test.describe("在庫確認モーダル（本詳細ページ）", () => {
 
     await login(page);
     await page.goto(`/books/${book.id}`);
-    await page.getByRole("button", { name: "登録されている版ごとの在庫を見る" }).click();
+    await page.getByRole("button", { name: "貸出チェック" }).click();
 
     await expect(page.getByText("この本にはISBNが登録されていません")).toBeVisible();
   });
@@ -235,7 +235,7 @@ test.describe("在庫確認モーダル（本詳細ページ）", () => {
 
     await login(page);
     await page.goto(`/books/${book.id}`);
-    await page.getByRole("button", { name: "登録されている版ごとの在庫を見る" }).click();
+    await page.getByRole("button", { name: "貸出チェック" }).click();
 
     await expect(page.getByText("確認に失敗しました")).toBeVisible();
   });
