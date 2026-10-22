@@ -1,4 +1,5 @@
 "use client";
+import { BookReviewCount } from "@/frontend/books/BookReviewCount";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -137,6 +138,7 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
           </div>
         </div>
 
+        <BookReviewCount count={book.publicReviewCount} />
         {(localBookId != null || book.isbn) && (
           <div className="mt-1">
             <LibraryAvailabilityButton bookId={localBookId} isbn={book.isbn} bookTitle={book.title} />

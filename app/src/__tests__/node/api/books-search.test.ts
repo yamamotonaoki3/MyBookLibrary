@@ -21,6 +21,10 @@ jest.mock("@/lib/ndl", () => ({
 
 jest.mock("@/lib/prisma");
 jest.mock("@/lib/session");
+jest.mock("@/lib/bookReviewSummary", () => ({
+  withPublicReviewCounts: jest.fn(async (items: Record<string, unknown>[]) =>
+    items.map(item => ({ ...item, publicReviewCount: 7 }))),
+}));
 
 import { prismaMock } from "../../helpers/prismaMock";
 import { asUser, getAuthenticatedUserIdMock, unauthorizedResponse } from "../../helpers/sessionMock";
@@ -83,6 +87,7 @@ describe("GET /api/books/search", () => {
 
     const res = await GET(makeRequest("q=テスト&type=title"));
     const json = await res.json();
+    for (const item of json.items ?? []) expect(item.publicReviewCount).toBe(7);
 
     expect(res.status).toBe(200);
     expect(json.items).toHaveLength(1);
@@ -118,6 +123,7 @@ describe("GET /api/books/search", () => {
 
     const res = await GET(makeRequest("q=テスト&type=title"));
     const json = await res.json();
+    for (const item of json.items ?? []) expect(item.publicReviewCount).toBe(7);
 
     expect(res.status).toBe(200);
     expect(json.items.some((i: { title: string }) => i.title === "楽天に無い本")).toBe(true);
@@ -152,6 +158,7 @@ describe("GET /api/books/search", () => {
 
     const res = await GET(makeRequest("q=テスト&type=title"));
     const json = await res.json();
+    for (const item of json.items ?? []) expect(item.publicReviewCount).toBe(7);
 
     expect(json.items.filter((i: { isbn: string }) => i.isbn === "1000000000000")).toHaveLength(1);
   });
@@ -192,6 +199,7 @@ describe("GET /api/books/search", () => {
 
     const res = await GET(makeRequest("q=テスト&type=title"));
     const json = await res.json();
+    for (const item of json.items ?? []) expect(item.publicReviewCount).toBe(7);
 
     expect(res.status).toBe(200);
     expect(json.items.some((i: { title: string }) => i.title === "NDL本")).toBe(true);
@@ -264,6 +272,7 @@ describe("GET /api/books/search", () => {
 
     const res = await GET(makeRequest("q=テスト&type=title"));
     const json = await res.json();
+    for (const item of json.items ?? []) expect(item.publicReviewCount).toBe(7);
 
     expect(mockSearchBooksNdl).toHaveBeenCalled();
     expect(json.items.some((i: { title: string }) => i.title === "NDL補完本")).toBe(true);
@@ -307,6 +316,7 @@ describe("GET /api/books/search", () => {
 
     const res = await GET(makeRequest("q=テスト&type=title"));
     const json = await res.json();
+    for (const item of json.items ?? []) expect(item.publicReviewCount).toBe(7);
 
     expect(res.status).toBe(200);
     expect(mockSearchBooksNdl).toHaveBeenCalled();
@@ -320,6 +330,7 @@ describe("GET /api/books/search", () => {
 
     const res = await GET(makeRequest("q=テスト&type=title"));
     const json = await res.json();
+    for (const item of json.items ?? []) expect(item.publicReviewCount).toBe(7);
 
     expect(res.status).toBe(200);
     expect(json.items).toEqual([]);

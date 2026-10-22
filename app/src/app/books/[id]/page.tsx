@@ -1,3 +1,4 @@
+import { BookReviewCount } from "@/frontend/books/BookReviewCount";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -156,6 +157,7 @@ export default async function BookDetailPage({ params }: Props) {
       </div>
 
       <div className="mt-2">
+        <BookReviewCount count={book.reviews.filter(review => review.isPublic).length} />
         <LibraryAvailabilityButton bookId={book.id} bookTitle={book.title} />
       </div>
 

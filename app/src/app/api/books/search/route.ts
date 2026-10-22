@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { isRateLimited } from "@/lib/rateLimit";
 import { logger } from "@/lib/logger";
+import { withPublicReviewCounts } from "@/lib/bookReviewSummary";
+import type { SearchResponse } from "@/shared/bookSearch";
 
 const HITS_PER_PAGE = 30;
 
@@ -26,25 +28,7 @@ const NDL_SUPPLEMENT_THRESHOLD = 5;
 // ことで該当件数が多くなりうるため、ページを圧迫しない程度に上限を設ける。
 const DB_MERGE_LIMIT = 20;
 
-export type SearchResult = {
-  id?: number;
-  title: string;
-  author: string;
-  isbn: string | null;
-  publisherName: string;
-  salesDate: string;
-  size: string;
-  coverImageUrl: string | null;
-  awards: { name: string; year: number; type: string }[];
-  status: string;
-  source?: "manual" | "rakuten";
-};
-
-export type SearchResponse = {
-  items: SearchResult[];
-  totalPages: number;
-  currentPage: number;
-};
+type SearchResult = Omit<import("@/shared/bookSearch").SearchResult, "publicReviewCount">;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -306,7 +290,7 @@ export async function GET(request: NextRequest) {
         });
 
         return NextResponse.json({
-          items: [...dbOnlyNotInNdl, ...ndlItems],
+          items: await withPublicReviewCounts([...dbOnlyNotInNdl, ...ndlItems]),
           totalPages: ndlResult.totalPages,
           currentPage: page,
         } satisfies SearchResponse);
@@ -355,7 +339,7 @@ export async function GET(request: NextRequest) {
     // 非書籍の除外でページが空になっても pageCount は維持する。
     // 後続ページに書籍が含まれる可能性があり、ページネーションを閉じると辿れなくなるため。
     const response: SearchResponse = {
-      items,
+      items: await withPublicReviewCounts(items),
       totalPages: pageCount,
       currentPage: page,
     };

@@ -1,5 +1,6 @@
 "use client";
 
+import { BookReviewCount } from "@/frontend/books/BookReviewCount";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookSearchInput } from "@/app/_components/BookSearchInput";
@@ -8,6 +9,7 @@ type Book = {
   id: number;
   title: string;
   author: { name: string };
+  publicReviewCount: number;
   hasReview: boolean;
 };
 
@@ -48,11 +50,19 @@ export function WriteReviewModal() {
     const requestSequence = ++requestSequenceRef.current;
     setLoading(true);
     setSearched(false);
+    setError(null);
     try {
       const res = await fetch(`/api/books/reading?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error("Book list request failed");
       const data: Book[] = await res.json();
+      if (!Array.isArray(data)) throw new Error("Invalid book list response");
       if (requestSequence === requestSequenceRef.current) {
         setResults(data);
+      }
+    } catch {
+      if (requestSequence === requestSequenceRef.current) {
+        setResults([]);
+        setError("本の一覧を取得できませんでした。もう一度お試しください。");
       }
     } finally {
       if (requestSequence === requestSequenceRef.current) {
@@ -136,7 +146,8 @@ export function WriteReviewModal() {
                   <p className="mt-4 text-center text-sm text-zinc-500">検索中...</p>
                 )}
 
-                {!loading && searched && results.length === 0 && (
+                {error && <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
+                {!loading && !error && searched && results.length === 0 && (
                   <p className="mt-4 text-center text-sm text-zinc-500">
                     該当する本が見つかりませんでした
                   </p>
@@ -146,6 +157,7 @@ export function WriteReviewModal() {
                   <ul className="mt-4 max-h-64 divide-y divide-zinc-100 overflow-y-auto dark:divide-zinc-800">
                     {results.map((book) => (
                       <li key={book.id}>
+                        <BookReviewCount count={book.publicReviewCount} />
                         {book.hasReview ? (
                           <div className="flex items-center justify-between px-1 py-3">
                             <div>

@@ -1,11 +1,12 @@
 ﻿"use client";
 
 import { Suspense } from "react";
+import { BookReviewCount } from "@/frontend/books/BookReviewCount";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { SearchResult, SearchResponse } from "@/app/api/books/search/route";
+import type { SearchResult, SearchResponse } from "@/shared/bookSearch";
 import BarcodeScannerModal from "./_components/BarcodeScannerModal";
 import ManualBookRegisterModal from "./_components/ManualBookRegisterModal";
 import LibraryAvailabilityButton from "@/components/ui/LibraryAvailabilityButton";
@@ -112,6 +113,7 @@ function SearchResultCard({ book }: { book: SearchResult }) {
           </div>
         </div>
 
+        <BookReviewCount count={book.publicReviewCount} />
         {(bookId != null || book.isbn) && (
           <div className="mt-1 mb-1">
             <LibraryAvailabilityButton bookId={bookId} isbn={book.isbn} bookTitle={book.title} />

@@ -1,3 +1,5 @@
+import { BookReviewCount } from "@/frontend/books/BookReviewCount";
+import { getPublicReviewCounts } from "@/lib/bookReviewSummary";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -98,6 +100,7 @@ export default async function UserProfilePage({ params }: Props) {
     }),
   ]);
 
+  const publicCounts = await getPublicReviewCounts(readingStatuses.map(rs => rs.book.id));
   return (
     <main className="flex flex-col px-4 py-6 lg:flex-1 lg:overflow-hidden lg:px-8 lg:py-8">
       <div className="flex-1 overflow-y-auto">
@@ -174,6 +177,7 @@ export default async function UserProfilePage({ params }: Props) {
                     >
                       {rs.book.title}
                     </Link>
+                    <BookReviewCount count={publicCounts.get(rs.book.id) ?? 0} />
                     <span className="ml-auto max-w-[35%] shrink-0 truncate text-xs text-zinc-500">
                       {rs.book.author.name}
                     </span>

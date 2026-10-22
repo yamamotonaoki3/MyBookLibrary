@@ -1,3 +1,4 @@
+import { getPublicReviewCounts } from "@/lib/bookReviewSummary";
 import { prisma } from "@/lib/prisma";
 import type { BookWithAwardEntry, ReadingStatus } from "@/types/award";
 
@@ -47,6 +48,7 @@ export async function getAwardBookEntries({ awardId, year, userId }: Params): Pr
     (await prisma.review.findMany({ where: { userId }, select: { bookId: true } })).map((review) => review.bookId)
   );
 
+  const publicCounts = await getPublicReviewCounts(awardEntries.map(entry => entry.book.id));
   return awardEntries.map((entry) => ({
     awardEntryId: entry.id,
     year: entry.year,
@@ -55,6 +57,7 @@ export async function getAwardBookEntries({ awardId, year, userId }: Params): Pr
     status: (statusByBookId.get(entry.book.id) ?? "unread") as ReadingStatus,
     hasReview: reviewedBookIds.has(entry.book.id),
     book: {
+      publicReviewCount: publicCounts.get(entry.book.id) ?? 0,
       id: entry.book.id,
       title: entry.book.title,
       isbn: entry.book.isbn,
