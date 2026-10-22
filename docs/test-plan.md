@@ -91,6 +91,16 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 | Workers（D1 のバインディング・リクエストごとのクライアント・Cron・バージョン） | `node/lib/d1Binding.test.ts`、`perBindingProxy.test.ts`、`cronScheduler.test.ts`、`node/api/version.test.ts`、`node/lib/workerVersion.test.ts` |
 | ドキュメントのリンク切れ・存在しないパス | CI の `Docs link check`（`npm run check:docs`） |
 
+## Dockerイメージの変更（#770）
+
+既存のPlaywrightは `next dev` を起動するため、Dockerfileや実行イメージの依存導入を直接検証しない。Dockerの変更は、`app/` で次のビルド・実行確認を行う。
+
+- `docker build --pull -t mybooklibrary-app:node-patch .` が成功すること。ビルド用・実行用ともNode.js 22.23.4を使い、実行用の依存も `package-lock.json` から導入する。
+- 完成イメージで `node --version` が `v22.23.4`、`npx --no-install prisma --version` が既存のPrisma 6.19.3を返すこと。
+- ビルドステージと完成イメージに `.env*` / `.dev.vars*` がないこと。`.dockerignore` によってローカルの依存・生成物・秘密設定をビルド対象から除外する。
+- 架空の認証設定のみを渡してローカル専用ポートで起動し、`/login` が200、未認証の `/books` がログインへリダイレクトすること。`/api/auth/providers` と `/api/version` の応答も確認する。開発・本番DBには接続せず、データを書き換えない。
+- 検証用コンテナの終了後も、通常の開発サーバー・DBコンテナが稼働していること。
+
 ## テストケース設計の考え方
 
 - **ブラックボックス（API結合テスト）**: 正常入力／バリデーションエラー／認可エラー／存在しないリソースの同値クラスと、文字数・数値・日付の境界値、状態遷移（未ログイン→ログイン→ロック等）を確認する。
