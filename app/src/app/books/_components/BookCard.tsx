@@ -1,5 +1,6 @@
 "use client";
 
+import { BookReviewCount } from "@/frontend/books/BookReviewCount";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -15,6 +16,7 @@ type ReadingStatus = ReadingStatusValue;
 
 type Props = {
   book: {
+    publicReviewCount: number;
     id: number;
     title: string;
     coverImageUrl: string | null;
@@ -82,6 +84,7 @@ export function BookCard({ book, initialStatus, hasReview }: Props) {
               </p>
             </div>
 
+            <BookReviewCount count={book.publicReviewCount} />
             {(book.id != null || book.isbn) && (
               <div className="mt-1">
                 <LibraryAvailabilityButton bookId={book.id} isbn={book.isbn} bookTitle={book.title} />

@@ -1,3 +1,4 @@
+import { withPublicReviewCounts } from "@/lib/bookReviewSummary";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -78,11 +79,13 @@ async function BookList({
   const bookByIsbn = new Map(dbBooks.filter((b) => b.isbn).map((b) => [b.isbn, b]));
   const bookByTitle = new Map(dbBooks.map((b) => [b.title, b]));
 
-  const books: AuthorBook[] = filteredBooks.map((book) => {
+  const countedBooks = await withPublicReviewCounts(filteredBooks.map(book => ({ title: book.title, author: book.author, isbn: book.isbn || null })));
+  const books: AuthorBook[] = filteredBooks.map((book, index) => {
     const dbBook =
       (book.isbn ? bookByIsbn.get(book.isbn) : undefined) ??
       bookByTitle.get(book.title);
     return {
+      publicReviewCount: countedBooks[index].publicReviewCount,
       title: book.title,
       author: book.author,
       isbn: book.isbn,

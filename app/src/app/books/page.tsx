@@ -1,3 +1,4 @@
+import { getPublicReviewCounts } from "@/lib/bookReviewSummary";
 ﻿import { Suspense } from "react";
 import { BookOpen, BookMarked, BookCheck, Heart } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -54,6 +55,7 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
   const visibleStatuses =
     author === "others" ? myStatuses.filter((rs) => !favoriteAuthorIdSet.has(rs.book.authorId)) : myStatuses;
 
+  const publicCounts = await getPublicReviewCounts(visibleStatuses.map(rs => rs.bookId));
   if (visibleStatuses.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -68,6 +70,7 @@ async function BookGrid({ status, author, favoriteAuthorIds }: BookGridProps) {
         <BookCard
           key={rs.bookId}
           book={{
+            publicReviewCount: publicCounts.get(rs.bookId) ?? 0,
             id: rs.book.id,
             title: rs.book.title,
             coverImageUrl: rs.book.coverImageUrl,

@@ -1,5 +1,12 @@
 # テスト計画表
 
+## 本の公開レビュー件数（Issue #768）
+
+- 単体: `bookReviewSummary.test.ts`（空入力、ID重複、別版ISBN、完全一致、表記ゆれを一致扱いしないこと、同名別著者、曖昧な照合、取得失敗）、`bookReviewRepository.test.ts`（著者全件走査の禁止）、`BookReviewCount.test.tsx`（0・2・1234件）、`WriteReviewModalCount.test.tsx`（取得失敗の表示）。
+- 結合: `book-review-count.itest.ts` をMySQLとローカルD1で実行。151冊・公開/本人非公開/他人非公開・同一ユーザーの複数投稿・ネタバレ・代表外ISBN・公開範囲変更・削除を検証する。
+- E2E: `book-review-count.spec.ts` でダッシュボードを除く7箇所を開き、公開2件のみの表示、変更・削除後の0件、未登録の外部検索結果を表示してもBookが増えないことを確認する。
+
+
 MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をまとめたもの。**単体テストしにくい箇所とその理由・代替手段、および外部APIへの配慮**は [テスト依存関係マップ](test-dependency-map.md) を参照。ブラックボックス方式（API結合テスト、同値分割・境界値・エラー系）とホワイトボックス方式（`src/lib` の分岐網羅・境界値）を併用する。テストは Jest + ts-jest（`app/src/__tests__/`）で実施し、実行方法は [README.md](../README.md#テスト) を参照。
 
 ## 進捗サマリ

@@ -1,3 +1,4 @@
+import { getPublicReviewCounts } from "@/lib/bookReviewSummary";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 
@@ -26,9 +27,11 @@ export async function GET(request: Request) {
 
   const reviewedBookIds = new Set(reviews.map((r) => r.bookId));
 
+  const publicCounts = await getPublicReviewCounts(statuses.map(rs => rs.book.id));
   return Response.json(
     statuses.map((rs) => ({
       ...rs.book,
+      publicReviewCount: publicCounts.get(rs.book.id) ?? 0,
       hasReview: reviewedBookIds.has(rs.book.id),
     }))
   );

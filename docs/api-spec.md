@@ -1,5 +1,10 @@
 # API 仕様書
 
+## 本の公開レビュー件数（Issue #768）
+
+`GET /api/books/search` の各 `items[]` と `GET /api/books/reading` の各書籍に、必須の整数 `publicReviewCount` を含める。Book単位の公開Reviewレコード数で、本人の非公開レビューも含めない。0件は `0`。検索の楽天・DB補完・NDLフォールバック・少数補完・後続ページで同じ条件を使い、未登録の本は登録せず0件を返す。集計失敗は0件として成功応答にしない。
+
+
 `docs/requirements.md` に収まらなかった技術的な詳細仕様をまとめる。
 
 ---

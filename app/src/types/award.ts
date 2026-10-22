@@ -13,6 +13,7 @@ export type BookWithAwardEntry = {
   status: ReadingStatus;
   hasReview: boolean;
   book: {
+    publicReviewCount: number;
     id: number;
     title: string;
     isbn: string | null;
