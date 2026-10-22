@@ -1,0 +1,29 @@
+# Local dependencies and build outputs are generated inside the image.
+node_modules
+.next
+.open-next
+.wrangler
+out
+build
+coverage
+playwright-report
+test-results
+*.tsbuildinfo
+next-env.d.ts
+src/generated
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/worker-*.js
+public/fallback-*.js
+
+# Never send local credentials or agent state to the Docker builder.
+.env*
+.dev.vars*
+*.pem
+*.log
+.git
+.claude
+.codex
+.agents
