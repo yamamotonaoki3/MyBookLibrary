@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { seedE2e } from "../prisma/seed.e2e";
 import { resetDb } from "../src/__tests__/helpers/dbTest";
 import { login, loginAsAdmin } from "../e2e/fixtures/auth";
+import { sessionLifetimeSeconds } from "../e2e/fixtures/session";
 
 /**
  * デモ環境の保護（DEMO_MODE=true で起動したアプリ。npm run test:e2e:demo）。
@@ -10,6 +11,14 @@ import { login, loginAsAdmin } from "../e2e/fixtures/auth";
 test.beforeEach(async () => {
   await resetDb();
   await seedE2e();
+});
+
+test("デモの実JWTはセッション再取得後も15分の有効期間を維持する", async ({ page }) => {
+  await login(page);
+  expect(await sessionLifetimeSeconds(page)).toBe(15 * 60);
+  const session = await page.request.get("/api/auth/session");
+  expect(session.ok()).toBe(true);
+  expect(await sessionLifetimeSeconds(page)).toBe(15 * 60);
 });
 
 test("ログイン画面: 注意書きとデモアカウントの案内が出て、Google ログイン・新規登録・パスワード再設定の導線は出ない", async ({ page }) => {
