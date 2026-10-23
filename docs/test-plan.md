@@ -1,5 +1,11 @@
 # テスト計画表
 
+## 認証ライブラリのセキュリティ更新（Issue #773）
+
+- 実ライブラリ回帰: `authSecurityRuntime.test.ts` が独立プロセスでAuth.jsを読み、設定エラーがtruthyなセッションとして公開されず、ライブラリとアプリの認証ガードが未認証リクエストを拒否することを確認する。更新前beta.31で失敗し、beta.32で成功することを確認する。
+- E2E: `auth-session.spec.ts` が実ログインで発行されたJWTを復号し、保持なし8時間・保持あり30日、セッション再取得後の期限、ログアウト後の拒否を確認する。デモの `demo-mode.spec.ts` では15分を確認する。秘密鍵・トークンは出力しない。
+- 既存検証: `auth.spec.ts` の登録/ログイン/失敗/管理者制限、デモの操作制限、MySQL/D1の認証アダプタ結合テスト、LinuxでビルドしたWorkerのCredentialsログイン・D1・保護ページの疎通を確認する。Google認証の実サービスへのログインは、テスト用設定とステージングで別途確認する。
+
 ## 本の公開レビュー件数（Issue #768）
 
 - 単体: `bookReviewSummary.test.ts`（空入力、ID重複、別版ISBN、完全一致、表記ゆれを一致扱いしないこと、同名別著者、曖昧な照合、取得失敗）、`bookReviewRepository.test.ts`（著者全件走査の禁止）、`BookReviewCount.test.tsx`（0・2・1234件）、`WriteReviewModalCount.test.tsx`（取得失敗の表示）。
