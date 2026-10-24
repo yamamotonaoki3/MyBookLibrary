@@ -73,4 +73,12 @@ The previous session recorded successful `npm ci`, `npm run check`, `npm run tes
 
 E2E coverage was inspected in the test bodies: `smoke.spec.ts` checks real login, stubbed book search, reading status, review submission and logout; `admin-visual-check.spec.ts` checks all three admin tabs; `auth-session.spec.ts` checks issued sessions. This issue changes the dependency graph rather than adding a screen or endpoint. Existing E2E scenarios cover application compatibility, while lockfile/audit comparison and `npm ls` directly verify the dependency changes. E2E alone does not verify build-time tools; the Linux Worker build and HTTP smoke remain separate required checks.
 
-Local verification is complete. Remaining audit warnings are assigned above to #772, #776 and #778. This records the pre-commit verification snapshot; deployment is outside this change. The pre-existing `debug.log` and PC-specific Compose override are not part of the proposed commit.
+Local verification above records the pre-commit snapshot. Remaining audit warnings are assigned above to #772, #776 and #778. Deployment is outside this change. The pre-existing `debug.log` and PC-specific Compose override are not part of the proposed commit.
+
+### PR CI follow-up
+
+The first CI run for PR #781 passed the D1 and Worker jobs, but the normal E2E run reported 94 passed, one flaky session/logout scenario (passed on retry), and one failed book-search loan-check scenario. The failed scenario's page snapshot explicitly displayed the search API's HTTP 429 message; it was not a missing loan-check UI regression.
+
+The loan-check E2E now waits for either results or that specific rate-limit message, and only for 429 waits past the API's 500ms interval before reloading once. The unregistered-book scenario deliberately returns 429 for the first search request, then continues to the real application API and still verifies the edition inventory and zero book/reading-status writes. This covers the recovery branch without mocking successful search or inventory responses.
+
+Docker Desktop was stopped when this follow-up was made, so the attempted local E2E stopped at test DB connection rather than exercising the test. The follow-up's database/E2E verification is performed by PR CI; consult the latest check results there. The session/logout flake is recorded as an observation, not claimed fixed by this search-test change.
