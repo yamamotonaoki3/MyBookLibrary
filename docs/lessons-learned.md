@@ -410,3 +410,14 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - `window.fetch`をモンキーパッチして実際に飛んだリクエストのURL/methodをログする。chrome-devtools MCPの`navigate_page`の`initScript`パラメータを使うとページ読み込み前・アプリコードより先に仕込める。
 - `console.log`を一時的に仕込み、`list_console_messages`に`includePreservedMessages: true`を付けて確認する（reloadやSPA遷移でconsoleがクリアされるため、これを付けないと過去のログが消えて見えない）。
 - サーバー側ロジックが正しいかは、ブラウザを介さず`curl`でCSRFトークン取得→ログイン→session update POSTの一連の流れを再現して検証すると、クライアント側の問題かサーバー側の問題かを素早く切り分けられる。
+
+### 2026-10-24: WorkerdのLinuxスモーク検証にはglibc環境を使う
+- **種別**: 手直し（Issue #774 Next.js / OpenNext更新）
+- **対象領域・関連ファイル**: Cloudflare Worker / app/package.json、LinuxコンテナでのWorker検証
+- **何が起きたか**:
+  - Node Alpine上でWorkerを起動するHTTPスモークがworkerdの起動時にENOENTで失敗した。Alpineはmusl libcを使い、Wrangler/Workerdが必要とするglibc 2.35以上を満たさない。
+  - Debian BookwormベースではOpenNextのWorkerビルドとログイン・D1・Cronを含むHTTPスモーク10件が成功した。
+  - npmは依存パッケージの未承認install scriptを警告するため、Worker実行に必要なworkerdだけ、解決済みバージョン1.20261006.1をallowScriptsで許可した。
+- **再発防止**: WorkerのLinux実行検証はglibc 2.35以上の環境で行う。npm install scriptを許可する場合は依存全体を一括許可せず、必要なパッケージとバージョンに限定する。
+- **状態**: 有効
+- **根拠**: Issue #774のWorker build/smoke。Cloudflare WranglerのLinux要件（glibc 2.35以上）。
