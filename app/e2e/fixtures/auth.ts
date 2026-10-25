@@ -18,6 +18,8 @@ export async function login(page: Page): Promise<void> {
   await page.getByLabel("メールアドレス").fill(E2E_USER.email);
   await page.getByLabel("パスワード", { exact: true }).fill(E2E_USER.password);
   await page.getByRole("button", { name: "ログイン", exact: true }).click();
+  // 認証・初回コンパイルを含む遷移は、表示アサーションとは別に完了を待つ。
+  await page.waitForURL("/");
   await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible();
 }
 
@@ -26,6 +28,7 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await page.getByLabel("メールアドレス").fill(E2E_ADMIN.email);
   await page.getByLabel("パスワード", { exact: true }).fill(E2E_ADMIN.password);
   await page.getByRole("button", { name: "ログイン", exact: true }).click();
+  await page.waitForURL("/");
   await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible();
 }
 
