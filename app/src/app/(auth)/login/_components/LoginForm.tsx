@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import { clearBrowserSessionMarker, markBrowserSessionAlive } from "@/lib/browserSessionCookie";
 
 interface LoginFormProps {
   error?: string;
@@ -77,12 +78,11 @@ export function LoginForm({ error, callbackUrl, demoMode = false }: LoginFormPro
         const msg = await buildErrorMessage(result.error, email);
         setFormError(msg);
       } else {
+        // 保持なしは、ブラウザを閉じると消える目印をサーバーに送る（サーバーが、閉じたあとを未ログインと判定する。#782）
         if (rememberMe) {
-          localStorage.setItem("rememberMe", "1");
-          sessionStorage.removeItem("sessionActive");
+          clearBrowserSessionMarker();
         } else {
-          localStorage.setItem("rememberMe", "0");
-          sessionStorage.setItem("sessionActive", "1");
+          markBrowserSessionAlive();
         }
         router.push(callbackUrl ?? "/");
         router.refresh();
@@ -181,9 +181,7 @@ export function LoginForm({ error, callbackUrl, demoMode = false }: LoginFormPro
           className="h-9 w-full gap-2 text-sm lg:h-11 lg:text-base"
           onClick={() => {
             // Google OAuth は常にセッション維持（rememberMe チェック不要）
-            localStorage.setItem("rememberMe", "1");
-            sessionStorage.removeItem("sessionActive");
-            localStorage.removeItem("oauthSessionActive");
+            clearBrowserSessionMarker();
             signIn("google", { callbackUrl: callbackUrl ?? "/" });
           }}
         >
