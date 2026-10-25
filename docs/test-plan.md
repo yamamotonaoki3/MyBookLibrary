@@ -1,5 +1,14 @@
 # テスト計画表
 
+## PWAビルド依存とキャッシュ分離（Issue #776）
+
+- `app/src/__tests__/node/lib/pwaRuntimeCaching.test.ts`：実際のルート判定関数を別コンテキストへ文字列化して実行する。画面・API・RSC・Next dataのNetworkOnly、公開資産の許可、類似パス・別originの拒否を確認する。
+- `app/src/__tests__/node/lib/authorizedPaths.test.ts`：未認証でもSWとハッシュ付きの依存スクリプトを取得でき、APIや類似パスを公開しない。
+- `app/e2e-pwa/cache-isolation.spec.ts`：実SW・実ログイン・2ユーザーの個別読書データで、切替後の分離、個人URL/本文の非キャッシュ、オフラインでの保護データ取得・画面遷移の失敗、公開アイコンの利用を確認する。旧個人キャッシュだけを削除し、無関係なキャッシュを残す。
+- 実行はappで `npm run build:test:pwa` → `.env.test` を明示して `npm run test:e2e:pwa`。テストDBガード付きのproductionビルドとnext start（3200）・外部スタブ（3999）を使う。通常E2E/デモE2Eと同じMySQLを同時に使用しない。next devだけのE2EはSWを検証しない。
+- ローカルforkのtarball・ハッシュ・差分・再作成手順は[UPSTREAM.md](../app/vendor/next-pwa/UPSTREAM.md)。npm ci・prod-only導入、Docker両ステージ・Prisma・未認証HTTP、Linux Workerビルド/D1/Cron疎通でもfile依存の導入互換性を確認する。
+- 実測結果と対象/残存GHSAは[監査記録](dependency-audit-776.md)に記載する。
+
 ## 認証ライブラリのセキュリティ更新（Issue #773）
 
 - 実ライブラリ回帰: `authSecurityRuntime.test.ts` が独立プロセスでAuth.jsを読み、設定エラーがtruthyなセッションとして公開されず、ライブラリとアプリの認証ガードが未認証リクエストを拒否することを確認する。更新前beta.31で失敗し、beta.32で成功することを確認する。

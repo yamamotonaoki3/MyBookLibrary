@@ -1,0 +1,2 @@
+# Preserve upstream distribution bytes and provenance hashes on Windows too.
+app/vendor/next-pwa/** -text

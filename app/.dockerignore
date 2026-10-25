@@ -7,6 +7,7 @@ out
 build
 coverage
 playwright-report
+playwright-report-pwa
 test-results
 *.tsbuildinfo
 next-env.d.ts
@@ -16,6 +17,7 @@ public/sw.js.map
 public/workbox-*.js
 public/workbox-*.js.map
 public/worker-*.js
+public/pwa-worker-*.js
 public/fallback-*.js
 
 # Never send local credentials or agent state to the Docker builder.

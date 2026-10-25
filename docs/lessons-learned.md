@@ -4,6 +4,8 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 
 ## 索引
 
+- 2026-10-25: PWAは本番SWで登録・キャッシュ・移行を検証し、既定ルールの混入を防ぐ
+
 - 2026-10-22: Dockerの実行ステージでもロックファイルを使い、ローカル設定はビルド対象から除外する
 - 2026-10-22: 外部書籍の照合は候補取得と比較の条件を揃え、表記ゆれ対応のために全件走査を追加しない
 
@@ -31,6 +33,15 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 
 ## 記録
 
+### 2026-10-25: PWAは本番SWで登録・キャッシュ・移行を検証し、既定ルールの混入を防ぐ
+
+- **種別**: 手直し（Issue #776 PWAビルド依存）
+- **対象領域・関連ファイル**: PWA / `app/next.config.ts`、`app/src/auth.config.ts`、`app/src/lib/pwaRuntimeCaching.ts`、`app/pwa-worker/index.js`、`app/e2e-pwa/cache-isolation.spec.ts`
+- **何が起きたか**: 通常E2Eのnext devではSWが無効で、未認証のsw.js取得がログインへ転送される問題を見逃していた。SWを動作させると、navigateと認証APIのNetworkOnlyだけでは既定ルールの一般API・RSCキャッシュが残り、オフラインで応答を再取得できた。既定のdynamicStartUrlもルート先頭へstart-urlを挿入する。
+- **対応**: SWとハッシュ付き依存スクリプトだけを公開し、API・類似パスは拒否する。start-urlと既定ルールを無効化し、個人データをNetworkOnly、公開資産を明示したルールへ限定する。activate時に既知の旧個人キャッシュだけを削除する。本番E2Eで実ログイン・2ユーザー切替・CacheStorage・オフライン・旧キャッシュ移行を検証した。
+- **次回の行動規則**: PWA変更では本番ビルドを使い、最初に未認証のSW・importScripts配信を確認する。カスタムルールだけでなく、ラッパーが前後に追加するルールとprecacheも調べる。修正後の新キャッシュだけでなく、旧キャッシュの移行と無関係なキャッシュの保持もテストする。
+- **状態**: 有効
+
 ### 2026-10-22: Dockerの実行ステージでもロックファイルを使い、ローカル設定はビルド対象から除外する
 
 - **種別**: 手直し（Issue #770 Docker再ビルド）
@@ -38,6 +49,7 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - **何が起きたか**: ビルドステージの `npm ci` とNext.jsビルドは成功したが、実行ステージの `npm install --no-save prisma dotenv` が依存を再解決し、ロック済みNext.jsと新しいOpenNextのpeer dependency競合で失敗した。また、`.dockerignore` がなく、ローカル設定や生成物までDockerへ送る構成だった。
 - **対応**: 実行ステージにも元のpackage.json・package-lock.json・Prisma設定を渡し、`npm ci --omit=dev` とpostinstallで同じ依存・クライアントを導入した。Node.jsは両ステージで22.23.4に固定し、ローカルの秘密設定・依存・生成物を除外した。完成イメージのNode.js・PrismaとHTTP疎通、ビルドステージの設定除外を実物で検証した。
 - **次回の行動規則**: Dockerの全ステージで依存の導入元とlockfileの有無を確認する。既存のビルド用lockfileがあっても、実行ステージの追加インストールがそれを使うとは限らない。Dockerfile変更の検証は、next devを対象とする既存E2Eに任せず、完成したイメージを起動して行う。
+- **追記（#776）**: file依存ではvendorとプロジェクト.npmrcも全ステージのnpm ci前に配置する。元のnode_modulesがないprod-only導入と完成イメージの実体を確認する。上流配布物をハッシュ付きで保持する場合は、Windowsのcore.autocrlfによる改行変換も対象ディレクトリの.gitattributesで防ぎ、Gitのフィルター適用後もバイト列が一致することを照合する。
 - **状態**: 有効
 
 ### 2026-10-22: 外部書籍の照合は候補取得と比較の条件を揃え、表記ゆれ対応のために全件走査を追加しない
@@ -422,3 +434,14 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - **再発防止**: WorkerのLinux実行検証はglibc 2.35以上の環境で行う。npm install scriptを許可する場合は依存全体を一括許可せず、必要なパッケージとバージョンに限定する。
 - **状態**: 有効
 - **根拠**: Issue #774のWorker build/smoke。Cloudflare WranglerのLinux要件（glibc 2.35以上）。
+
+### 2026-10-25: 関数を文字列化して評価するテストは、CIのカバレッジ付き実行で失敗する
+- **種別**: 手直し（Issue #776 PWAビルド依存）
+- **対象領域・関連ファイル**: テスト・CI / app/src/lib/pwaRuntimeCaching.ts、app/jest.config.ts
+- **何が起きたか**:
+  - Workbox は判定関数を文字列化してService Workerへ埋め込むため、テストでも `toString()` した関数を別コンテキストで評価していた。
+  - ローカルの `npm run check` はカバレッジなしで成功したが、CI の `npm run test -- --coverage` では Istanbul が計測カウンタ（`cov_...`）を関数へ挿入し、`ReferenceError` で23件失敗した。
+- **対応**: 該当ファイルだけを `coveragePathIgnorePatterns` でカバレッジ計測から除外した。本番コードとテストは変更していない。
+- **次回の行動規則**: 関数を文字列化して評価するコードとテストを追加するときは、ローカルでも `npm run test -- --coverage` で確認する。PRを出す前の検証に、CIと同じコマンドを含める。
+- **状態**: 有効
+- **根拠**: PR #783 の CI 失敗（test ジョブ）

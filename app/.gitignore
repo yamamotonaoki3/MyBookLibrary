@@ -50,6 +50,7 @@ next-env.d.ts
 /public/workbox-*.js
 /public/workbox-*.js.map
 /public/worker-*.js
+/public/pwa-worker-*.js
 /public/fallback-*.js
 
 # 芥川賞データ取り込み用の作業ファイル（コミット予定なし）
@@ -75,5 +76,6 @@ next-env.d.ts
 # OpenNext / Wrangler（Cloudflare Workers）のビルド成果物とローカル状態
 /.open-next
 /.wrangler
+/playwright-report-pwa/
 .dev.vars
 .dev.vars.*

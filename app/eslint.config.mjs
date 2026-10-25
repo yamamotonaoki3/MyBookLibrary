@@ -41,14 +41,18 @@ const eslintConfig = defineConfig([
     ".wrangler/**",
     // Prisma auto-generated files:
     "src/generated/**",
+    // Unmodified upstream distribution; provenance is recorded in UPSTREAM.md.
+    "vendor/next-pwa/**",
     // next-pwa auto-generated service worker files:
     "public/sw.js",
     "public/workbox-*.js",
     "public/swe-worker-*.js",
+    "public/pwa-worker-*.js",
     // jest --coverage の出力（.gitignore の /coverage と対応）:
     "coverage/**",
     // playwright test の出力（.gitignore の /playwright-report, /test-results と対応）:
     "playwright-report/**",
+    "playwright-report-pwa/**",
     "test-results/**",
   ]),
 ]);
