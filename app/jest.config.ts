@@ -9,6 +9,9 @@ import type { Config } from "jest";
  */
 const shared = {
   preset: "ts-jest",
+  // Workbox stringifies these callbacks into the SW; coverage counters would
+  // introduce external dependencies when the tests evaluate them in isolation.
+  coveragePathIgnorePatterns: ["/node_modules/", "[/\\\\]src[/\\\\]lib[/\\\\]pwaRuntimeCaching\\.ts$"],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^server-only$": "<rootDir>/src/__tests__/helpers/serverOnly.ts",

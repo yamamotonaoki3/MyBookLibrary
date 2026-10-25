@@ -434,3 +434,14 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - **再発防止**: WorkerのLinux実行検証はglibc 2.35以上の環境で行う。npm install scriptを許可する場合は依存全体を一括許可せず、必要なパッケージとバージョンに限定する。
 - **状態**: 有効
 - **根拠**: Issue #774のWorker build/smoke。Cloudflare WranglerのLinux要件（glibc 2.35以上）。
+
+### 2026-10-25: 関数を文字列化して評価するテストは、CIのカバレッジ付き実行で失敗する
+- **種別**: 手直し（Issue #776 PWAビルド依存）
+- **対象領域・関連ファイル**: テスト・CI / app/src/lib/pwaRuntimeCaching.ts、app/jest.config.ts
+- **何が起きたか**:
+  - Workbox は判定関数を文字列化してService Workerへ埋め込むため、テストでも `toString()` した関数を別コンテキストで評価していた。
+  - ローカルの `npm run check` はカバレッジなしで成功したが、CI の `npm run test -- --coverage` では Istanbul が計測カウンタ（`cov_...`）を関数へ挿入し、`ReferenceError` で23件失敗した。
+- **対応**: 該当ファイルだけを `coveragePathIgnorePatterns` でカバレッジ計測から除外した。本番コードとテストは変更していない。
+- **次回の行動規則**: 関数を文字列化して評価するコードとテストを追加するときは、ローカルでも `npm run test -- --coverage` で確認する。PRを出す前の検証に、CIと同じコマンドを含める。
+- **状態**: 有効
+- **根拠**: PR #783 の CI 失敗（test ジョブ）
