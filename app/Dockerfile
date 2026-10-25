@@ -3,6 +3,8 @@ FROM node:22.23.4-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
+COPY .npmrc ./
+COPY vendor ./vendor
 # postinstall（prisma generate）がnpm ci時点で実行されるため、
 # Prismaのスキーマ・設定ファイルをこの時点で先にコピーしておく必要がある。
 COPY prisma ./prisma
@@ -26,6 +28,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 # 実行用の依存も同じlockfileから導入し、postinstallでPrisma Clientを生成する。
 COPY --from=builder /app/package.json /app/package-lock.json /app/prisma.config.ts ./
+COPY --from=builder /app/.npmrc ./
+COPY --from=builder /app/vendor ./vendor
 RUN npm ci --omit=dev
 
 EXPOSE 3000

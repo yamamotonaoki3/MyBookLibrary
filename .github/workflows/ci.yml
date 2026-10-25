@@ -135,13 +135,20 @@ jobs:
       # デモ環境の保護（DEMO_MODE=true で、アプリを別に起動して確認する）
       - name: E2E test (demo mode)
         run: npm run test:e2e:demo
+      # next dev disables PWA; exercise the real production Service Worker.
+      - name: Build production PWA test app
+        run: npm run build:test:pwa
+      - name: E2E test (production PWA)
+        run: npm run test:e2e:pwa
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: app/playwright-report
+          path: |
+            app/playwright-report
+            app/playwright-report-pwa
           retention-days: 7
 
   # 同じ結合テストを、ローカルの D1（miniflare）に対して実行する（MySQL 版は上の test ジョブ）。

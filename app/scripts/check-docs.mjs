@@ -31,7 +31,10 @@ const skipsPathCheck = (file) => file.startsWith("docs/archive/") || file === "d
 
 const markdownFiles = execFileSync("git", ["ls-files", "-z", "--", "*.md"], { cwd: root, encoding: "utf8" })
   .split("\0")
-  .filter(Boolean);
+  .filter(Boolean)
+  // Byte-identical upstream README links target its GitHub repository root.
+  // The local fork's own UPSTREAM.md remains checked like other project docs.
+  .filter((file) => file !== "app/vendor/next-pwa/README.md");
 
 /**
  * リポジトリの `.gitignore` の対象の名前か（各自が作る、git 管理外のファイル）。

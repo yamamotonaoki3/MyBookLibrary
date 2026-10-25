@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
 import { version as appVersion } from "./package.json";
+import { pwaRuntimeCaching } from "./src/lib/pwaRuntimeCaching";
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -8,20 +9,16 @@ const withPWA = withPWAInit({
   aggressiveFrontEndNavCaching: false,
   reloadOnOnline: true,
   disable: process.env.NODE_ENV === "development",
-  extendDefaultRuntimeCaching: true,
+  cacheStartUrl: false,
+  dynamicStartUrl: false,
+  extendDefaultRuntimeCaching: false,
+  customWorkerSrc: "pwa-worker",
+  customWorkerPrefix: "pwa-worker",
+  // Only webpack's immutable chunks are precached. Public assets opt into the
+  // explicit runtime allowlist; do not precache arbitrary future public files.
+  publicExcludes: ["!**/*"],
   workboxOptions: {
-    runtimeCaching: [
-      {
-        urlPattern: ({ request }: { request: Request }) =>
-          request.mode === "navigate",
-        handler: "NetworkOnly" as const,
-      },
-      {
-        urlPattern: ({ url }: { url: URL }) =>
-          url.pathname.startsWith("/api/auth/"),
-        handler: "NetworkOnly" as const,
-      },
-    ],
+    runtimeCaching: pwaRuntimeCaching,
   },
 });
 

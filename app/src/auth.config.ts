@@ -29,6 +29,10 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname.startsWith("/api/cron/") ||
         nextUrl.pathname === "/api/version" ||
         nextUrl.pathname === "/manifest.json" ||
+        // SW registration/importScripts must work before login. Restrict to
+        // generated root scripts, rather than allowing arbitrary .js paths.
+        nextUrl.pathname === "/sw.js" ||
+        /^\/(?:workbox|pwa-worker)-[a-f0-9]+\.js$/.test(nextUrl.pathname) ||
         nextUrl.pathname.startsWith("/icons/");
 
       if (isLoggedIn && nextUrl.pathname.startsWith("/login")) {
