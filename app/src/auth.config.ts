@@ -2,6 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import { NextResponse } from "next/server";
 import { BROWSER_SESSION_COOKIE, isBrowserSessionAlive, sessionMaxAgeOption } from "@/lib/sessionPolicy";
 import { encodeSessionToken } from "@/lib/sessionJwt";
+import { isPublicAuthPath } from "@/lib/publicAuthPaths";
 
 // Edge Runtimeで動作するlightweight設定（PrismaなしのJWT検証のみ）
 export const authConfig: NextAuthConfig = {
@@ -28,9 +29,7 @@ export const authConfig: NextAuthConfig = {
         !!auth?.user &&
         isBrowserSessionAlive(auth.user.rememberMe, request.cookies?.get(BROWSER_SESSION_COOKIE) !== undefined);
       const isPublicPath =
-        nextUrl.pathname.startsWith("/login") ||
-        nextUrl.pathname.startsWith("/register") ||
-        nextUrl.pathname.startsWith("/forgot-password") ||
+        isPublicAuthPath(nextUrl.pathname) ||
         nextUrl.pathname.startsWith("/api/auth") ||
         nextUrl.pathname.startsWith("/api/cron/") ||
         nextUrl.pathname === "/api/version" ||

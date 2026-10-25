@@ -28,7 +28,14 @@ describe("パスワード変更の強制リダイレクトと、ログイン画�
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("ログイン画面以外では、パスワード変更が必要なら変更画面へ移す（従来どおり）", () => {
+  it.each(["/register", "/forgot-password"])("パスワード変更が必要でも、公開認証画面 %s では変更画面へ移さない", (pathname) => {
+    usePathname.mockReturnValue(pathname);
+    useSession.mockReturnValue(authenticatedMustChange);
+    render(<Providers>x</Providers>);
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("公開認証画面以外では、パスワード変更が必要なら変更画面へ移す（従来どおり）", () => {
     usePathname.mockReturnValue("/books");
     useSession.mockReturnValue(authenticatedMustChange);
     render(<Providers>x</Providers>);
