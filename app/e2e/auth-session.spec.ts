@@ -70,3 +70,57 @@ for (const { remember, expectedPath } of [
     }
   });
 }
+
+// ログアウトの直前に飛んでいたセッション取得の応答が、サインアウトのあとに Cookie を書き戻す競合（#784）。
+// 書き戻しの結果（セッション Cookie が復活した状態）を再現しても、ログアウト直後はログイン画面に残る。
+test("ログアウト直後に、セッション Cookie が書き戻されても、ログイン画面に残る（#784）", async ({ page, context }) => {
+  await page.goto("/login");
+  await page.getByLabel("メールアドレス").fill(E2E_USER.email);
+  await page.getByLabel("パスワード", { exact: true }).fill(E2E_USER.password);
+  await page.getByRole("button", { name: "ログイン", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible();
+
+  const sessionCookies = (await context.cookies()).filter((cookie) => cookie.name.endsWith("authjs.session-token"));
+  expect(sessionCookies.length).toBeGreaterThan(0);
+
+  await logout(page);
+
+  // 飛行中の応答が、消えたはずのセッション Cookie を書き戻した状態
+  await context.addCookies(sessionCookies);
+  await page.goto("/login");
+  await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByRole("button", { name: "ログイン", exact: true })).toBeVisible();
+  await page.goto("/books");
+  await expect(page).toHaveURL(/\/login/);
+});
+
+test("ログアウト直後でも、続けてログインすれば、ダッシュボードに入れる（目印が、ログインを妨げない。#784）", async ({ page }) => {
+  for (let round = 0; round < 2; round++) {
+    await page.goto("/login");
+    await page.getByLabel("メールアドレス").fill(E2E_USER.email);
+    await page.getByLabel("パスワード", { exact: true }).fill(E2E_USER.password);
+    await page.getByRole("button", { name: "ログイン", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible();
+    await logout(page);
+  }
+});
+
+test("ログアウト後に Cookie が書き戻され、ログインに失敗しても、古いセッションは拒否されたまま（目印は、ログイン成功まで消えない。#784）", async ({ page, context }) => {
+  await page.goto("/login");
+  await page.getByLabel("メールアドレス").fill(E2E_USER.email);
+  await page.getByLabel("パスワード", { exact: true }).fill(E2E_USER.password);
+  await page.getByRole("button", { name: "ログイン", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "ダッシュボード" })).toBeVisible();
+  const sessionCookies = (await context.cookies()).filter((cookie) => cookie.name.endsWith("authjs.session-token"));
+
+  await logout(page);
+  await context.addCookies(sessionCookies);
+
+  await page.getByLabel("メールアドレス").fill(E2E_USER.email);
+  await page.getByLabel("パスワード", { exact: true }).fill("WrongPass123!");
+  await page.getByRole("button", { name: "ログイン", exact: true }).click();
+  await expect(page.getByText(/メールアドレスまたはパスワード|正しくありません|失敗/).first()).toBeVisible();
+
+  await page.goto("/books");
+  await expect(page).toHaveURL(/\/login/);
+});

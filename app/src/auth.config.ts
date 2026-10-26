@@ -1,6 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import { NextResponse } from "next/server";
-import { BROWSER_SESSION_COOKIE, isBrowserSessionAlive, sessionMaxAgeOption } from "@/lib/sessionPolicy";
+import { BROWSER_SESSION_COOKIE, SIGNED_OUT_COOKIE, isBrowserSessionAlive, sessionMaxAgeOption } from "@/lib/sessionPolicy";
 import { encodeSessionToken } from "@/lib/sessionJwt";
 import { isPublicAuthPath } from "@/lib/publicAuthPaths";
 
@@ -25,8 +25,10 @@ export const authConfig: NextAuthConfig = {
     authorized({ auth, request }) {
       const nextUrl = request.nextUrl;
       // ログイン保持なしは、ブラウザを閉じると消える目印の Cookie がなければ、未ログインとして扱う（#782）
+      // ログアウト済みの目印があれば、トークンが有効でも未ログインとして扱う（復活したセッション Cookie を無効にする。#784）
       const isLoggedIn =
         !!auth?.user &&
+        request.cookies?.get(SIGNED_OUT_COOKIE) === undefined &&
         isBrowserSessionAlive(auth.user.rememberMe, request.cookies?.get(BROWSER_SESSION_COOKIE) !== undefined);
       const isPublicPath =
         isPublicAuthPath(nextUrl.pathname) ||

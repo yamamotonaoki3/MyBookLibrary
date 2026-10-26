@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signOutWithMarker } from "@/lib/browserSessionCookie";
 import { setAppBadge } from "@/lib/badge";
 
 export function Header() {
@@ -57,7 +58,7 @@ export function Header() {
             <span className="text-xs font-medium text-white leading-none">{userName}</span>
           </div>
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => void signOutWithMarker()}
             className="flex items-center gap-1 text-[11px] text-white/70 hover:text-white transition-colors"
           >
             <LogOut className="h-3 w-3" />
