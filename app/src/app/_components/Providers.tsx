@@ -1,39 +1,9 @@
 "use client";
 
-import { SessionProvider, useSession, signOut } from "next-auth/react";
+import { SessionProvider, useSession } from "next-auth/react";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-
-function RememberMeGuard() {
-  const { status } = useSession();
-
-  // ページロード時に oauthSessionActive を処理・必ずクリア
-  // sessionStorage の有無に関わらずクリアすることでブラウザ再起動後に残り続けるバグを防ぐ
-  useEffect(() => {
-    const oauthTime = localStorage.getItem("oauthSessionActive");
-    if (oauthTime) {
-      const isRecent = Date.now() - Number(oauthTime) < 2 * 60 * 1000;
-      if (isRecent && !sessionStorage.getItem("sessionActive")) {
-        sessionStorage.setItem("sessionActive", "1");
-      }
-      localStorage.removeItem("oauthSessionActive");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    const rememberMe = localStorage.getItem("rememberMe");
-    if (rememberMe === null) {
-      localStorage.setItem("rememberMe", "1");
-      return;
-    }
-    if (rememberMe === "0" && !sessionStorage.getItem("sessionActive")) {
-      signOut({ callbackUrl: "/login" });
-    }
-  }, [status]);
-
-  return null;
-}
+import { isPublicAuthPath } from "@/lib/publicAuthPaths";
 
 const CHANGE_PASSWORD_PATH = "/settings/change-password";
 
@@ -49,6 +19,9 @@ function ForceChangePasswordGuard() {
     if (status !== "authenticated") return;
     if (!session?.user?.mustChangePassword) return;
     if (pathname === CHANGE_PASSWORD_PATH) return;
+    // 公開認証画面でも、ブラウザを閉じたあとの古いトークンで認証済みになる（proxy は未ログインとして扱う。#782）。
+    // 変更画面へ移すと、proxy にログイン画面へ戻されて循環し、ログインできなくなる
+    if (isPublicAuthPath(pathname)) return;
     router.replace(CHANGE_PASSWORD_PATH);
   }, [status, session?.user?.mustChangePassword, pathname, router]);
 
@@ -58,7 +31,6 @@ function ForceChangePasswordGuard() {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <RememberMeGuard />
       <ForceChangePasswordGuard />
       {children}
     </SessionProvider>

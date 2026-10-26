@@ -1,7 +1,8 @@
 import type { NextAuthConfig } from "next-auth";
 import { NextResponse } from "next/server";
-import { sessionMaxAgeOption } from "@/lib/sessionPolicy";
+import { BROWSER_SESSION_COOKIE, isBrowserSessionAlive, sessionMaxAgeOption } from "@/lib/sessionPolicy";
 import { encodeSessionToken } from "@/lib/sessionJwt";
+import { isPublicAuthPath } from "@/lib/publicAuthPaths";
 
 // Edge Runtimeで動作するlightweight設定（PrismaなしのJWT検証のみ）
 export const authConfig: NextAuthConfig = {
@@ -16,15 +17,19 @@ export const authConfig: NextAuthConfig = {
     async session({ session, token }) {
       if (token) {
         session.user.role = (token.role as string) ?? "user";
+        // proxy が、ログイン保持なしのセッションを、ブラウザを閉じたあとに未ログインとして扱うために使う（#782）
+        session.user.rememberMe = (token.rememberMe as boolean | undefined) !== false;
       }
       return session;
     },
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
+    authorized({ auth, request }) {
+      const nextUrl = request.nextUrl;
+      // ログイン保持なしは、ブラウザを閉じると消える目印の Cookie がなければ、未ログインとして扱う（#782）
+      const isLoggedIn =
+        !!auth?.user &&
+        isBrowserSessionAlive(auth.user.rememberMe, request.cookies?.get(BROWSER_SESSION_COOKIE) !== undefined);
       const isPublicPath =
-        nextUrl.pathname.startsWith("/login") ||
-        nextUrl.pathname.startsWith("/register") ||
-        nextUrl.pathname.startsWith("/forgot-password") ||
+        isPublicAuthPath(nextUrl.pathname) ||
         nextUrl.pathname.startsWith("/api/auth") ||
         nextUrl.pathname.startsWith("/api/cron/") ||
         nextUrl.pathname === "/api/version" ||

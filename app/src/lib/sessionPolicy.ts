@@ -33,3 +33,19 @@ const DEFAULT_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export function sessionMaxAgeFor(token: object | null | undefined, defaultMaxAge: number = DEFAULT_SESSION_MAX_AGE_SECONDS): number {
   return (token as { rememberMe?: unknown } | null | undefined)?.rememberMe === false ? Math.min(defaultMaxAge, NO_REMEMBER_SESSION_MAX_AGE_SECONDS) : defaultMaxAge;
 }
+
+/**
+ * ブラウザを開いている間だけ残る目印の Cookie の名前（#782）。
+ * 有効期限を付けないので、ブラウザを閉じると消える。ログイン保持なしでログインしたときに、ブラウザが発行する。
+ * サーバー（proxy）がこの Cookie を見て、「ログイン保持なしのセッションは、ブラウザを閉じたら未ログイン」を、最初のリクエストから判定する。
+ * 安全性の根拠ではない（ブラウザ側で作れる）。根拠は、トークン側の有効期限（保持なしは 8 時間）。
+ */
+export const BROWSER_SESSION_COOKIE = "mbl_browser_session";
+
+/**
+ * セッションを有効として扱うか。ログイン保持なし（`rememberMe === false`）のときだけ、ブラウザ起動中の目印が必要。
+ * 保持あり、旧トークン（`rememberMe` なし）、Google ログインは、目印を見ない。
+ */
+export function isBrowserSessionAlive(rememberMe: boolean | undefined, hasBrowserSessionMarker: boolean): boolean {
+  return rememberMe !== false || hasBrowserSessionMarker;
+}
