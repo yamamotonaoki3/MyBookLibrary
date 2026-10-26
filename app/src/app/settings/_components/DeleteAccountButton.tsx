@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
+import { signOutWithMarker } from "@/lib/browserSessionCookie";
 
 export function DeleteAccountButton() {
   const [showConfirm, setShowConfirm] = useState(false);
@@ -19,7 +19,7 @@ export function DeleteAccountButton() {
         setDeleting(false);
         return;
       }
-      await signOut({ callbackUrl: "/login" });
+      await signOutWithMarker();
     } catch {
       setError("通信エラーが発生しました");
       setDeleting(false);

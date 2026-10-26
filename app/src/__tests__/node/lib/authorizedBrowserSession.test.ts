@@ -1,9 +1,9 @@
 jest.mock("next-auth", () => jest.fn(() => ({ handlers: {}, auth: jest.fn(), signIn: jest.fn(), signOut: jest.fn() })));
 
 import { authConfig } from "@/auth.config";
-import { BROWSER_SESSION_COOKIE, isBrowserSessionAlive } from "@/lib/sessionPolicy";
+import { BROWSER_SESSION_COOKIE, SIGNED_OUT_COOKIE, isBrowserSessionAlive } from "@/lib/sessionPolicy";
 
-type Case = { rememberMe?: boolean; cookie: boolean };
+type Case = { rememberMe?: boolean; cookie: boolean; signedOut?: boolean };
 
 function authorizedFor(pathname: string, user: Case | null) {
   const authorized = authConfig.callbacks?.authorized as (args: unknown) => unknown;
@@ -11,7 +11,13 @@ function authorizedFor(pathname: string, user: Case | null) {
     auth: user ? { user: { email: "user@example.com", role: "user", rememberMe: user.rememberMe } } : null,
     request: {
       nextUrl: new URL(`https://example.com${pathname}`),
-      cookies: { get: (name: string) => (user?.cookie && name === BROWSER_SESSION_COOKIE ? { name, value: "1" } : undefined) },
+      cookies: {
+        get: (name: string) => {
+          if (user?.cookie && name === BROWSER_SESSION_COOKIE) return { name, value: "1" };
+          if (user?.signedOut && name === SIGNED_OUT_COOKIE) return { name, value: "1" };
+          return undefined;
+        },
+      },
     },
   });
 }
@@ -53,5 +59,17 @@ describe("authorized（ログイン保持なしは、ブラウザを閉じたら
   it("トークンなしは、未ログイン", () => {
     expect(authorizedFor("/books", null)).toBe(false);
     expect(authorizedFor("/login", null)).toBe(true);
+  });
+});
+
+describe("authorized（ログアウト直後の目印。古いセッション応答でCookieが復活しても、未ログイン扱い。#784）", () => {
+  it.each([true, false, undefined])("rememberMe=%s でも、ログアウト済みの目印があれば、/login を開いてもダッシュボードへ飛ばさない", (rememberMe) => {
+    expect(authorizedFor("/login", { rememberMe, cookie: true, signedOut: true })).toBe(true);
+  });
+  it("ログアウト済みの目印があれば、保護ページは拒否する", () => {
+    expect(authorizedFor("/books", { rememberMe: true, cookie: true, signedOut: true })).toBe(false);
+  });
+  it("目印がなければ、従来どおりログイン済みとして扱う", () => {
+    expect(authorizedFor("/books", { rememberMe: true, cookie: false, signedOut: false })).toBe(true);
   });
 });

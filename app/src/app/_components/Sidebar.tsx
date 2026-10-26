@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signOutWithMarker } from "@/lib/browserSessionCookie";
 import {
   BookOpen,
   Trophy,
@@ -289,7 +290,7 @@ export function Sidebar() {
         </div>
         {!isCollapsed && (
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => void signOutWithMarker()}
             className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
           >
             <LogOut className="h-4 w-4 shrink-0" />
@@ -298,7 +299,7 @@ export function Sidebar() {
         )}
         {isCollapsed && (
           <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => void signOutWithMarker()}
             className="mt-1 flex w-full items-center justify-center rounded-lg py-2 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
             title="ログアウト"
           >

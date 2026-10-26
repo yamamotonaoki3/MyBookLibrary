@@ -12,6 +12,9 @@
  */
 import { isDemoMode } from "@/lib/demoMode";
 
+// 目印の Cookie の定数は、ブラウザ側からも使うため、依存のないモジュールに置く（next/server をクライアントに入れない）。
+export { BROWSER_SESSION_COOKIE, SIGNED_OUT_COOKIE, SIGNED_OUT_MARKER_SECONDS } from "@/lib/sessionMarkers";
+
 /** デモ環境のセッションの有効期間（秒）。放置から 15 分で、ログイン画面に戻る。 */
 export const DEMO_SESSION_MAX_AGE_SECONDS = 15 * 60;
 
@@ -33,14 +36,6 @@ const DEFAULT_SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export function sessionMaxAgeFor(token: object | null | undefined, defaultMaxAge: number = DEFAULT_SESSION_MAX_AGE_SECONDS): number {
   return (token as { rememberMe?: unknown } | null | undefined)?.rememberMe === false ? Math.min(defaultMaxAge, NO_REMEMBER_SESSION_MAX_AGE_SECONDS) : defaultMaxAge;
 }
-
-/**
- * ブラウザを開いている間だけ残る目印の Cookie の名前（#782）。
- * 有効期限を付けないので、ブラウザを閉じると消える。ログイン保持なしでログインしたときに、ブラウザが発行する。
- * サーバー（proxy）がこの Cookie を見て、「ログイン保持なしのセッションは、ブラウザを閉じたら未ログイン」を、最初のリクエストから判定する。
- * 安全性の根拠ではない（ブラウザ側で作れる）。根拠は、トークン側の有効期限（保持なしは 8 時間）。
- */
-export const BROWSER_SESSION_COOKIE = "mbl_browser_session";
 
 /**
  * セッションを有効として扱うか。ログイン保持なし（`rememberMe === false`）のときだけ、ブラウザ起動中の目印が必要。
