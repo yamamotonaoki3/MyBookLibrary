@@ -8,6 +8,7 @@
 - 実行はappで `npm run build:test:pwa` → `.env.test` を明示して `npm run test:e2e:pwa`。テストDBガード付きのproductionビルドとnext start（3200）・外部スタブ（3999）を使う。通常E2E/デモE2Eと同じMySQLを同時に使用しない。next devだけのE2EはSWを検証しない。
 - ローカルforkのtarball・ハッシュ・差分・再作成手順は[UPSTREAM.md](../app/vendor/next-pwa/UPSTREAM.md)。npm ci・prod-only導入、Docker両ステージ・Prisma・未認証HTTP、Linux Workerビルド/D1/Cron疎通でもfile依存の導入互換性を確認する。
 - 実測結果と対象/残存GHSAは[監査記録](dependency-audit-776.md)に記載する。
+- shadcn・MCP・Express経路の再確認（#777）は[監査記録](dependency-audit-777.md)に記載する。依存・コードは変更しない。
 
 ## 認証ライブラリのセキュリティ更新（Issue #773）
 
