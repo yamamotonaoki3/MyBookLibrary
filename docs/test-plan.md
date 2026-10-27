@@ -9,6 +9,7 @@
 - ローカルforkのtarball・ハッシュ・差分・再作成手順は[UPSTREAM.md](../app/vendor/next-pwa/UPSTREAM.md)。npm ci・prod-only導入、Docker両ステージ・Prisma・未認証HTTP、Linux Workerビルド/D1/Cron疎通でもfile依存の導入互換性を確認する。
 - 実測結果と対象/残存GHSAは[監査記録](dependency-audit-776.md)に記載する。
 - shadcn・MCP・Express経路の再確認（#777）は[監査記録](dependency-audit-777.md)に記載する。依存・コードは変更しない。
+- Prisma設定依存（`deepmerge-ts`）の調査（#778）は[監査記録](dependency-audit-778.md)、Wrangler・Miniflareの更新（#789）は[監査記録](dependency-audit-789.md)に記載する。
 
 ## 認証ライブラリのセキュリティ更新（Issue #773）
 
