@@ -630,7 +630,7 @@ docker run --rm --env-file /opt/app/.env <ECRのイメージ> npx prisma migrate
 
 | 対象 | 内容 |
 | --- | --- |
-| RDS 手動スナップショット | 保存容量に応じて少額（不要になったら削除） |
+| RDS 手動スナップショット | 保存容量に応じて少額。**再開の復元元なので、残す**（削除すると再開できない。AWS を再開しないと決めたときだけ削除する。#692） |
 
 EC2・RDS・Elastic IP・CloudFront・Lambda は削除済みのため課金されません。
 

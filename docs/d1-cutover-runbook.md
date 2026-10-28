@@ -200,7 +200,7 @@ ls prisma/scripts/migration/dumps      # .enc と .sha256 だけが残ってい�
 ```
 
 - 暗号化したダンプ（`.enc`）は、**消さずに保管する**（この PC と USB の 2 か所）。移行後の不整合の調査や、AWS 再開（逆 ETL の検証）に使う。
-- RDS の手動スナップショットは、保全期間のあとに削除する（#692）。リハーサル用 D1（`mybooklibrary-rehearsal-db`）は、匿名化済み。不要なら `npx wrangler d1 delete mybooklibrary-rehearsal-db`（ID を確認してから）。
+- RDS の手動スナップショット（`mybooklibrary-final-before-destroy-20261008`）は、**削除しない**。AWS 構成の再開が、このスナップショットからの復元を前提にしているため、削除すると再開できない（[停止・再開手順](aws/aws-deploy-guide.md#8-停止再開手順)。#692）。リハーサル用 D1（`mybooklibrary-rehearsal-db`）は、匿名化済み。不要なら `npx wrangler d1 delete mybooklibrary-rehearsal-db`（ID を確認してから）。
 
 ## 11. 結果の記録（Issue #691 に書く内容）
 
