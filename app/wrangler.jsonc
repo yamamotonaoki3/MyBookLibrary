@@ -6,7 +6,7 @@
 //   ステージング: wrangler deploy --env staging … Worker 名 mybooklibrary-staging / D1 mybooklibrary-staging-db
 //   デモ:         wrangler deploy --env demo    … Worker 名 mybooklibrary-demo / D1 mybooklibrary-demo-db
 // wrangler では、バインディング（D1）と vars は環境に継承されないため、環境ごとに書く。triggers は継承されるため、
-// ステージングでは Cron を空配列で上書きして無効にする（省略すると本番の Cron を引き継ぐ）。デモは、データの初期化の Cron だけを設定する。
+// ステージングは書誌補完の毎分Cronだけに上書きする。デモはデータの初期化のCronだけを設定する。
 // ローカル実行（wrangler dev --local、npm run smoke:worker）はトップレベルを使い、D1 の ID は使われない。
 // secret（AUTH_SECRET・CRON_SECRET など）は、このファイルに書かず wrangler secret put で環境ごとに登録する。
 {
@@ -26,9 +26,10 @@
 
   // ---- 本番（production） ----
   // 新刊チェックの Cron（毎日 UTC 00:00 = JST 09:00。AWS の EventBridge と同じ）。
-  // scheduled ハンドラは worker/index.mjs。CRON_SECRET は Worker の secret（wrangler secret put）で設定する。
-  "triggers": { "crons": ["0 0 * * *"] },
+  // 書誌補完は毎分。scheduled は worker/index.mjs。CRON_SECRET / ENRICHMENT_TICK_SECRET は環境ごとのsecret。
+  "triggers": { "crons": ["0 0 * * *", "* * * * *"] },
   "vars": {
+    "ENRICHMENT_MODE": "cron",
     // 公開 URL（workers.dev）。NextAuth の AUTH_URL と、Cron が内部呼び出しで使う origin。
     "AUTH_URL": "https://mybooklibrary.nyproducts.workers.dev",
     "AUTH_TRUST_HOST": "true",
@@ -50,10 +51,11 @@
     // ---- ステージング（staging） ----
     "staging": {
       // Worker 名は mybooklibrary-staging（env 名が付く）。公開 URL は https://mybooklibrary-staging.nyproducts.workers.dev
-      // Cron は無効（本番との二重通知を防ぐ。手動実行で確認する）。
-      "triggers": { "crons": [] },
+      // 書誌補完のみ毎分実行。新刊チェックは無効（本番との二重通知を防ぐ）。
+      "triggers": { "crons": ["* * * * *"] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "vars": {
+        "ENRICHMENT_MODE": "cron",
         "AUTH_URL": "https://mybooklibrary-staging.nyproducts.workers.dev",
         "AUTH_TRUST_HOST": "true",
         "CRON_TARGET_ORIGIN": "https://mybooklibrary-staging.nyproducts.workers.dev",

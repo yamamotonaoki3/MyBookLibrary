@@ -16,6 +16,26 @@ function setup(response: Response | Error = new Response('{"ok":true,"created":2
 }
 
 describe("createScheduledHandler", () => {
+  it("毎分は専用secretでtickを呼ぶ（CRON_SECRET不要）", async () => {
+    const { appFetch, waitUntil, handler, ctx } = setup();
+    await handler({ cron: "* * * * *" }, { ENRICHMENT_TICK_SECRET: SECRET }, ctx);
+    await waitUntil.mock.calls[0][0];
+    expect(appFetch.mock.calls[0][0].url).toBe("http://localhost/api/admin/book-enrichment/tick");
+    expect(appFetch.mock.calls[0][0].method).toBe("GET");
+    expect(appFetch.mock.calls[0][0].headers.get("authorization")).toBe(`Bearer ${SECRET}`);
+  });
+  it("毎分の専用secret未設定は失敗する", async () => {
+    const { appFetch, handler, ctx } = setup();
+    await expect(handler({ cron: "* * * * *" }, { CRON_SECRET: SECRET }, ctx))
+      .rejects.toThrow("ENRICHMENT_TICK_SECRET is not configured");
+    expect(appFetch).not.toHaveBeenCalled();
+  });
+  it("デモの毎分はsecretなしでも何も呼ばず成功する", async () => {
+    const { appFetch, waitUntil, handler, ctx } = setup();
+    await handler({ cron: "* * * * *" }, { DEMO_MODE: "true" }, ctx);
+    expect(appFetch).not.toHaveBeenCalled();
+    expect(waitUntil).not.toHaveBeenCalled();
+  });
   let logSpy: jest.SpyInstance;
   let errorSpy: jest.SpyInstance;
   beforeEach(() => {

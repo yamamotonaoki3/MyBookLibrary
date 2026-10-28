@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { demoForbidden, isDemoMode } from "@/lib/demoMode";
-import { prisma } from "@/lib/prisma";
-import { processEnrichmentJob } from "@/lib/bookEnrichmentWorker";
+import { tickEnrichment } from "@/lib/bookEnrichmentService";
 import { logger } from "@/lib/logger";
 
 const MIN_TICK_SECRET_LENGTH = 16;
-// この時間、進捗が更新されていない running ジョブは、EC2再起動等でワーカーが
-// 消失したとみなして再開する。
-const STALE_THRESHOLD_MS = 3 * 60 * 1000;
 
 export async function GET(req: NextRequest) {
   if (isDemoMode()) return demoForbidden();
@@ -22,18 +18,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const staleJobs = await prisma.bookEnrichmentJob.findMany({
-    where: {
-      status: "running",
-      lastTickAt: { lt: new Date(Date.now() - STALE_THRESHOLD_MS) },
-    },
-  });
-
-  for (const job of staleJobs) {
-    void processEnrichmentJob(job.id).catch((err) => {
-      logger.error({ err, jobId: job.id }, "[GET /api/admin/book-enrichment/tick] resume failed");
-    });
-  }
-
-  return NextResponse.json({ resumed: staleJobs.map((j) => j.id) });
+  return NextResponse.json(await tickEnrichment());
 }

@@ -39,10 +39,13 @@ GET /api/cron/check-new-books（Bearer = Worker の secret CRON_SECRET）
 | 環境 | Cron | 実行内容 |
 | --- | --- | --- |
 | 本番 | `0 0 * * *`（UTC 00:00 = JST 09:00） | 新刊チェック |
-| ステージング | なし（本番との二重通知を防ぐ） | — |
+| 本番 | `* * * * *`（毎分） | 書誌補完tick（`ENRICHMENT_TICK_SECRET`） |
+| ステージング | `* * * * *`（毎分） | 書誌補完tickのみ。新刊チェックは無効（本番との二重通知を防ぐ） |
 | デモ | `0 18 * * *`（UTC 18:00 = JST 03:00） | 新刊チェックの代わりに、デモのデータの初期化（`GET /api/cron/reset-demo`。[デモ環境の方針](../demo-environment.md)） |
 
 `scheduled` ハンドラ（エントリは `app/worker/index.mjs`）は、secret `CRON_SECRET` が未設定のとき、または API が 2xx 以外を返したときは、失敗として記録する。Cloudflare の Cron は自動で再試行しないが、API は重複通知を作らない冪等な作りのため、次の定時実行で回復する。ローカルでの手動実行は `wrangler dev --test-scheduled`。詳細は [Cloudflare へのデプロイ](../cloudflare-deploy.md) と [移行計画](../archive/cloudflare-d1-migration-plan.md) §4-4 の実装メモ（#668）を参照。
+
+毎分の式は書誌補完専用で、`GET /api/admin/book-enrichment/tick` を `ENRICHMENT_TICK_SECRET` で呼ぶ。未設定なら失敗する。デモの毎分イベントはsecret確認前にスキップして正常終了する。他の式は従来の `CRON_SECRET` と新刊チェック／デモ初期化を使う。分割実行の予算・未確認事項は[書誌補完仕様](book-enrichment.md#workers-の分割実行と制限)を参照。
 
 ### AWS 構成（停止中）
 

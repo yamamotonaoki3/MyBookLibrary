@@ -52,6 +52,7 @@ function setupJobRun(item: typeof baseItem | null) {
   prismaMock.bookEnrichmentItem.updateMany.mockResolvedValue({ count: 1 });
   prismaMock.bookEnrichmentJob.update.mockResolvedValue({});
   prismaMock.bookEnrichmentItem.findFirst
+    .mockReset()
     .mockResolvedValueOnce(item)
     .mockResolvedValue(null);
   prismaMock.bookEnrichmentItem.findMany.mockResolvedValue([]);
@@ -76,6 +77,49 @@ beforeEach(() => {
 });
 
 describe("processEnrichmentJob", () => {
+  it("予算超過では次のアイテムを取らずheartbeatだけ更新してrunningを維持する", async () => {
+    setupJobRun(baseItem);
+    const now = jest.spyOn(Date, "now").mockReturnValueOnce(0).mockReturnValue(20_000);
+    try {
+      await processEnrichmentJob(1, { maxMs: 20_000 });
+      expect(prismaMock.bookEnrichmentItem.findFirst).not.toHaveBeenCalled();
+      expect(prismaMock.bookEnrichmentJob.updateMany).not.toHaveBeenCalled();
+      expect(prismaMock.bookEnrichmentItem.updateMany).not.toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: "cancelled" } })
+      );
+      expect(prismaMock.bookEnrichmentJob.update).toHaveBeenLastCalledWith({
+        where: { id: 1 }, data: { lastTickAt: expect.any(Date) },
+      });
+    } finally { now.mockRestore(); }
+  });
+
+  it.each([undefined, { maxMs: 20_000 }])("全件終了は予算内なら完了する: %p", async (options) => {
+    setupJobRun(baseItem);
+    jest.useFakeTimers();
+    try {
+      const run = processEnrichmentJob(1, options);
+      await jest.runAllTimersAsync();
+      await run;
+    } finally { jest.useRealTimers(); }
+    expect(prismaMock.bookEnrichmentJob.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "completed" }) })
+    );
+  });
+
+  it("アイテム途中の予算超過では結果を保存してから次の取得を止める", async () => {
+    setupJobRun(baseItem);
+    jest.useFakeTimers();
+    try {
+      const run = processEnrichmentJob(1, { maxMs: 1 });
+      await jest.runAllTimersAsync();
+      await run;
+      expect(prismaMock.bookEnrichmentItem.findFirst).toHaveBeenCalledTimes(1);
+      expect(prismaMock.bookEnrichmentItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: "error" }) })
+      );
+      expect(prismaMock.bookEnrichmentJob.updateMany).not.toHaveBeenCalled();
+    } finally { jest.useRealTimers(); }
+  });
   it("候補が単一（楽天由来）の場合は確認なしで自動でBookを更新する", async () => {
     setupJobRun(baseItem);
     mockedCollectEditionCandidates.mockResolvedValue([

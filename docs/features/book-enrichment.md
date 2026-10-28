@@ -17,7 +17,7 @@ ISBN・カバー画像・出版日のいずれかが欠けている登録済み�
 - ジョブの進捗は `BookEnrichmentJob`（合計件数・完了件数・成功件数・失敗件数・開始/終了/最終更新日時）で管理し、対象1件ごとの結果は `BookEnrichmentItem`（pending/processing/done/error とエラーメッセージ）で管理する
 - 管理者パネルからジョブの進捗（成功・失敗件数、失敗した本のタイトルとエラー内容）を確認できる
 - ワーカー（AWS 構成では EC2 の常駐プロセス）が再起動等で消失し、`running` のまま進捗が一定時間（3分）更新されないジョブは、`tick` エンドポイントの定期呼び出しにより再開される
-- **Cloudflare Workers には、常駐プロセスがない。** この処理の Workers 対応（Cron での分割実行など）は未実施で、方針を [#696](https://github.com/yamamotonaoki3/MyBookLibrary/issues/696) で検討する。Workers 上での動作は、現時点で保証していない
+- **Cloudflare Workers は Cron Trigger による分割実行**（[#696](https://github.com/yamamotonaoki3/MyBookLibrary/issues/696)）。`ENRICHMENT_MODE=cron` のときだけ有効で、開始APIはジョブ作成と監査ログ記録だけを行い、次の毎分Cronが処理する。AWS・ローカルは未設定のまま、従来の常駐ワーカーと3分停止時の再開を使う
 
 ### 処理フロー
 
@@ -49,6 +49,16 @@ processEnrichmentJob を再実行して処理を再開
 
 - `start` / `status` は管理者セッション必須
 - `tick` は Bearer トークン認証必須（`ENRICHMENT_TICK_SECRET`、16文字以上）
+
+### Workers の分割実行と制限
+
+- 本番とステージングの vars に `ENRICHMENT_MODE="cron"` を設定し、`* * * * *` の Cron が `GET /api/admin/book-enrichment/tick` を専用secretで内部呼び出しする。デモには設定せず、デモの毎分tickイベントは何も呼ばず正常終了する。
+- Cronモードのtickは、`lastTickAt` に関わらず全runningジョブを取得し、順にawaitする。応答は `{ processed: [jobId...] }`。従来モードの応答は `{ resumed: [jobId...] }` のまま。
+- **1回のtick全体で20秒の経過時間予算**を共有する。各ジョブに残り予算を渡し、次のアイテム取得前に予算切れなら `lastTickAt` を更新してrunningのまま戻る。完了・cancelledにはしない。処理中の1件は打ち切らないので、実際の応答時間が20秒を超える場合がある。予算内で全件終了した場合の完了処理、中断要求による取消、期限切れアイテムの回収は従来どおり。
+- 処理量は、**1分あたり1回の呼び出しで20秒の予算内（数件〜十数件）**を想定する。外部APIの応答時間・フォールバック回数に依存するため、保証値ではなく未実測。
+- 毎分のCronは、実行中ジョブの確認（軽いクエリ）で常時動く。ジョブがなくても呼び出しとクエリの負荷がある。
+- 毎分のCronでの時間・CPUの上限は、[Cloudflare公式の制限](https://developers.cloudflare.com/workers/platform/limits/)・[Cron Trigger資料](https://developers.cloudflare.com/workers/configuration/cron-triggers/)と、利用プラン・ステージングでの実測を合わせた確認が必要で、適合性は未確認。20秒はアプリの経過時間予算であり、CPU上限を示す値ではない。
+- **ステージングでのジョブ完了の確認は未実施**。デプロイ後、進捗の継続、完了、中断、実行時間・CPU、アイテム処理中の超過や中断後の再開を確認する。
 
 ## 関連 API エンドポイント
 
