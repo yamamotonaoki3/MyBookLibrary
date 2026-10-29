@@ -11,6 +11,23 @@ function authorizedFor(pathname: string, loggedIn: boolean) {
 }
 
 describe("authorized（公開パス）", () => {
+  it("tick はルートで Bearer 認証するため、ログインなしでも proxy を通過する", () => {
+    expect(authorizedFor("/api/admin/book-enrichment/tick", false)).toBe(true);
+  });
+
+  it.each([
+    "/api/admin/book-enrichment/start",
+    "/api/admin/book-enrichment/status",
+    "/api/admin/book-enrichment/cancel",
+    "/api/admin/book-enrichment/tick/x",
+    "/api/admin/book-enrichment/tickx",
+    "/api/admin/book-enrichment/tick/",
+    "/api/admin/users",
+    "/api/admin/award-entries",
+  ])("管理API・tickの類似パス %s はログインなしでは拒否する", (pathname) => {
+    expect(authorizedFor(pathname, false)).toBe(false);
+  });
+
   it.each(["/sw.js", "/workbox-1234abcd.js", "/pwa-worker-1234abcd.js"])("PWAの公開スクリプト %s を認証前に取得できる", (pathname) => {
     expect(authorizedFor(pathname, false)).toBe(true);
   });
@@ -21,7 +38,7 @@ describe("authorized（公開パス）", () => {
     expect(authorizedFor("/api/version", false)).toBe(true);
   });
 
-  it("/api/version 以外の API と、画面は、ログインなしでは拒否する", () => {
+  it("公開対象でない API と画面は、ログインなしでは拒否する", () => {
     expect(authorizedFor("/api/versions", false)).toBe(false);
     expect(authorizedFor("/api/books/search", false)).toBe(false);
     expect(authorizedFor("/books", false)).toBe(false);

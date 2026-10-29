@@ -8,7 +8,8 @@ CIでは通常E2Eの直後に `e2e/book-enrichment-cron.spec.ts` を専用ステ
 - `cronScheduler.test.ts`: 毎分tickの専用Bearer、secret不足、デモのスキップ、日次の既存処理。
 - `api/book-enrichment.test.ts`: startのCron予約と従来の即時起動、tickの全running取得・順次await・tick全体の残り予算、従来staleのvoid再開、認証・デモ拒否。
 - `enrichmentMode.test.ts`: `cron`完全一致のみ有効。
-- `e2e/book-enrichment-cron.spec.ts`: 実APIのstart後に進捗ゼロで予約され、認証付きtickでDB進捗が保存され完了することを確認する。`.env.test`を明示的に読み込み、`ENRICHMENT_MODE=cron` とテスト専用の `ENRICHMENT_TICK_SECRET`（16文字以上）をテストプロセス・webServerの両方に渡して専用実行する。通常の未設定モードではスキップする。稼働済みの別サーバーを使わない（`CI=1`）。外部APIは既存スタブ、DBはテスト専用のみ。値は出力しない。
+- `authorizedPaths.test.ts`: 未ログインのtick完全一致だけがproxyを通過し、start・status・cancel・tick/x・tickxなどの類似パスと他の管理APIは拒否される。
+- `e2e/book-enrichment-cron.spec.ts`: 管理者セッションはstartにだけ使い、進捗ゼロで予約されることを確認する。tickはCookieのない独立した`request`フィクスチャで呼び、Bearerなしは401（307ではない）、Bearerありは200、繰り返しのtickでDB進捗が保存されcompletedになることを確認する。リダイレクトは追従せず、完了後のtickは200かつ処理対象なしを確認する。`.env.test`を明示的に読み込み、`ENRICHMENT_MODE=cron` とテスト専用の `ENRICHMENT_TICK_SECRET`（16文字以上）をテストプロセス・webServerの両方に渡して専用実行する。通常の未設定モードではスキップする。稼働済みの別サーバーを使わない（`CI=1`）。外部APIは既存スタブ、DBはテスト専用のみ。値は出力しない。
 - ステージングでの完了確認は未実施。毎分Cronの時間・CPUの上限は公式資料とステージング実測による確認が必要で未確認。1分1回・20秒の予算で数件〜十数件を想定するが処理量は未実測。
 - この実装時の検証では、API E2Eの起動は `spawn EPERM` により未実行。代替として、実際のRoute Handler→Service→Repository（DBはモック）のテストと、ワーカー・Cronの単体テストで分岐・待機・予算共有を確認した。実DB／Workerランタイムでの検証は未完了。
 
