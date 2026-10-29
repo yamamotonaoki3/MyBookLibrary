@@ -40,6 +40,7 @@ MyBookLibrary のドキュメント一覧。**現役の文書**と、**停止中
 | [operations.md](operations.md) | 運用手順書（日々の確認・障害時の初動・復旧・secret の更新） |
 | [cloudflare-deploy.md](cloudflare-deploy.md) | Cloudflare Workers + D1 へのデプロイ（環境・secret・ロールバック・デモ） |
 | [d1-cutover-runbook.md](d1-cutover-runbook.md) | 本番切り替え手順書（2026-10-17 に完了。再実行の記録と、公開後の監視） |
+| [production-release-plan.md](production-release-plan.md) | 本番反映（main → production）の計画（変更と影響、チェックリスト、手順、ロールバック） |
 | [d1-rehearsal-runbook.md](d1-rehearsal-runbook.md) | 匿名化データでの、D1 への移行リハーサル手順書 |
 | [demo-environment.md](demo-environment.md) | デモ環境の方針と構成（保護・初期化・公開範囲） |
 | [demo-apply-runbook.md](demo-apply-runbook.md) | デモ用 D1 への適用手順書 |
