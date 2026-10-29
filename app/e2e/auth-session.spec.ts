@@ -87,6 +87,10 @@ test("ログアウト直後に、セッション Cookie が書き戻されても
 
   // 飛行中の応答が、消えたはずのセッション Cookie を書き戻した状態
   await context.addCookies(sessionCookies);
+  const restoredSession = await page.request.get("/api/auth/session");
+  expect(restoredSession.ok()).toBe(true);
+  expect(await restoredSession.json()).toBeNull();
+  expect(restoredSession.headers()["set-cookie"]).toBeUndefined();
   await page.goto("/login");
   await expect(page).toHaveURL(/\/login/);
   await expect(page.getByRole("button", { name: "ログイン", exact: true })).toBeVisible();
