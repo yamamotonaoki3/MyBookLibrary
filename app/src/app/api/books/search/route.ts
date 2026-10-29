@@ -10,14 +10,12 @@ import { searchBooksNdl } from "@/lib/ndl";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/session";
 import { isRateLimited } from "@/lib/rateLimit";
+import { getSearchRateLimitIntervalMs } from "@/lib/searchRateLimit";
 import { logger } from "@/lib/logger";
 import { withPublicReviewCounts } from "@/lib/bookReviewSummary";
 import type { SearchResponse } from "@/shared/bookSearch";
 
 const HITS_PER_PAGE = 30;
-
-// 無限スクロールによる連続リクエストから外部API（楽天/NDL）を守るための間隔
-const SEARCH_RATE_LIMIT_INTERVAL_MS = 500;
 
 // 楽天+DB登録済みの本を合わせた件数がこの件数未満の場合のみ、1ページ目でNDLへも軽く問い合わせて
 // 結果をマージする。多くの検索（人気作家等）では発動させず、速度・NDL利用規約への配慮を維持する。
@@ -51,7 +49,7 @@ export async function GET(request: NextRequest) {
     const { userId, error } = await getAuthenticatedUserId();
     if (error) return error;
 
-    if (isRateLimited(`books-search:${userId}`, SEARCH_RATE_LIMIT_INTERVAL_MS)) {
+    if (isRateLimited(`books-search:${userId}`, getSearchRateLimitIntervalMs())) {
       return NextResponse.json(
         { error: "リクエストが多すぎます。しばらくお待ちください。" },
         { status: 429 }
