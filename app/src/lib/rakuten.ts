@@ -1,3 +1,4 @@
+import { ExternalApiTimeoutError } from "@/lib/ExternalApiTimeoutError";
 import { getAuthorBookCountNdl } from "@/lib/ndl";
 import { logger } from "@/lib/logger";
 import { anySignal, buildRequestSignal, type RequestOptions } from "@/lib/requestSignal";
@@ -53,6 +54,8 @@ const RAKUTEN_MAX_ATTEMPTS = 3;
 export type RakutenRequestOptions = RequestOptions & {
   /** リトライを含めた1回の呼び出し全体のタイムアウト（ms）。未指定なら無制限 */
   totalTimeoutMs?: number;
+  /** 検索画面など、空の結果と時間切れを区別する呼び出し元だけ指定する。 */
+  throwOnTimeout?: boolean;
 };
 
 /** signal が中断したら即座に解決する待機。 */
@@ -77,6 +80,7 @@ function sleepUnlessAborted(ms: number, signal?: AbortSignal): Promise<void> {
  * （5xxやネットワークエラー）は短い固定待機で再試行する。全て失敗した場合はnullを返す。
  * options 指定時は、1試行ごとのタイムアウト（timeoutMs）と、リトライ全体の上限
  * （totalTimeoutMs）・呼び出し元の中断（signal）を守る。全体の上限を超えたら再試行せずnullを返す。
+ * throwOnTimeout が true の検索経路では、1試行・全体・呼び出し元の中断を例外にする。
  */
 async function fetchRakutenWithRetry(url: string, options?: RakutenRequestOptions): Promise<RakutenSearchResponse | null> {
   const totalSignal = anySignal(
@@ -85,14 +89,19 @@ async function fetchRakutenWithRetry(url: string, options?: RakutenRequestOption
   );
 
   for (let attempt = 0; attempt < RAKUTEN_MAX_ATTEMPTS; attempt++) {
-    if (totalSignal?.aborted) return null;
+    if (totalSignal?.aborted) {
+      if (options?.throwOnTimeout) throw new ExternalApiTimeoutError("楽天");
+      return null;
+    }
     const isLastAttempt = attempt >= RAKUTEN_MAX_ATTEMPTS - 1;
 
+    let signal: AbortSignal | undefined;
     try {
+      signal = buildRequestSignal({ signal: totalSignal, timeoutMs: options?.timeoutMs });
       const res = await fetch(url, {
         headers: rakutenRequestHeaders(),
         next: { revalidate: 3600 },
-        signal: buildRequestSignal({ signal: totalSignal, timeoutMs: options?.timeoutMs }),
+        signal,
       });
 
       if (res.status === 429) {
@@ -115,6 +124,7 @@ async function fetchRakutenWithRetry(url: string, options?: RakutenRequestOption
 
       return await res.json() as RakutenSearchResponse;
     } catch (err) {
+      if (options?.throwOnTimeout && signal?.aborted) throw new ExternalApiTimeoutError("楽天");
       if (totalSignal?.aborted) return null;
       if (!isLastAttempt) {
         await sleepUnlessAborted(500 * (attempt + 1), totalSignal);

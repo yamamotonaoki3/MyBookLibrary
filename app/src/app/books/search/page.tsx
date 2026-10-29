@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { Suspense } from "react";
+import { SEARCH_CLIENT_TIMEOUT_MS } from "@/lib/searchTimeouts";
 import { BookReviewCount } from "@/frontend/books/BookReviewCount";
 import Image from "next/image";
 import Link from "next/link";
@@ -204,14 +205,39 @@ function BookSearchContent() {
     if (delay > 0) {
       await new Promise((r) => setTimeout(r, delay));
     }
-    const res = await fetch(
-      `/api/books/search?q=${encodeURIComponent(q)}&type=${t}&page=${page}`
-    );
-    const data: SearchResponse = await res.json();
-    if (!res.ok) {
-      throw new Error((data as { error?: string }).error ?? "検索に失敗しました");
+    const controller = new AbortController();
+    const timeoutMessage = "検索に時間がかかっています。もう一度お試しください。";
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      // 本文の読み取りも期限内に含め、中断を無視する遅い応答も採用しない。
+      return await Promise.race([
+        (async () => {
+          const res = await fetch(
+            `/api/books/search?q=${encodeURIComponent(q)}&type=${t}&page=${page}`,
+            { signal: controller.signal }
+          );
+          const data: SearchResponse & { code?: string; error?: string } = await res.json();
+          if (!res.ok) {
+            throw new Error(res.status === 504 && data.code === "SEARCH_TIMEOUT"
+              ? timeoutMessage : data.error ?? "検索に失敗しました");
+          }
+          return data;
+        })(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            controller.abort();
+            reject(new Error(timeoutMessage));
+          }, SEARCH_CLIENT_TIMEOUT_MS);
+        }),
+      ]);
+    } catch (err) {
+      if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
+        throw new Error(timeoutMessage);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    return data;
   }, []);
 
   // 検索条件が変わったときの初回検索（1ページ目から取得し直す）
@@ -444,6 +470,10 @@ function BookSearchContent() {
         {error && (
           <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
             {error}
+            <button type="button" onClick={() => fetchInitial(urlQ, urlType)}
+              className="ml-3 rounded-lg border px-3 py-1" disabled={loading}>
+              再試行
+            </button>
           </p>
         )}
 

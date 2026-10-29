@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ExternalApiTimeoutError } from "@/lib/ExternalApiTimeoutError";
+import { createSearchRequestOptions } from "@/lib/searchRequestOptions";
 import {
   fetchBookPage,
   deduplicateByTitle,
@@ -56,6 +58,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const searchOptions = createSearchRequestOptions();
     let params: { title?: string; author?: string };
     if (type === "keyword") {
       const parts = q.split(/\s+/);
@@ -68,7 +71,7 @@ export async function GET(request: NextRequest) {
       ...params,
       page,
       hits: HITS_PER_PAGE,
-    });
+    }, searchOptions.rakuten);
 
     // 読書管理の対象外（ムック・CD等）を除外する
     const bookItems = rawItems.filter((b) => !isNonBookSize(b.size ?? ""));
@@ -230,7 +233,7 @@ export async function GET(request: NextRequest) {
     // 最終ページまで書籍がなければフォールバックする。
     if (rawItems.length === 0 || (rakutenItems.length === 0 && page >= pageCount)) {
       ndlAlreadyQueried = true;
-      const ndlResult = await searchBooksNdl({ type: type as "title" | "author" | "keyword", q, page });
+      const ndlResult = await searchBooksNdl({ type: type as "title" | "author" | "keyword", q, page }, searchOptions.ndl);
       if (ndlResult.items.length > 0) {
         const ndlIsbns = ndlResult.items.map((b) => b.isbn).filter((v): v is string => v !== null);
         const ndlTitles = ndlResult.items.map((b) => b.title);
@@ -303,7 +306,7 @@ export async function GET(request: NextRequest) {
     // 重複問い合わせを避けるためスキップする。
     // 書影は取得しない（NDLは書影情報を持たないため、既存の全件フォールバックと同じ形式）。
     if (page === 1 && items.length < NDL_SUPPLEMENT_THRESHOLD && !ndlAlreadyQueried) {
-      const ndlSupplement = await searchBooksNdl({ type: type as "title" | "author" | "keyword", q, page: 1 });
+      const ndlSupplement = await searchBooksNdl({ type: type as "title" | "author" | "keyword", q, page: 1 }, searchOptions.ndl);
       if (ndlSupplement.items.length > 0) {
         const existingKeys = new Set(items.map((b) => makeKey(b.title, b.author)));
         const existingIsbns = new Set(items.map((b) => b.isbn).filter((v): v is string => v !== null));
@@ -344,6 +347,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (err) {
+    if (err instanceof ExternalApiTimeoutError) {
+      logger.error({ api: err.api }, "[GET /api/books/search] external API timeout");
+      return NextResponse.json({
+        error: "外部の検索が時間内に終わりませんでした。しばらくしてから、もう一度お試しください。",
+        code: "SEARCH_TIMEOUT",
+      }, { status: 504 });
+    }
     logger.error({ err }, "[GET /api/books/search]");
     return NextResponse.json({ error: "検索に失敗しました" }, { status: 500 });
   }
