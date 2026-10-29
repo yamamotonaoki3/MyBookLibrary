@@ -1,5 +1,14 @@
 import { SIGNED_OUT_COOKIE } from "@/lib/sessionMarkers";
 
+/** proxyを通らないセッション取得でも、ログアウト済みの目印を尊重する。 */
+export function sessionRequestIsSignedOut(method: string, pathname: string, cookieHeader: string | null): boolean {
+  if (method !== "GET" || pathname !== "/api/auth/session") return false;
+  return (cookieHeader ?? "").split(";").some((cookie) => {
+    const equals = cookie.indexOf("=");
+    return equals >= 0 && cookie.slice(0, equals).trim() === SIGNED_OUT_COOKIE;
+  });
+}
+
 /**
  * ログイン成功のとき（ログインのコールバックの応答が、新しいセッション Cookie を発行するとき）だけ、ログアウト済みの目印を消す（#784）。
  * ブラウザ側で、ログインの送信前に消すと、ログインの失敗やキャンセルのあとに、書き戻された古いセッションを拒否する目印がなくなる。

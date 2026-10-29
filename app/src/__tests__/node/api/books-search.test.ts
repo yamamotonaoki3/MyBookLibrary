@@ -47,6 +47,29 @@ describe("GET /api/books/search", () => {
   const makeRequest = (query: string) =>
     new NextRequest(`http://localhost/api/books/search?${query}`);
 
+  it.each([[undefined, 429], ["0", 200]])("検索間隔 %s: 同じ時刻の連続検索は %s", async (interval, expected) => {
+    const previous = process.env.SEARCH_RATE_LIMIT_INTERVAL_MS;
+    if (interval === undefined) delete process.env.SEARCH_RATE_LIMIT_INTERVAL_MS;
+    else process.env.SEARCH_RATE_LIMIT_INTERVAL_MS = interval;
+    const clock = jest.spyOn(Date, "now").mockReturnValue(10000);
+    mockFetchBookPage.mockResolvedValue({ items: [], pageCount: 0 });
+    mockSearchBooksNdl.mockResolvedValue({ items: [], totalPages: 0 });
+    try {
+      expect((await GET(makeRequest("q=test&type=title"))).status).toBe(200);
+      expect((await GET(makeRequest("q=test&type=title"))).status).toBe(expected);
+      if (interval === undefined) {
+        clock.mockReturnValue(10499);
+        expect((await GET(makeRequest("q=test&type=title"))).status).toBe(429);
+        clock.mockReturnValue(10500);
+        expect((await GET(makeRequest("q=test&type=title"))).status).toBe(200);
+      }
+    } finally {
+      clock.mockRestore();
+      if (previous === undefined) delete process.env.SEARCH_RATE_LIMIT_INTERVAL_MS;
+      else process.env.SEARCH_RATE_LIMIT_INTERVAL_MS = previous;
+    }
+  });
+
   it("キーワード未指定 → 400を返す", async () => {
     const res = await GET(makeRequest("type=title"));
     expect(res.status).toBe(400);

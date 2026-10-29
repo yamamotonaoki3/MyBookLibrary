@@ -53,6 +53,9 @@ export default defineConfig({
       env: {
         ...testEnv,
         ...stubEnv(STUB_PORT),
+        // E2Eは同じユーザー・同じプロセスを共有し、サーバーの処理時刻の詰まりで制限に当たる。
+        // レート制限そのものは単体テストで担保する。
+        SEARCH_RATE_LIMIT_INTERVAL_MS: "0",
         // E2E does not need remote fonts. Avoid retrying Google Fonts when the
         // test environment intentionally has no external network access.
         NEXT_FONT_GOOGLE_MOCKED_RESPONSES: path.resolve(__dirname, "e2e/font-mocks.cjs"),
