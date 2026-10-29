@@ -1,5 +1,13 @@
 # テスト計画表
 
+## 検索の時間制限（#802）
+
+- `externalApiTimeouts.test.ts`: 楽天・NDLのヘッダー未着／本文停止、全体期限・呼び出し元中断で、明示指定時だけ `ExternalApiTimeoutError` を返す。既定の空結果、版解決の既存挙動、時間切れ以外の失敗を確認する。
+- `books-search.test.ts`: 数十msにモックした検索定数と中断対応fetchで、楽天・NDL・検索予算の時間切れが504／`SEARCH_TIMEOUT`になること、正常0件が200になること、既存の429等を確認する。
+- `BookSearchTimeout.test.tsx`: fake timersで15秒後の待機解除と再試行、504の共通表示、再試行成功、古い応答の無視、追加ページのエラーと強制再試行、タイマー解除を確認する。
+- `e2e/search-timeouts.spec.ts`: `.env.test` を明示して起動し、楽天スタブの遅延で実検索APIの504と画面のエラーを確認、遅延解除後に同じ検索条件の再試行で結果が出ることを検証する。
+- 実装時の結果: 対象のnode/jsdomテスト48件・型チェック・lintは成功。全体テストは857件成功、既存の `authSecurityRuntime.test.ts` 1件は子プロセス起動の `EPERM` で失敗。E2Eは `spawn EPERM` で起動できず未検証。`check:docs` も `spawnSync git EPERM` で未完了。
+
 ## 書誌補完のWorkers分割実行（#696）
 
 CIでは通常E2Eの直後に `e2e/book-enrichment-cron.spec.ts` を専用ステップで実行する。既存の `.env.test` を使い、`ENRICHMENT_MODE=cron` と、そのステップ内で `openssl rand -hex 16` により生成した `ENRICHMENT_TICK_SECRET` を渡す（値はログに出さない）。テスト内で架空の著者・ISBN未設定の本を3件作り、各アイテムが `done` または `error` になり、ジョブが `completed`、`doneCount === totalCount` になるまでtickを呼ぶ。

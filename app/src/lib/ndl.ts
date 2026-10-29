@@ -1,3 +1,4 @@
+import { ExternalApiTimeoutError } from "@/lib/ExternalApiTimeoutError";
 import { logger } from "@/lib/logger";
 import { isPlausibleMatch } from "@/lib/matchUtils";
 import { buildRequestSignal, type RequestOptions } from "@/lib/requestSignal";
@@ -150,10 +151,10 @@ function buildNdlQuery(params: NdlSearchParams): string {
   return `title="${params.q}"`;
 }
 
-/** NDL SRU APIへ問い合わせ、生XMLと総件数を返す共通処理。 */
+/** NDL SRU APIへ問い合わせ、生XMLと総件数を返す。検索経路だけ時間切れを例外にできる。 */
 async function fetchNdlXml(
   params: NdlSearchParams,
-  options?: RequestOptions
+  options?: RequestOptions & { throwOnTimeout?: boolean }
 ): Promise<{ xml: string; total: number } | null> {
   const query = buildNdlQuery(params);
   const startRecord = (params.page - 1) * HITS_PER_PAGE + 1;
@@ -165,21 +166,24 @@ async function fetchNdlXml(
     startRecord: String(startRecord),
   });
 
+  let signal: AbortSignal | undefined;
   try {
-    const res = await fetch(`${NDL_SRU_BASE}?${urlParams}`, { signal: buildRequestSignal(options) });
+    signal = buildRequestSignal(options);
+    const res = await fetch(`${NDL_SRU_BASE}?${urlParams}`, { signal });
     if (!res.ok) return null;
     const xml = await res.text();
     const totalMatch = xml.match(/<numberOfRecords>(\d+)<\/numberOfRecords>/);
     const total = totalMatch ? parseInt(totalMatch[1], 10) : 0;
     return { xml, total };
   } catch {
+    if (options?.throwOnTimeout && signal?.aborted) throw new ExternalApiTimeoutError("NDL");
     return null;
   }
 }
 
 export async function searchBooksNdl(
   params: NdlSearchParams,
-  options?: RequestOptions
+  options?: RequestOptions & { throwOnTimeout?: boolean }
 ): Promise<{ items: NdlSearchBook[]; totalPages: number }> {
   const result = await fetchNdlXml(params, options);
   if (!result) return { items: [], totalPages: 0 };

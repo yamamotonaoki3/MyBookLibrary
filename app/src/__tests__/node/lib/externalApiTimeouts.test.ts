@@ -1,6 +1,6 @@
 import { resolvePreferringHardcover, USER_FACING_RESOLVE_OPTIONS } from "@/lib/editionResolver";
 import { fetchBookPage, searchBooks, searchBooksByIsbn } from "@/lib/rakuten";
-import { searchNdlHardcoverCandidates } from "@/lib/ndl";
+import { searchBooksNdl, searchNdlHardcoverCandidates } from "@/lib/ndl";
 import { restoreFetch } from "../../helpers/fetchMock";
 
 // タイムアウト・並行実行・全体予算の検証（#634）。外部APIは実際には呼ばず、
@@ -237,5 +237,49 @@ describe("resolvePreferringHardcover の時間制限", () => {
       budgetMs: 6000,
       parallelRakuten: true,
     });
+  });
+});
+
+describe("search timeout errors", () => {
+  it.each([hang, hangBody])("Rakuten throws for stalled headers/body", async (handler) => {
+    installFetch({ ndl: hang, rakuten: handler });
+    await expect(fetchBookPage({ page: 1, hits: 30 }, { timeoutMs: 20, throwOnTimeout: true }))
+      .rejects.toMatchObject({ name: "ExternalApiTimeoutError" });
+  });
+  it("NDL throws on timeout", async () => {
+    installFetch({ ndl: hang, rakuten: hang });
+    await expect(searchBooksNdl({ type: "title", q: "test", page: 1 }, { timeoutMs: 20, throwOnTimeout: true }))
+      .rejects.toMatchObject({ name: "ExternalApiTimeoutError" });
+  });
+});
+
+describe("search timeout opt-in boundaries", () => {
+  it.each(["total", "caller", "already-aborted"])("Rakuten %s abort throws", async (kind) => {
+    installFetch({ ndl: hang, rakuten: hangBody });
+    const controller = new AbortController();
+    if (kind === "already-aborted") controller.abort();
+    const pending = fetchBookPage({ page: 1, hits: 30 }, {
+      signal: controller.signal, totalTimeoutMs: kind === "total" ? 20 : undefined, throwOnTimeout: true,
+    });
+    if (kind === "caller") controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "ExternalApiTimeoutError" });
+  });
+  it.each([true, false])("NDL body stall with opt-in %s", async (throwOnTimeout) => {
+    installFetch({ ndl: hangBody, rakuten: hang });
+    const pending = searchBooksNdl({ type: "title", q: "test", page: 1 }, { timeoutMs: 20, throwOnTimeout });
+    if (throwOnTimeout) await expect(pending).rejects.toMatchObject({ name: "ExternalApiTimeoutError" });
+    else await expect(pending).resolves.toEqual({ items: [], totalPages: 0 });
+  });
+  it("NDL caller abort throws", async () => {
+    installFetch({ ndl: hang, rakuten: hang });
+    const controller = new AbortController();
+    const pending = searchBooksNdl({ type: "title", q: "test", page: 1 }, { signal: controller.signal, throwOnTimeout: true });
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "ExternalApiTimeoutError" });
+  });
+  it("non-timeout NDL failure stays empty with opt-in", async () => {
+    installFetch({ ndl: async () => { throw new Error("network"); }, rakuten: hang });
+    await expect(searchBooksNdl({ type: "title", q: "test", page: 1 }, { throwOnTimeout: true }))
+      .resolves.toEqual({ items: [], totalPages: 0 });
   });
 });

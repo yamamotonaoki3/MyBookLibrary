@@ -1,3 +1,7 @@
+jest.mock("@/lib/searchTimeouts", () => ({
+  SEARCH_RAKUTEN_TIMEOUT_MS: 20, SEARCH_RAKUTEN_TOTAL_TIMEOUT_MS: 40,
+  SEARCH_NDL_TIMEOUT_MS: 20, SEARCH_BUDGET_MS: 60,
+}));
 import { NextRequest } from "next/server";
 import { resetRateLimits } from "@/lib/rateLimit";
 
@@ -46,6 +50,36 @@ describe("GET /api/books/search", () => {
 
   const makeRequest = (query: string) =>
     new NextRequest(`http://localhost/api/books/search?${query}`);
+
+  it.each(["rakuten", "ndl", "supplement", "budget"])("%s timeout returns 504", async (source) => {
+    const { fetchBookPage } = jest.requireActual("@/lib/rakuten");
+    const { searchBooksNdl } = jest.requireActual("@/lib/ndl");
+    process.env.RAKUTEN_APP_ID = "test-app-id";
+    process.env.RAKUTEN_ACCESS_KEY = "test-access-key";
+    const original = globalThis.fetch;
+    globalThis.fetch = jest.fn((_url, init) => new Promise((_resolve, reject) => {
+      const signal = init?.signal;
+      if (signal?.aborted) reject(new DOMException("aborted", "AbortError"));
+      signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
+    }));
+    mockFetchBookPage.mockImplementation(source === "ndl" || source === "supplement"
+      ? async () => ({ items: source === "supplement" ? [{ title: "test", author: "test author", isbn: "9780000000000", size: "", salesDate: "", publisherName: "", largeImageUrl: "" }] : [], pageCount: 1 })
+      : source === "budget"
+        ? (params, options) => fetchBookPage(params, { ...options, timeoutMs: 1000, totalTimeoutMs: 1000 })
+        : fetchBookPage);
+    mockSearchBooksNdl.mockImplementation(searchBooksNdl);
+    try {
+      const response = await GET(makeRequest("q=test&type=title"));
+      expect(response.status).toBe(504);
+      expect(await response.json()).toMatchObject({ code: "SEARCH_TIMEOUT" });
+    } finally {
+      globalThis.fetch = original;
+      delete process.env.RAKUTEN_APP_ID;
+      delete process.env.RAKUTEN_ACCESS_KEY;
+      mockFetchBookPage.mockReset();
+      mockSearchBooksNdl.mockReset();
+    }
+  });
 
   it.each([[undefined, 429], ["0", 200]])("検索間隔 %s: 同じ時刻の連続検索は %s", async (interval, expected) => {
     const previous = process.env.SEARCH_RATE_LIMIT_INTERVAL_MS;
