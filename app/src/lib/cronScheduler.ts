@@ -7,7 +7,7 @@
  * docs/features/cron.md、docs/archive/cloudflare-d1-migration-plan.md §4-7 を参照。
  */
 
-export const ENRICHMENT_TICK_CRON = "* * * * *";
+export const ENRICHMENT_TICK_CRON = "30 * * * *";
 export const ENRICHMENT_TICK_PATH = "/api/admin/book-enrichment/tick";
 export const CHECK_NEW_BOOKS_PATH = "/api/cron/check-new-books";
 /** デモ環境（DEMO_MODE=true）の定期的な初期化（#721）。デモ環境では、新刊チェックの代わりに、これを呼ぶ。 */

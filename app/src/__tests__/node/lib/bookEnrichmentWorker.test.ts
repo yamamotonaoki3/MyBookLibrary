@@ -77,6 +77,41 @@ beforeEach(() => {
 });
 
 describe("processEnrichmentJob", () => {
+  it.each([undefined, { maxMs: 20_000 }])("processes pending books newest first: %p", async (options) => {
+    setupJobRun(null);
+    const pending = [
+      { ...baseItem, id: 20, bookId: 2, book: { ...baseBook, id: 2 } },
+      { ...baseItem, id: 10, bookId: 1, book: { ...baseBook, id: 1 } },
+      { ...baseItem, id: 30, bookId: 3, book: { ...baseBook, id: 3 } },
+    ];
+    prismaMock.bookEnrichmentItem.findFirst.mockReset().mockImplementation(async ({ orderBy }) => {
+      const orders = Array.isArray(orderBy) ? orderBy : [orderBy];
+      pending.sort((a, b) => {
+        for (const order of orders) {
+          for (const [key, direction] of Object.entries(order)) {
+            const difference = a[key as "id" | "bookId"] - b[key as "id" | "bookId"];
+            if (difference) return direction === "desc" ? -difference : difference;
+          }
+        }
+        return 0;
+      });
+      return pending.shift() ?? null;
+    });
+    jest.useFakeTimers();
+    try {
+      const run = processEnrichmentJob(1, options);
+      await jest.runAllTimersAsync();
+      await run;
+    } finally { jest.useRealTimers(); }
+    expect(prismaMock.bookEnrichmentItem.updateMany.mock.calls
+      .filter(([query]) => query.data.status === "processing")
+      .map(([query]) => query.where.id)).toEqual([30, 20, 10]);
+    expect(prismaMock.bookEnrichmentItem.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { jobId: 1, status: "pending" },
+      orderBy: [{ bookId: "desc" }, { id: "desc" }],
+    }));
+  });
+
   it("予算超過では次のアイテムを取らずheartbeatだけ更新してrunningを維持する", async () => {
     setupJobRun(baseItem);
     const now = jest.spyOn(Date, "now").mockReturnValueOnce(0).mockReturnValue(20_000);

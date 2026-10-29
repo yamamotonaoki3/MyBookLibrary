@@ -279,7 +279,7 @@ export async function processEnrichmentJob(jobId: number, options: { maxMs?: num
     const item = await prisma.bookEnrichmentItem.findFirst({
       where: { jobId, status: "pending" },
       include: { book: { include: { author: true } } },
-      orderBy: { id: "asc" },
+      orderBy: [{ bookId: "desc" }, { id: "desc" }],
     });
     if (!item) break;
 

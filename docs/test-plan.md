@@ -5,13 +5,15 @@
 CIでは通常E2Eの直後に `e2e/book-enrichment-cron.spec.ts` を専用ステップで実行する。既存の `.env.test` を使い、`ENRICHMENT_MODE=cron` と、そのステップ内で `openssl rand -hex 16` により生成した `ENRICHMENT_TICK_SECRET` を渡す（値はログに出さない）。テスト内で架空の著者・ISBN未設定の本を3件作り、各アイテムが `done` または `error` になり、ジョブが `completed`、`doneCount === totalCount` になるまでtickを呼ぶ。
 
 - `bookEnrichmentWorker.test.ts`: 予算超過でheartbeatを更新しrunningを維持、アイテム途中では止めない、予算なし・予算内完了、既存の中断・貸出回収。
-- `cronScheduler.test.ts`: 毎分tickの専用Bearer、secret不足、デモのスキップ、日次の既存処理。
+- `cronScheduler.test.ts`: 毎時tickの専用Bearer、secret不足、デモのスキップ、日次の既存処理。日次の新刊（UTC 00:00）と毎時30分の補完が、`controller.cron` により、それぞれ正しいパス・Bearerに振り分けられることを確認する。補完のCronを30分にしたのは、新刊チェック（楽天API）と同じ時刻に動かさないため。
+- `bookEnrichmentWorker.test.ts`: 複数のpendingを新しい本（`bookId` 降順、同値なら `id` 降順）から処理する。常駐モード（AWS含む）と20秒予算のCronモードの両方を確認する。
 - `api/book-enrichment.test.ts`: startのCron予約と従来の即時起動、tickの全running取得・順次await・tick全体の残り予算、従来staleのvoid再開、認証・デモ拒否。
 - `enrichmentMode.test.ts`: `cron`完全一致のみ有効。
 - `authorizedPaths.test.ts`: 未ログインのtick完全一致だけがproxyを通過し、start・status・cancel・tick/x・tickxなどの類似パスと他の管理APIは拒否される。
 - `e2e/book-enrichment-cron.spec.ts`: 管理者セッションはstartにだけ使い、進捗ゼロで予約されることを確認する。tickはCookieのない独立した`request`フィクスチャで呼び、Bearerなしは401（307ではない）、Bearerありは200、繰り返しのtickでDB進捗が保存されcompletedになることを確認する。リダイレクトは追従せず、完了後のtickは200かつ処理対象なしを確認する。`.env.test`を明示的に読み込み、`ENRICHMENT_MODE=cron` とテスト専用の `ENRICHMENT_TICK_SECRET`（16文字以上）をテストプロセス・webServerの両方に渡して専用実行する。通常の未設定モードではスキップする。稼働済みの別サーバーを使わない（`CI=1`）。外部APIは既存スタブ、DBはテスト専用のみ。値は出力しない。
-- ステージング（2026-10-29）で、毎分Cronが `tick` を `status: 200` で呼べることを確認し、ジョブの完了は、ユーザーの確認の報告を受けた。毎分Cronの時間・CPUの上限は公式資料とステージング実測による確認が必要で未確認。1分1回・20秒の予算で数件〜十数件を想定するが処理量は未実測。
-- この実装時の検証では、API E2Eの起動は `spawn EPERM` により未実行。代替として、実際のRoute Handler→Service→Repository（DBはモック）のテストと、ワーカー・Cronの単体テストで分岐・待機・予算共有を確認した。実DB／Workerランタイムでの検証は未完了。
+- ステージング（2026-10-29、旧設定）で、変更前のCronが `tick` を `status: 200` で呼べることを確認し、ジョブの完了は、ユーザーの確認の報告を受けた。現在ステージングのCronは無効。毎時Cronの時間・CPUの上限は公式資料とステージング実測による確認が必要で未確認。1時間1回・20秒の予算で数件〜十数件を想定するが処理量は未実測。1,000件に約4〜8日（計算上の目安。実測ではない）を許容し、待機中は1日24回の軽い確認クエリを行う。
+- #696実装時の検証では、API E2Eの起動は `spawn EPERM` により未実行。代替として、実際のRoute Handler→Service→Repository（DBはモック）のテストと、ワーカー・Cronの単体テストで分岐・待機・予算共有を確認した。実DB／Workerランタイムでの検証は未完了。
+- #800では既存E2EがCron式に依存せず、tickを直接呼んで全アイテムの完了を検証することを中身で確認した。`.env.test`・Cronモード・テスト専用Bearerを渡して専用実行を試みたが、`spawn EPERM` で起動できず、処理順変更後のE2Eは未検証。単体テストは変更前の失敗と変更後の29件成功を確認した。
 
 ## PWAビルド依存とキャッシュ分離（Issue #776）
 

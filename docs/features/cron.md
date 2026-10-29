@@ -39,13 +39,15 @@ GET /api/cron/check-new-books（Bearer = Worker の secret CRON_SECRET）
 | 環境 | Cron | 実行内容 |
 | --- | --- | --- |
 | 本番 | `0 0 * * *`（UTC 00:00 = JST 09:00） | 新刊チェック |
-| 本番 | `* * * * *`（毎分） | 書誌補完tick（`ENRICHMENT_TICK_SECRET`） |
-| ステージング | なし（無効） | 書誌補完の毎分Cronは、2026-10-29 の確認のあと、無効にした。新刊チェックも無効（本番との二重通知を防ぐ）。補完を開始した場合は、ジョブが進まないため、管理画面の「中断」で解除する |
+| 本番 | `30 * * * *`（毎時30分） | 書誌補完tick（`ENRICHMENT_TICK_SECRET`）。新刊チェック（毎日 UTC 00:00）と、楽天APIを使う時刻が重ならないよう、30分にずらしている |
+| ステージング | なし（無効） | 書誌補完の旧Cronは、2026-10-29 の確認のあと、無効にした。新刊チェックも無効（本番との二重通知を防ぐ）。補完を開始した場合は、ジョブが進まないため、管理画面の「中断」で解除する |
 | デモ | `0 18 * * *`（UTC 18:00 = JST 03:00） | 新刊チェックの代わりに、デモのデータの初期化（`GET /api/cron/reset-demo`。[デモ環境の方針](../demo-environment.md)） |
 
 `scheduled` ハンドラ（エントリは `app/worker/index.mjs`）は、secret `CRON_SECRET` が未設定のとき、または API が 2xx 以外を返したときは、失敗として記録する。Cloudflare の Cron は自動で再試行しないが、API は重複通知を作らない冪等な作りのため、次の定時実行で回復する。ローカルでの手動実行は `wrangler dev --test-scheduled`。詳細は [Cloudflare へのデプロイ](../cloudflare-deploy.md) と [移行計画](../archive/cloudflare-d1-migration-plan.md) §4-4 の実装メモ（#668）を参照。
 
-毎分の式は書誌補完専用で、`GET /api/admin/book-enrichment/tick` を `ENRICHMENT_TICK_SECRET` で呼ぶ。未設定なら失敗する。デモの毎分イベントはsecret確認前にスキップして正常終了する。他の式は従来の `CRON_SECRET` と新刊チェック／デモ初期化を使う。分割実行の予算・未確認事項は[書誌補完仕様](book-enrichment.md#workers-の分割実行と制限)を参照。
+毎時の式は書誌補完専用で、`GET /api/admin/book-enrichment/tick` を `ENRICHMENT_TICK_SECRET` で呼ぶ。未設定なら失敗する。デモの毎時イベントはsecret確認前にスキップして正常終了する。他の式は従来の `CRON_SECRET` と新刊チェック／デモ初期化を使う。分割実行の予算・未確認事項は[書誌補完仕様](book-enrichment.md#workers-の分割実行と制限)を参照。
+
+本番の毎日の新刊チェック `0 0 * * *` と毎時の補完 `30 * * * *` はUTC 00:00に同時起動する。`controller.cron` の文字列で呼び先とBearerを区別するため、互いに干渉しない。補完は1回20秒の予算で数件〜十数件の見込み、1,000件に約4〜8日（計算上の目安で実測ではない）。待機中は1日24回の軽い確認クエリを行う。処理順は新しい本（`bookId` 降順）からで、AWSの常駐ワーカーも共通。毎時実行の時間・CPU上限への適合性は未確認で、20秒の予算は変更しない。
 
 ### AWS 構成（停止中）
 
