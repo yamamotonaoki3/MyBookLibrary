@@ -49,6 +49,7 @@ processEnrichmentJob を再実行して処理を再開
 
 - `start` / `status` は管理者セッション必須
 - `tick` は Bearer トークン認証必須（`ENRICHMENT_TICK_SECRET`、16文字以上）
+- `/api/admin/book-enrichment/tick` は完全一致で proxy の公開パスとし、ルートが Bearer 認証を行う。Cloudflare の Cron / AWS の Lambda が Cookie なしで呼ぶため。`start` / `status` / `cancel` や `tick` の類似パスは公開しない。デモ環境は拒否し、secret 未設定・長さ不足は 500、Bearer なし・不一致は 401 を返す。
 
 ### Workers の分割実行と制限
 

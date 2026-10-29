@@ -34,6 +34,8 @@ export const authConfig: NextAuthConfig = {
         isPublicAuthPath(nextUrl.pathname) ||
         nextUrl.pathname.startsWith("/api/auth") ||
         nextUrl.pathname.startsWith("/api/cron/") ||
+        // ルートが Bearer 認証を行う。Cloudflare の Cron / AWS の Lambda が Cookie なしで呼ぶため。
+        nextUrl.pathname === "/api/admin/book-enrichment/tick" ||
         nextUrl.pathname === "/api/version" ||
         nextUrl.pathname === "/manifest.json" ||
         // SW registration/importScripts must work before login. Restrict to
