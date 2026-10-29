@@ -132,6 +132,13 @@ jobs:
       - name: E2E test
         run: npm run test:e2e
 
+      - name: E2E test (book enrichment cron)
+        env:
+          ENRICHMENT_MODE: cron
+        run: |
+          export ENRICHMENT_TICK_SECRET="$(openssl rand -hex 16)"
+          npx playwright test e2e/book-enrichment-cron.spec.ts
+
       # デモ環境の保護（DEMO_MODE=true で、アプリを別に起動して確認する）
       - name: E2E test (demo mode)
         run: npm run test:e2e:demo

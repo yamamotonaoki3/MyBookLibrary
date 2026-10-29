@@ -6,11 +6,11 @@ Cloudflare Workers + D1 への移行（#609）で使う環境とデプロイの�
 
 | 環境 | Worker 名 | 公開 URL | D1 | Cron | デプロイ |
 |---|---|---|---|---|---|
-| ステージング | `mybooklibrary-staging` | `https://mybooklibrary-staging.nyproducts.workers.dev` | `mybooklibrary-staging-db` | なし（本番との二重通知を防ぐため。手動で確認する） | `wrangler deploy --env staging` |
-| 本番 | `mybooklibrary` | `https://mybooklibrary.nyproducts.workers.dev` | `mybooklibrary-db` | 毎日 UTC 00:00（JST 09:00） | `wrangler deploy` |
+| ステージング | `mybooklibrary-staging` | `https://mybooklibrary-staging.nyproducts.workers.dev` | `mybooklibrary-staging-db` | `* * * * *`（書誌補完のみ） | `wrangler deploy --env staging` |
+| 本番 | `mybooklibrary` | `https://mybooklibrary.nyproducts.workers.dev` | `mybooklibrary-db` | `0 0 * * *`（新刊）と `* * * * *`（書誌補完） | `wrangler deploy` |
 | デモ | `mybooklibrary-demo` | `https://mybooklibrary-demo.nyproducts.workers.dev` | `mybooklibrary-demo-db` | 毎日 UTC 18:00（JST 03:00。デモのデータの初期化） | `wrangler deploy --env demo` |
 
-設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング、`env.demo` がデモ）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングでは Cron を空配列で上書きして無効にしている（デモは、データの初期化だけの Cron `0 18 * * *` を設定している）。デモ環境の方針は [demo-environment.md](demo-environment.md)。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
+設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング、`env.demo` がデモ）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングでは書誌補完の毎分Cronだけに上書きしている（デモは、データの初期化だけの Cron `0 18 * * *` を設定している）。デモ環境の方針は [demo-environment.md](demo-environment.md)。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
 
 ## 初回準備（Cloudflare アカウントでの操作）
 
@@ -117,7 +117,8 @@ curl https://mybooklibrary-staging.nyproducts.workers.dev/api/version
 | `RAKUTEN_APP_ID` / `RAKUTEN_ACCESS_KEY` | secret | 必須 | 楽天ブックス Web Service（https://webservice.rakuten.co.jp/ ）。現行と同じ値でよい |
 | `CALIL_API_KEY` | secret | 任意 | カーリル 図書館 API。蔵書検索を使うなら必須 |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | secret | 任意 | Google ログイン用。未設定でもメール+パスワードのログインは動く。ステージング・本番の URL ごとにリダイレクト URI を Google Cloud Console に登録する（下記） |
-| `ENRICHMENT_TICK_SECRET` | secret | 保留 | 書誌補完ジョブの再開用。Workers 対応の方針は #696 で決める。それまで登録不要 |
+| `ENRICHMENT_TICK_SECRET` | secret | 本番・ステージング必須 | 書誌補完の毎分Cron用Bearer（16文字以上）。環境ごとに生成し他のsecretと使い回さない |
+| `ENRICHMENT_MODE` | vars | 本番・ステージング | `cron`（wrangler.jsoncで設定）。AWS・ローカル・デモには追加しない |
 | `AUTH_URL` / `AUTH_TRUST_HOST` / `CRON_TARGET_ORIGIN` / `RAKUTEN_ALLOWED_ORIGIN` | vars | 設定済み | secret ではなく `wrangler.jsonc` の `vars` に書いてある。`RAKUTEN_ALLOWED_ORIGIN` は楽天 API に Referer / Origin として送るドメイン（下記） |
 | `LOG_LEVEL` | vars | 任意 | 既定は `info` |
 
@@ -136,6 +137,15 @@ openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET
 ```
 
 `openssl` が使えない場合は、`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))" | npx wrangler secret put AUTH_SECRET --env staging` でもよい。`CRON_SECRET` も同様に、環境ごとに別の値で登録する。
+
+書誌補完の毎分Cronをデプロイする前に、専用secretを両環境へ登録する（以下は手順であり、この変更では登録・デプロイは未実施）。生成結果を直接渡し、値を表示しない。
+
+```bash
+openssl rand -base64 32 | npx wrangler secret put ENRICHMENT_TICK_SECRET --env staging
+openssl rand -base64 32 | npx wrangler secret put ENRICHMENT_TICK_SECRET
+```
+
+デモには登録不要。毎分Cronはジョブがなくても確認クエリを常時実行する。tick全体の20秒予算と制限・未確認事項は[書誌補完仕様](features/book-enrichment.md#workers-の分割実行と制限)を参照。ステージングでの完了確認、毎分実行の時間・CPU上限への適合性は未確認。
 
 楽天・カーリル・Google の値は、現行の `app/.env.local`（ローカル）や AWS の SSM Parameter Store にあるものを使う。値を画面に出さずに登録するには、`npx wrangler secret put RAKUTEN_APP_ID --env staging` を実行すると入力を求められるので、そこに貼り付ける（入力は画面に表示されない）。
 
@@ -182,7 +192,7 @@ npm run smoke:remote
 - ログインには、ステージング専用のテストユーザー（架空のデータ。メールは `@example.com`）を使う。認証情報は、リポジトリの外のファイル（既定は `~/.mbl-staging-smoke.env`。`STAGING_SMOKE_ENV_FILE` で変更可）か、環境変数 `STAGING_SMOKE_EMAIL` / `STAGING_SMOKE_PASSWORD` / `STAGING_CRON_SECRET` で渡す。値は出力に出さない。
 - テストユーザーは、ステージングの D1 に、`bcryptjs` でハッシュ化したパスワードを `users` へ挿入して作る（`wrangler d1 execute DB --remote --env staging --command ...`。`--file` での実行は認証エラーになることがあるため `--command` を使う）。
 - 誤ったパスワードでのログインは、失敗が重なるとテストユーザーがロックされるため、確認しない。
-- ステージングの Cron Trigger は無効のため、Cron は HTTP 呼び出しで手動実行して確認する（`STAGING_CRON_SECRET` に、ステージングの `CRON_SECRET` と同じ値を設定する）。
+- ステージングの新刊チェック用Cron Triggerは無効のため、新刊チェックはHTTP呼び出しで手動実行して確認する（`STAGING_CRON_SECRET` に、ステージングの `CRON_SECRET` と同じ値を設定する）。
 
 ブラウザ操作を伴う既存の E2E（Playwright）は、テスト用 DB に直接接続してデータを準備・削除する作りのため、そのままではデプロイ済みの環境に対して実行できない。必要になったら別 Issue で扱う。
 

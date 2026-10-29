@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { updateEnrichmentHeartbeat } from "@/repositories/bookEnrichmentRepository";
 import { logger } from "@/lib/logger";
 import { recordAuditEvent, AUDIT_EVENT } from "@/lib/auditLog";
 import { searchBooksByIsbn } from "@/lib/rakuten";
@@ -236,7 +237,8 @@ async function buildBookListsForAudit(jobId: number) {
   };
 }
 
-export async function processEnrichmentJob(jobId: number): Promise<void> {
+export async function processEnrichmentJob(jobId: number, options: { maxMs?: number } = {}): Promise<void> {
+  const startedAt = Date.now();
   const job = await prisma.bookEnrichmentJob.findUnique({ where: { id: jobId } });
   if (!job || job.status !== "running") return;
 
@@ -259,6 +261,11 @@ export async function processEnrichmentJob(jobId: number): Promise<void> {
   let cancelled = false;
 
   for (;;) {
+    // アイテムの途中では止めず、runningのまま次のCronへ引き継ぐ。
+    if (options.maxMs !== undefined && Date.now() - startedAt >= options.maxMs) {
+      await updateEnrichmentHeartbeat(jobId);
+      return;
+    }
     // 管理者が「中断」ボタンを押していないか、次のアイテムを処理する前に確認する。
     const currentJob = await prisma.bookEnrichmentJob.findUnique({
       where: { id: jobId },
