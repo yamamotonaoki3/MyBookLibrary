@@ -6,8 +6,8 @@ Cloudflare Workers + D1 への移行（#609）で使う環境とデプロイの�
 
 | 環境 | Worker 名 | 公開 URL | D1 | Cron | デプロイ |
 |---|---|---|---|---|---|
-| ステージング | `mybooklibrary-staging` | `https://mybooklibrary-staging.nyproducts.workers.dev` | `mybooklibrary-staging-db` | 無効（2026-10-29 に、書誌補完の毎分Cronの確認のあと、無効にした） | `wrangler deploy --env staging` |
-| 本番 | `mybooklibrary` | `https://mybooklibrary.nyproducts.workers.dev` | `mybooklibrary-db` | `0 0 * * *`（新刊）と `* * * * *`（書誌補完） | `wrangler deploy` |
+| ステージング | `mybooklibrary-staging` | `https://mybooklibrary-staging.nyproducts.workers.dev` | `mybooklibrary-staging-db` | 無効（2026-10-29 に、書誌補完の旧Cronの確認のあと、無効にした） | `wrangler deploy --env staging` |
+| 本番 | `mybooklibrary` | `https://mybooklibrary.nyproducts.workers.dev` | `mybooklibrary-db` | `0 0 * * *`（新刊）と `30 * * * *`（書誌補完） | `wrangler deploy` |
 | デモ | `mybooklibrary-demo` | `https://mybooklibrary-demo.nyproducts.workers.dev` | `mybooklibrary-demo-db` | 毎日 UTC 18:00（JST 03:00。デモのデータの初期化） | `wrangler deploy --env demo` |
 
 設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング、`env.demo` がデモ）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングでは Cron を空配列で上書きして無効にしている（デモは、データの初期化だけの Cron `0 18 * * *` を設定している）。デモ環境の方針は [demo-environment.md](demo-environment.md)。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
@@ -117,7 +117,7 @@ curl https://mybooklibrary-staging.nyproducts.workers.dev/api/version
 | `RAKUTEN_APP_ID` / `RAKUTEN_ACCESS_KEY` | secret | 必須 | 楽天ブックス Web Service（https://webservice.rakuten.co.jp/ ）。現行と同じ値でよい |
 | `CALIL_API_KEY` | secret | 任意 | カーリル 図書館 API。蔵書検索を使うなら必須 |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | secret | 任意 | Google ログイン用。未設定でもメール+パスワードのログインは動く。ステージング・本番の URL ごとにリダイレクト URI を Google Cloud Console に登録する（下記） |
-| `ENRICHMENT_TICK_SECRET` | secret | 本番・ステージング必須 | 書誌補完の毎分Cron用Bearer（16文字以上）。環境ごとに生成し他のsecretと使い回さない |
+| `ENRICHMENT_TICK_SECRET` | secret | 本番・ステージング必須 | 書誌補完の毎時Cron用Bearer（16文字以上）。環境ごとに生成し他のsecretと使い回さない |
 | `ENRICHMENT_MODE` | vars | 本番・ステージング | `cron`（wrangler.jsoncで設定）。AWS・ローカル・デモには追加しない |
 | `AUTH_URL` / `AUTH_TRUST_HOST` / `CRON_TARGET_ORIGIN` / `RAKUTEN_ALLOWED_ORIGIN` | vars | 設定済み | secret ではなく `wrangler.jsonc` の `vars` に書いてある。`RAKUTEN_ALLOWED_ORIGIN` は楽天 API に Referer / Origin として送るドメイン（下記） |
 | `LOG_LEVEL` | vars | 任意 | 既定は `info` |
@@ -138,14 +138,14 @@ openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET
 
 `openssl` が使えない場合は、`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))" | npx wrangler secret put AUTH_SECRET --env staging` でもよい。`CRON_SECRET` も同様に、環境ごとに別の値で登録する。
 
-書誌補完の毎分Cronをデプロイする前に、専用secretを両環境へ登録する。**ステージングは、2026-10-29に登録済み（Cronは、確認のあと、無効にした）。本番は未登録**で、`production` ブランチへ反映する前に、登録が必要（未登録のまま反映すると、毎分のCronが、「`ENRICHMENT_TICK_SECRET` が未設定」で失敗し続ける）。生成結果を直接渡し、値を表示しない。
+書誌補完の毎時Cronをデプロイする前に、専用secretを両環境へ登録する。**ステージングは、2026-10-29に登録済み（Cronは、確認のあと、無効にした）。本番は未登録**で、`production` ブランチへ反映する前に、登録が必要（未登録のまま反映すると、毎時のCronが、「`ENRICHMENT_TICK_SECRET` が未設定」で失敗し続ける）。生成結果を直接渡し、値を表示しない。
 
 ```bash
 openssl rand -base64 32 | npx wrangler secret put ENRICHMENT_TICK_SECRET --env staging
 openssl rand -base64 32 | npx wrangler secret put ENRICHMENT_TICK_SECRET
 ```
 
-デモには登録不要。毎分Cronはジョブがなくても確認クエリを常時実行する。tick全体の20秒予算と制限・未確認事項は[書誌補完仕様](features/book-enrichment.md#workers-の分割実行と制限)を参照。ステージングでの完了確認、毎分実行の時間・CPU上限への適合性は未確認。
+デモには登録不要。補完Cronは1時間に1回（毎時30分）。待機中も1日24回、軽い確認クエリを実行する。1回20秒の予算で数件〜十数件の見込みで、1,000件に約4〜8日（計算上の目安。実測ではない）。新しい本（`bookId` 降順）から処理し、AWSの常駐ワーカーにもこの変更が適用される。tick全体の20秒予算は変更しない。制限・未確認事項は[書誌補完仕様](features/book-enrichment.md#workers-の分割実行と制限)を参照。毎時実行の時間・CPU上限への適合性は未確認。ステージングのCronは無効のまま。
 
 楽天・カーリル・Google の値は、現行の `app/.env.local`（ローカル）や AWS の SSM Parameter Store にあるものを使う。値を画面に出さずに登録するには、`npx wrangler secret put RAKUTEN_APP_ID --env staging` を実行すると入力を求められるので、そこに貼り付ける（入力は画面に表示されない）。
 

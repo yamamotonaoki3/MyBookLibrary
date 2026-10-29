@@ -26,8 +26,8 @@
 
   // ---- 本番（production） ----
   // 新刊チェックの Cron（毎日 UTC 00:00 = JST 09:00。AWS の EventBridge と同じ）。
-  // 書誌補完は毎分。scheduled は worker/index.mjs。CRON_SECRET / ENRICHMENT_TICK_SECRET は環境ごとのsecret。
-  "triggers": { "crons": ["0 0 * * *", "* * * * *"] },
+  // 書誌補完は毎時30分（毎日 UTC 00:00 の新刊チェックと、楽天APIを使う時刻を重ねない）。scheduled は worker/index.mjs。CRON_SECRET / ENRICHMENT_TICK_SECRET は環境ごとのsecret。
+  "triggers": { "crons": ["0 0 * * *", "30 * * * *"] },
   "vars": {
     "ENRICHMENT_MODE": "cron",
     // 公開 URL（workers.dev）。NextAuth の AUTH_URL と、Cron が内部呼び出しで使う origin。
@@ -51,7 +51,7 @@
     // ---- ステージング（staging） ----
     "staging": {
       // Worker 名は mybooklibrary-staging（env 名が付く）。公開 URL は https://mybooklibrary-staging.nyproducts.workers.dev
-      // Cron は無効（本番との二重通知を防ぐ。書誌補完の毎分Cronは、2026-10-29 の確認のあと、無効にした）。
+      // Cron は無効（本番との二重通知を防ぐ。書誌補完の旧Cronは、2026-10-29 の確認のあと、無効にした）。
       // 無効のため、ステージングでは補完ジョブは進まない（開始した場合は、管理画面の「中断」で解除する）。
       "triggers": { "crons": [] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },

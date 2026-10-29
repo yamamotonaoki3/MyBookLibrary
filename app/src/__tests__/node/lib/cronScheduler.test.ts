@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { CHECK_NEW_BOOKS_PATH, createScheduledHandler, RESET_DEMO_PATH, type CronEnv } from "@/lib/cronScheduler";
+import { CHECK_NEW_BOOKS_PATH, createScheduledHandler, ENRICHMENT_TICK_CRON, RESET_DEMO_PATH, type CronEnv } from "@/lib/cronScheduler";
 
 // 秘密情報の検査（Gitleaks）の誤検知を避けるため、テスト用の値はリテラルで書かず実行時に生成する
 const SECRET = `s${randomBytes(12).toString("hex")}`;
@@ -8,7 +8,7 @@ const controller = { cron: "0 0 * * *" };
 function setup(response: Response | Error = new Response('{"ok":true,"created":2}', { status: 200 })) {
   const appFetch = jest.fn<Promise<Response>, [Request, CronEnv, unknown]>(async () => {
     if (response instanceof Error) throw response;
-    return response;
+    return response.clone();
   });
   const waitUntil = jest.fn<void, [Promise<unknown>]>();
   const handler = createScheduledHandler(appFetch);
@@ -16,25 +16,42 @@ function setup(response: Response | Error = new Response('{"ok":true,"created":2
 }
 
 describe("createScheduledHandler", () => {
-  it("毎分は専用secretでtickを呼ぶ（CRON_SECRET不要）", async () => {
+  it("毎時は専用secretでtickを呼ぶ（CRON_SECRET不要）", async () => {
     const { appFetch, waitUntil, handler, ctx } = setup();
-    await handler({ cron: "* * * * *" }, { ENRICHMENT_TICK_SECRET: SECRET }, ctx);
+    await handler({ cron: "30 * * * *" }, { ENRICHMENT_TICK_SECRET: SECRET }, ctx);
     await waitUntil.mock.calls[0][0];
     expect(appFetch.mock.calls[0][0].url).toBe("http://localhost/api/admin/book-enrichment/tick");
     expect(appFetch.mock.calls[0][0].method).toBe("GET");
     expect(appFetch.mock.calls[0][0].headers.get("authorization")).toBe(`Bearer ${SECRET}`);
   });
-  it("毎分の専用secret未設定は失敗する", async () => {
+  it("毎時の専用secret未設定は失敗する", async () => {
     const { appFetch, handler, ctx } = setup();
-    await expect(handler({ cron: "* * * * *" }, { CRON_SECRET: SECRET }, ctx))
+    await expect(handler({ cron: "30 * * * *" }, { CRON_SECRET: SECRET }, ctx))
       .rejects.toThrow("ENRICHMENT_TICK_SECRET is not configured");
     expect(appFetch).not.toHaveBeenCalled();
   });
-  it("デモの毎分はsecretなしでも何も呼ばず成功する", async () => {
+  it("デモの毎時はsecretなしでも何も呼ばず成功する", async () => {
     const { appFetch, waitUntil, handler, ctx } = setup();
-    await handler({ cron: "* * * * *" }, { DEMO_MODE: "true" }, ctx);
+    await handler({ cron: "30 * * * *" }, { DEMO_MODE: "true" }, ctx);
     expect(appFetch).not.toHaveBeenCalled();
     expect(waitUntil).not.toHaveBeenCalled();
+  });
+  it("補完は、毎日の新刊チェック（UTC 00:00）と重ならない毎時30分で、Cron式で呼び先を分ける", async () => {
+    const { appFetch, waitUntil, handler, ctx } = setup();
+    const enrichmentSecret = `s${randomBytes(12).toString("hex")}`;
+    const env = { CRON_SECRET: SECRET, ENRICHMENT_TICK_SECRET: enrichmentSecret };
+    // 新刊チェックも楽天APIを使うため、補完は、その時刻（毎日 UTC 00:00）を避けて、毎時30分に動かす。
+    expect(ENRICHMENT_TICK_CRON).toBe("30 * * * *");
+    await handler({ cron: "0 0 * * *", scheduledTime: Date.parse("2026-10-29T00:00:00Z") }, env, ctx);
+    await handler({ cron: "30 * * * *", scheduledTime: Date.parse("2026-10-29T00:30:00Z") }, env, ctx);
+    await Promise.all(waitUntil.mock.calls.map(([promise]) => promise));
+    expect(appFetch).toHaveBeenCalledTimes(2);
+    expect(appFetch.mock.calls.map(([request]) => [
+      new URL(request.url).pathname, request.headers.get("authorization"),
+    ])).toEqual([
+      [CHECK_NEW_BOOKS_PATH, `Bearer ${SECRET}`],
+      ["/api/admin/book-enrichment/tick", `Bearer ${enrichmentSecret}`],
+    ]);
   });
   let logSpy: jest.SpyInstance;
   let errorSpy: jest.SpyInstance;
