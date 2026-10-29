@@ -6,11 +6,11 @@ Cloudflare Workers + D1 への移行（#609）で使う環境とデプロイの�
 
 | 環境 | Worker 名 | 公開 URL | D1 | Cron | デプロイ |
 |---|---|---|---|---|---|
-| ステージング | `mybooklibrary-staging` | `https://mybooklibrary-staging.nyproducts.workers.dev` | `mybooklibrary-staging-db` | `* * * * *`（書誌補完のみ） | `wrangler deploy --env staging` |
+| ステージング | `mybooklibrary-staging` | `https://mybooklibrary-staging.nyproducts.workers.dev` | `mybooklibrary-staging-db` | 無効（2026-10-29 に、書誌補完の毎分Cronの確認のあと、無効にした） | `wrangler deploy --env staging` |
 | 本番 | `mybooklibrary` | `https://mybooklibrary.nyproducts.workers.dev` | `mybooklibrary-db` | `0 0 * * *`（新刊）と `* * * * *`（書誌補完） | `wrangler deploy` |
 | デモ | `mybooklibrary-demo` | `https://mybooklibrary-demo.nyproducts.workers.dev` | `mybooklibrary-demo-db` | 毎日 UTC 18:00（JST 03:00。デモのデータの初期化） | `wrangler deploy --env demo` |
 
-設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング、`env.demo` がデモ）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングでは書誌補完の毎分Cronだけに上書きしている（デモは、データの初期化だけの Cron `0 18 * * *` を設定している）。デモ環境の方針は [demo-environment.md](demo-environment.md)。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
+設定は `app/wrangler.jsonc` が唯一の定義元（トップレベルが本番、`env.staging` がステージング、`env.demo` がデモ）。wrangler ではバインディング（D1）と vars が環境に継承されないため、環境ごとに書いている。triggers は継承されるため、ステージングでは Cron を空配列で上書きして無効にしている（デモは、データの初期化だけの Cron `0 18 * * *` を設定している）。デモ環境の方針は [demo-environment.md](demo-environment.md)。`main` へのマージでステージングへ、`production` ブランチへの反映で本番へ、Workers Builds が自動デプロイする（下の「自動デプロイ」）。
 
 ## 初回準備（Cloudflare アカウントでの操作）
 
@@ -138,7 +138,7 @@ openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET
 
 `openssl` が使えない場合は、`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))" | npx wrangler secret put AUTH_SECRET --env staging` でもよい。`CRON_SECRET` も同様に、環境ごとに別の値で登録する。
 
-書誌補完の毎分Cronをデプロイする前に、専用secretを両環境へ登録する（以下は手順であり、この変更では登録・デプロイは未実施）。生成結果を直接渡し、値を表示しない。
+書誌補完の毎分Cronをデプロイする前に、専用secretを両環境へ登録する。**ステージングは、2026-10-29に登録済み（Cronは、確認のあと、無効にした）。本番は未登録**で、`production` ブランチへ反映する前に、登録が必要（未登録のまま反映すると、毎分のCronが、「`ENRICHMENT_TICK_SECRET` が未設定」で失敗し続ける）。生成結果を直接渡し、値を表示しない。
 
 ```bash
 openssl rand -base64 32 | npx wrangler secret put ENRICHMENT_TICK_SECRET --env staging
