@@ -53,13 +53,14 @@ processEnrichmentJob を再実行して処理を再開
 
 ### Workers の分割実行と制限
 
-- 本番とステージングの vars に `ENRICHMENT_MODE="cron"` を設定し、`* * * * *` の Cron が `GET /api/admin/book-enrichment/tick` を専用secretで内部呼び出しする。デモには設定せず、デモの毎分tickイベントは何も呼ばず正常終了する。
+- 本番とステージングの vars に `ENRICHMENT_MODE="cron"` を設定する（ステージングは、確認のあと、Cronを無効にしたため、ジョブは進まない）。本番では、`* * * * *` の Cron が `GET /api/admin/book-enrichment/tick` を専用secretで内部呼び出しする。デモには設定せず、デモの毎分tickイベントは何も呼ばず正常終了する。
 - Cronモードのtickは、`lastTickAt` に関わらず全runningジョブを取得し、順にawaitする。応答は `{ processed: [jobId...] }`。従来モードの応答は `{ resumed: [jobId...] }` のまま。
 - **1回のtick全体で20秒の経過時間予算**を共有する。各ジョブに残り予算を渡し、次のアイテム取得前に予算切れなら `lastTickAt` を更新してrunningのまま戻る。完了・cancelledにはしない。処理中の1件は打ち切らないので、実際の応答時間が20秒を超える場合がある。予算内で全件終了した場合の完了処理、中断要求による取消、期限切れアイテムの回収は従来どおり。
 - 処理量は、**1分あたり1回の呼び出しで20秒の予算内（数件〜十数件）**を想定する。外部APIの応答時間・フォールバック回数に依存するため、保証値ではなく未実測。
 - 毎分のCronは、実行中ジョブの確認（軽いクエリ）で常時動く。ジョブがなくても呼び出しとクエリの負荷がある。
 - 毎分のCronでの時間・CPUの上限は、[Cloudflare公式の制限](https://developers.cloudflare.com/workers/platform/limits/)・[Cron Trigger資料](https://developers.cloudflare.com/workers/configuration/cron-triggers/)と、利用プラン・ステージングでの実測を合わせた確認が必要で、適合性は未確認。20秒はアプリの経過時間予算であり、CPU上限を示す値ではない。
-- **ステージングでのジョブ完了の確認は未実施**。デプロイ後、進捗の継続、完了、中断、実行時間・CPU、アイテム処理中の超過や中断後の再開を確認する。
+- **ステージングでの確認（2026-10-29）**: 毎分Cronが、`tick` を `status: 200` で呼べることを、`wrangler tail` で確認した（#796 の修正後。それ以前は、proxy が `307` を返して失敗していた）。ジョブの確認は、ユーザーがステージングで行い、確認できたと報告を受けた（詳細な結果の記録は、残していない）。
+- **未確認**: 進捗の継続、中断、実行時間・CPU、アイテム処理中の超過や中断後の再開の、詳細な実測。本番は、`ENRICHMENT_TICK_SECRET` が未登録で、反映もしていない。
 
 ## 関連 API エンドポイント
 

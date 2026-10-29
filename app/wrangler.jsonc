@@ -6,7 +6,7 @@
 //   ステージング: wrangler deploy --env staging … Worker 名 mybooklibrary-staging / D1 mybooklibrary-staging-db
 //   デモ:         wrangler deploy --env demo    … Worker 名 mybooklibrary-demo / D1 mybooklibrary-demo-db
 // wrangler では、バインディング（D1）と vars は環境に継承されないため、環境ごとに書く。triggers は継承されるため、
-// ステージングは書誌補完の毎分Cronだけに上書きする。デモはデータの初期化のCronだけを設定する。
+// ステージングはCronを空配列で上書きして無効にする（省略すると本番のCronを引き継ぐ）。デモはデータの初期化のCronだけを設定する。
 // ローカル実行（wrangler dev --local、npm run smoke:worker）はトップレベルを使い、D1 の ID は使われない。
 // secret（AUTH_SECRET・CRON_SECRET など）は、このファイルに書かず wrangler secret put で環境ごとに登録する。
 {
@@ -51,8 +51,9 @@
     // ---- ステージング（staging） ----
     "staging": {
       // Worker 名は mybooklibrary-staging（env 名が付く）。公開 URL は https://mybooklibrary-staging.nyproducts.workers.dev
-      // 書誌補完のみ毎分実行。新刊チェックは無効（本番との二重通知を防ぐ）。
-      "triggers": { "crons": ["* * * * *"] },
+      // Cron は無効（本番との二重通知を防ぐ。書誌補完の毎分Cronは、2026-10-29 の確認のあと、無効にした）。
+      // 無効のため、ステージングでは補完ジョブは進まない（開始した場合は、管理画面の「中断」で解除する）。
+      "triggers": { "crons": [] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "vars": {
         "ENRICHMENT_MODE": "cron",
