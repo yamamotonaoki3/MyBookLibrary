@@ -34,6 +34,7 @@ CIでは通常E2Eの直後に `e2e/book-enrichment-cron.spec.ts` を専用ステ
 - shadcn・MCP・Express経路の再確認（#777）は[監査記録](dependency-audit-777.md)に記載する。依存・コードは変更しない。
 - Prisma設定依存（`deepmerge-ts`）の調査（#778）は[監査記録](dependency-audit-778.md)、Wrangler・Miniflareの更新（#789）は[監査記録](dependency-audit-789.md)に記載する。
 - 互換範囲内の依存更新候補の監査（#804）は[監査記録](dependency-audit-804.md)に記載する。
+- shadcn CLIを開発依存へ移したruntime検証（#806）は[検証結果](dependency-runtime-806.md)に記載する。CSSの完全一致、prod-only/standaloneのHTTP疎通、PrismaとWorker smokeを確認し、監査件数の変化を脆弱性修正とは扱わない。
 - 依存関係の監査警告の段階的解消（親Issue #772）の集約は[監査記録](dependency-audit-772.md)に記載する。
 
 ## 認証ライブラリのセキュリティ更新（Issue #773）
