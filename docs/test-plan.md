@@ -33,6 +33,7 @@ CIでは通常E2Eの直後に `e2e/book-enrichment-cron.spec.ts` を専用ステ
 - 実測結果と対象/残存GHSAは[監査記録](dependency-audit-776.md)に記載する。
 - shadcn・MCP・Express経路の再確認（#777）は[監査記録](dependency-audit-777.md)に記載する。依存・コードは変更しない。
 - Prisma設定依存（`deepmerge-ts`）の調査（#778）は[監査記録](dependency-audit-778.md)、Wrangler・Miniflareの更新（#789）は[監査記録](dependency-audit-789.md)に記載する。
+- 互換範囲内の依存更新候補の監査（#804）は[監査記録](dependency-audit-804.md)に記載する。
 - 依存関係の監査警告の段階的解消（親Issue #772）の集約は[監査記録](dependency-audit-772.md)に記載する。
 
 ## 認証ライブラリのセキュリティ更新（Issue #773）
