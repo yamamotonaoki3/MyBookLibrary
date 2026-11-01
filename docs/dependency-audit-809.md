@@ -72,6 +72,12 @@
 - provider分離後に `npm ls --all` を実行し、status 0を確認した。依存lockは変更していない。
 - 独立Worker scanでのコード混入検出、その後のprovider分離、再scanによる非混入確認は上記の経緯のとおり。検証結果は、初回の混入検出と修正後の成功を区別して記録した。
 
+## CI global setupのPrisma module解決
+
+- PR #810の初回CI run `41355591281` ではWorker、D1、secret関連jobは成功したが、通常E2Eはシナリオ開始前のglobal setupで失敗した。Playwright global setupから `dbTest.ts` 経由でfactoryを読み込むとき、`prismaMysql.ts` のJest path mapper前提のalias `@/generated/prisma` をNodeが解決できず、シナリオは0件だった。CIの再確認状況はPRのchecksを参照する。
+- factory内の生成Clientと接続設定moduleへの2つのimportを相対pathに変更した。Jest mapperを使わないtsx子プロセスで、pathsを含めない一時configから実factoryをrequireし、架空のlocalhost URLでClientを構築してdisconnectする回帰テストを追加した。SQL/queryやDB接続は行わない。
+- 修正後のfocused testは4/4、`npm run check` はstatus 0（86 suites/873 tests、Native 2 tests、docs 71 files）だった。CIは修正後まだ再確認前であり、成功とは記録しない。CI結果はPR checksで追跡し、成功後の記録だけを目的としたコミットでCIを再起動しない。
+
 ## 初期比較の識別情報と証跡範囲
 
 - 比較対象のbaselineはHEAD `271b3c57e3d83cc4f07f7b3ef0a9ff6acfeeac53`。baselineの `package.json` SHA256は `7c5de91e5f4d9b1d5d0287e1076e44aa627e0019f56825b333c5ecda218857f3`、`package-lock.json` は `ad1e607c668dfb1ce2f134c6aa51c2508b5abed2717b2a14459138caddcbe4d3`。

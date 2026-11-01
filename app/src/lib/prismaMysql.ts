@@ -1,7 +1,7 @@
 import path from "node:path";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
-import { PrismaClient } from "@/generated/prisma";
-import { mysqlConnectionOptions } from "@/lib/mysqlConnectionConfig";
+import { PrismaClient } from "../generated/prisma";
+import { mysqlConnectionOptions } from "./mysqlConnectionConfig";
 
 type PrismaLogLevel = "query" | "info" | "warn" | "error";
 

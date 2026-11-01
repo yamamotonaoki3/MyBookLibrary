@@ -539,3 +539,12 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - **次回の行動規則**: 関数内requireを分離の保証とみなさず、providerごとにmoduleを分けてliteral条件から直接requireする。package名やmetadataだけで判断せず、実際のbuild output codeを走査するregression testとWorker build smokeで確認する。
 - **状態**: 有効
 - **根拠**: 混入fixtureのRED（Missing expected exception）からnative tests 2/2成功へ。修正後Worker outputで3171 filesを走査し実code hit/driver pathとも0。保存した配布4 filesも0、offline `wrangler deploy --dry-run` status 0。
+
+### 2026-11-02: Jest path aliasをPlaywright global setupのNode解決と混同しない
+- **種別**: 手直し（Issue #809）
+- **対象領域・関連ファイル**: Playwright global setup / `app/src/lib/prismaMysql.ts`、`app/src/__tests__/node/lib/prismaMysql.test.ts`
+- **何が起きたか**: 通常E2Eのglobal setupからdbTest経由でMySQL factoryを読み込むと、Jest mapper向けの `@/generated/prisma` aliasをNodeが解決できず、シナリオ開始前に失敗した。
+- **対応**: factoryの生成Clientと接続設定moduleのimportを相対pathにした。Jest mapperなし・pathsなしconfigのtsx子プロセスから実factoryを読み、架空URLで構築とdisconnectを行う回帰テストを追加した。SQL/queryと実DB接続は行わない。
+- **次回の行動規則**: Jestで通るaliasがPlaywright config/global setupや直接Node読み込みでも解決すると仮定しない。テストランナーが異なるmodule load境界は、その実行環境のresolverを通すfocused smokeで確認する。
+- **状態**: 有効
+- **根拠**: PR #810初回CIでglobal setup失敗・シナリオ0件を確認。修正後focused test 4/4と `npm run check`（86 suites/873 tests）status 0。修正後CI結果はPR checksで追跡し、まだ成功を主張しない。
