@@ -13,7 +13,8 @@
  */
 import "dotenv/config";
 import { readFileSync, existsSync } from "node:fs";
-import { PrismaClient } from "@/generated/prisma";
+import type { PrismaClient } from "@/generated/prisma";
+import { createMysqlPrisma } from "../../../src/lib/prismaMysql";
 import { parseDump } from "@/lib/migration/dumpParser";
 import { validateDumpTableSet } from "@/lib/migration/expectedTables";
 import { runVerification, type VerificationDb, type Phase } from "@/lib/migration/verify";
@@ -109,7 +110,7 @@ async function main(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   const productionHost = process.env.PRODUCTION_DB_HOST;
 
-  const prisma = new PrismaClient();
+  const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
   let sourcePrisma: PrismaClient | undefined;
 
   try {
@@ -144,7 +145,7 @@ async function main(): Promise<void> {
         );
       }
 
-      sourcePrisma = new PrismaClient({ datasources: { db: { url: sourceDatabaseUrl } } });
+      sourcePrisma = createMysqlPrisma(sourceDatabaseUrl);
       sourceDb = createPrismaVerificationDb(sourcePrisma);
     }
 

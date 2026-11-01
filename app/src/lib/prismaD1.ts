@@ -10,16 +10,15 @@ import { createPerBindingProxy } from "@/lib/perBindingProxy";
  */
 type D1ClientModule = { PrismaClient: new (options: { adapter: unknown; log?: string[] }) => unknown };
 
-// 実行環境（D1_RUNTIME）で読み込む生成物を選ぶ。値はビルド時に埋め込まれ、使わない側はバンドルから除かれる。
-//   - workers（既定）… Workers 向けの wasm エントリ。
-//   - node … Node.js 上のテスト・スクリプト向け（miniflare のローカル D1 に接続する結合テスト等）。
-const { PrismaClient: D1PrismaClient } = (
+// 実行環境（D1_RUNTIME）に応じて生成entryを選ぶ。ビルド時の値で未使用側はbundleから除かれる。
+// Node は root entry のbase64 loader、Workers は edge entry経由で `wasm-worker-loader.mjs` を使う。
+const d1ClientModule =
   process.env.D1_RUNTIME === "node"
     ? // eslint-disable-next-line @typescript-eslint/no-require-imports
       require("@/generated/prisma-d1")
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("@/generated/prisma-d1/wasm")
-) as D1ClientModule;
+      require("@/generated/prisma-d1/edge");
+const { PrismaClient: D1PrismaClient } = d1ClientModule as D1ClientModule;
 
 /**
  * D1 用クライアントを、MySQL 版の `PrismaClient` 型として返す。

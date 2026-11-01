@@ -10,7 +10,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./d1-generate-only.db"
 }
 
 model User {

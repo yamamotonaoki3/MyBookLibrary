@@ -13,6 +13,7 @@ import { testPrisma, resetDb } from "../helpers/dbTest";
 import { asUser } from "../helpers/sessionMock";
 import { jsonRequest } from "../helpers";
 import { runAfterResponse } from "@/lib/afterResponse";
+import { prisma } from "@/lib/prisma";
 import { restoreFetch } from "../helpers/fetchMock";
 
 let POST: (req: Request) => Promise<Response>;
@@ -32,6 +33,7 @@ afterEach(() => {
 
 afterAll(async () => {
   await testPrisma.$disconnect();
+  await prisma.$disconnect();
 });
 
 describe("POST /api/reading-status", () => {

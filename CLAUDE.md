@@ -100,7 +100,7 @@ docs: 要件定義書を追加
 | フロントエンド | Next.js 16 (React 19) + TypeScript |
 | バックエンド | Next.js API Routes（同一プロジェクト内） |
 | データベース | Cloudflare D1（SQLite。ステージング・デモ・本番）／ MySQL 8.4（ローカル開発・停止中の AWS）。本番の利用者向けデータは、2026-10-17 に MySQL から D1 へ移行済み |
-| ORM | Prisma 6 |
+| ORM | Prisma 7 |
 | スタイリング | Tailwind CSS v4 |
 | コンテナ | Docker |
 | 認証 | 未定（NextAuth.js 候補） |

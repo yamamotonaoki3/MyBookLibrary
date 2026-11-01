@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
     APP_VERSION: appVersion,
   },
   output: "standalone",
-  // D1 向け（Cloudflare Workers）のビルドでは、Prisma の wasm を webpack に処理させず、実行時の ESM import として
+  // D1 向け（Cloudflare Workers）のビルドでは、Prisma 7 の fast wasm を webpack に処理させず、実行時の ESM import として
   // そのまま残す。wrangler が CompiledWasm として同梱する（import 先の書き換えと wasm のコピーは
   // scripts/build-worker.mjs。webpack に処理させると `fs` で読む形に変換され、Workers で失敗する）。
   webpack: (config) => {
@@ -40,7 +40,7 @@ const nextConfig: NextConfig = {
       config.externals = [
         ...(Array.isArray(previous) ? previous : [previous]),
         ({ request }: { request?: string }, callback: (error?: Error | null, result?: string) => void) =>
-          request?.endsWith(".wasm") ? callback(null, "module ./query_compiler_bg.wasm") : callback(),
+          request?.endsWith(".wasm") ? callback(null, "module ./query_compiler_fast_bg.wasm") : callback(),
       ];
     }
     return config;

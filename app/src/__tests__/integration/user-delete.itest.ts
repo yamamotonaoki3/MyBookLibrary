@@ -9,6 +9,7 @@ jest.mock("@/lib/session");
 
 import { NextRequest } from "next/server";
 import { testPrisma, resetDb } from "../helpers/dbTest";
+import { prisma } from "@/lib/prisma";
 import { asUser } from "../helpers/sessionMock";
 import { getRequest } from "../helpers";
 
@@ -25,6 +26,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await testPrisma.$disconnect();
+  await prisma.$disconnect();
 });
 
 describe("DELETE /api/user/delete", () => {

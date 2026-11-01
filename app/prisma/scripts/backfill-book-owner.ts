@@ -18,7 +18,7 @@
  */
 import "dotenv/config";
 import { readFileSync, writeFileSync } from "node:fs";
-import { PrismaClient } from "@/generated/prisma";
+import { createMysqlPrisma } from "@/lib/prismaMysql";
 import {
   computeBackfillCandidates,
   filterApprovedUpdates,
@@ -27,7 +27,7 @@ import {
 } from "@/lib/migration/backfillBookOwner";
 import { assertMigrationTargetDatabaseUrl } from "./migration/migrationGuard";
 
-const prisma = new PrismaClient();
+const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
 
 type CliOptions =
   | { mode: "dry-run"; outPath?: string }

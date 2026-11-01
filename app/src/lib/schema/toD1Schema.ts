@@ -4,7 +4,7 @@
  *
  * 変換内容:
  *   - generator: 出力先を `src/generated/prisma-d1` にし、エンジン不要の `engineType = "client"` にする
- *   - datasource: `provider = "sqlite"` にする（D1 では実行時にアダプタが接続するため、url は生成・検証用の値）
+ *   - datasource: `provider = "sqlite"` にする（接続URLはPrisma configへ移す）
  *   - フィールド: MySQL 固有のネイティブ型属性（`@db.Text`、`@db.Date` 等）を取り除く
  * モデル・フィールド・インデックス・リレーションは MySQL 版と完全に同一に保つ（ドリフト検査の対象）。
  */
@@ -24,7 +24,6 @@ const D1_GENERATOR = `generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./d1-generate-only.db"
 }
 `;
 

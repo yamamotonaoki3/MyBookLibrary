@@ -1,8 +1,8 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "../src/generated/prisma";
+import { createMysqlPrisma } from "../src/lib/prismaMysql";
 
-const prisma = new PrismaClient();
+const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
 
 async function main() {
   console.log("シードデータの投入を開始します...");
