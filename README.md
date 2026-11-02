@@ -118,8 +118,9 @@ npm run dev
 ```powershell
 if (Test-Path -LiteralPath docker-compose.override.yml) {
     throw '既存の docker-compose.override.yml があるため、上書きしません。'
+} else {
+    Copy-Item -LiteralPath docker-compose.override.yml.example -Destination docker-compose.override.yml
 }
-Copy-Item -LiteralPath docker-compose.override.yml.example -Destination docker-compose.override.yml
 ```
 
 この例はテスト用DBを `127.0.0.1:3307` に公開します。ベースの Compose 設定にあるサービスのボリューム設定を引き継ぐため、DBデータを作り直したり移行したりする設定ではありません。新しい環境で例をコピーした場合は、適用内容を次のコマンドで確認できます。
