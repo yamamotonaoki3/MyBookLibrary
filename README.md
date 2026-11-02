@@ -111,6 +111,25 @@ npm run dev
 
 ブラウザで http://localhost:3000 を開く。
 
+### ローカルテスト用DBの上書き設定（任意）
+
+テスト用DBのイメージを固定し、ポートをローカルホストだけに公開する例です。ベース設定のテスト用DBを変更するもので、新しいDBを追加する設定ではありません。既存の `docker-compose.override.yml` がある場合は上書きせず、そのまま利用してください。
+
+```powershell
+if (Test-Path -LiteralPath docker-compose.override.yml) {
+    throw '既存の docker-compose.override.yml があるため、上書きしません。'
+}
+Copy-Item -LiteralPath docker-compose.override.yml.example -Destination docker-compose.override.yml
+```
+
+この例はテスト用DBを `127.0.0.1:3307` に公開します。ベースの Compose 設定にあるサービスのボリューム設定を引き継ぐため、DBデータを作り直したり移行したりする設定ではありません。新しい環境で例をコピーした場合は、適用内容を次のコマンドで確認できます。
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.override.yml.example config --quiet
+```
+
+確認ではサンプルを直接指定し、ローカルのoverrideの内容を読み込んだり表示したりしません。
+
 ## ディレクトリ構成
 
 ```
