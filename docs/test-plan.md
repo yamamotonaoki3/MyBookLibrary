@@ -72,6 +72,12 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 | C（純粋関数・contact・cron） | 一部実施済み（`src/lib` の純粋関数は多くが実施済み。`contact` は未実施） |
 | 追加分（Workers + D1 への移行、デモ環境、管理者のメールのマスク） | 実施済み（下の「追加分」） |
 
+### Windows の E2E サーバー起動（#811）
+
+Windows では通常・デモの Playwright 設定が起動する Next.js 開発サーバーに `FORCE_COLOR=0` を渡す。デモ設定は通常設定を継承する。Windows 以外では `.env.test` 由来の値を上書きしない。スタブサーバーと PWA 用サーバーには適用しない。
+
+受け入れ確認では、設定を読み込む回帰テストで Windows の上書き、Linux での既存値保持、macOS での値未設定、デモ設定の継承、およびスタブ/PWA 設定の非変更を確認する。実装確認では Windows 上で通常設定の `smoke.spec.ts` 1件とデモ設定の E2E 7件が成功し、CSS 起動失敗は再現しなかった。OS ごとの挙動確認は設定値をシミュレートした回帰テストであり、Linux/macOS 上での E2E 実行は含まない。通常 E2E 全体、PWA E2E、ビルドはこの確認範囲に含まない。
+
 ### E2E の検索間隔とログアウト判定（#794）
 
 - `playwright.config.ts` の next dev 用 webServer の env だけに `SEARCH_RATE_LIMIT_INTERVAL_MS: "0"` を設定する。同じユーザー・同じプロセスを共有する E2E では、サーバーの処理時刻の詰まりによる429を避ける。デモ・PWAのPlaywright設定と、本番・ステージング・デモのwrangler設定には追加せず、既定の500msを維持する。
