@@ -56,7 +56,7 @@
 
 ## 設計・実装の判断
 
-- 技術スタックは `CLAUDE.md` の表で決定済み（Next.js 16 / React 19 / TypeScript / Prisma 6 / MySQL 8.4 / Tailwind CSS v4 / Docker）。明記のない新しい技術・依存パッケージ・構成が必要な場合は、独断で決めずユーザーに確認し、決定後にバージョンと利用可否を検証する。
+- 技術スタックは `CLAUDE.md` の表で決定済み（Next.js 16 / React 19 / TypeScript / Prisma 7 / MySQL 8.4 / Tailwind CSS v4 / Docker）。明記のない新しい技術・依存パッケージ・構成が必要な場合は、独断で決めずユーザーに確認し、決定後にバージョンと利用可否を検証する。
 - 責務分離のルール（`CLAUDE.md`「責務分離のルール」）に従う。
   - `app/` 配下の新規・大規模改修コードから `@/lib/prisma` を直接importしない。
   - Prismaを呼ぶ新規コードは `src/repositories/` に置く。業務ルールは `src/lib/` のService / Queryに置く。

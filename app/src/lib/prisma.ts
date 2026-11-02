@@ -9,25 +9,9 @@ import type { PrismaClient } from "@/generated/prisma";
  * 呼び出し側は DB の種類を意識しない。使わない側の実装はバンドルに含まれない。
  */
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-function createMysqlPrisma(): PrismaClient {
-  // D1 向けのビルドに MySQL 用の生成クライアントが含まれないよう、使う側で読み込む
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PrismaClient: MysqlPrismaClient } = require("@/generated/prisma") as typeof import("@/generated/prisma");
-  const client =
-    globalForPrisma.prisma ??
-    new MysqlPrismaClient({
-      log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-    });
-  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = client;
-  return client;
-}
-
 export const prisma: PrismaClient =
   process.env.DB_PROVIDER === "d1"
     ? // eslint-disable-next-line @typescript-eslint/no-require-imports
       (require("@/lib/prismaD1") as typeof import("@/lib/prismaD1")).createD1Prisma()
-    : createMysqlPrisma();
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (require("@/lib/prismaMysqlSingleton") as typeof import("@/lib/prismaMysqlSingleton")).createLazyMysqlPrisma();

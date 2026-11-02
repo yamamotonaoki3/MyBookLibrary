@@ -21,7 +21,7 @@ import "dotenv/config";
 import { readFileSync, existsSync, createReadStream } from "node:fs";
 import { spawn } from "node:child_process";
 import { resolve as resolvePath, join as joinPath } from "node:path";
-import { PrismaClient } from "@/generated/prisma";
+import { createMysqlPrisma } from "../../../src/lib/prismaMysql";
 import { parseDump } from "@/lib/migration/dumpParser";
 import { validateDumpTableSet } from "@/lib/migration/expectedTables";
 import { computeSha256 } from "@/lib/migration/checksum";
@@ -240,7 +240,7 @@ async function main(): Promise<void> {
 
   verifyDumpChecksum(options.dumpPath);
 
-  const prisma = new PrismaClient();
+  const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
   try {
     if (!options.skipReset) {
       console.log(`\n[1/${totalSteps}] 移行先DBを初期化しています（全テーブルDROP）...`);

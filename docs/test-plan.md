@@ -35,6 +35,7 @@ CIでは通常E2Eの直後に `e2e/book-enrichment-cron.spec.ts` を専用ステ
 - Prisma設定依存（`deepmerge-ts`）の調査（#778）は[監査記録](dependency-audit-778.md)、Wrangler・Miniflareの更新（#789）は[監査記録](dependency-audit-789.md)に記載する。
 - 互換範囲内の依存更新候補の監査（#804）は[監査記録](dependency-audit-804.md)に記載する。
 - shadcn CLIを開発依存へ移したruntime検証（#806）は[検証結果](dependency-runtime-806.md)に記載する。CSSの完全一致、prod-only/standaloneのHTTP疎通、PrismaとWorker smokeを確認し、監査件数の変化を脆弱性修正とは扱わない。
+- Prisma 7.10.1への移行と`GHSA-ggr8-5vv4-36mx`修正の検証は[Issue #809の結果](dependency-audit-809.md)に記載する。MySQL/D1 integration、両生成物、adapter runtime、envなしDocker build、Linux Worker smokeを確認する。接続テストではfixture Clientとapp singletonを両方disconnectし、`pool_timeout=0`をMariaDB adapterで使わない。
 - 依存関係の監査警告の段階的解消（親Issue #772）の集約は[監査記録](dependency-audit-772.md)に記載する。
 
 ## 認証ライブラリのセキュリティ更新（Issue #773）
@@ -148,7 +149,7 @@ MyBookLibrary の単体テスト・結合テストの対象範囲と進捗をま
 既存のPlaywrightは `next dev` を起動するため、Dockerfileや実行イメージの依存導入を直接検証しない。Dockerの変更は、`app/` で次のビルド・実行確認を行う。
 
 - `docker build --pull -t mybooklibrary-app:node-patch .` が成功すること。ビルド用・実行用ともNode.js 22.23.4を使い、実行用の依存も `package-lock.json` から導入する。
-- 完成イメージで `node --version` が `v22.23.4`、`npx --no-install prisma --version` が既存のPrisma 6.19.3を返すこと。
+- 完成イメージで `node --version` が `v22.23.4`、`npx --no-install prisma --version` が Prisma 7.10.1を返すこと。
 - ビルドステージと完成イメージに `.env*` / `.dev.vars*` がないこと。`.dockerignore` によってローカルの依存・生成物・秘密設定をビルド対象から除外する。
 - 架空の認証設定のみを渡してローカル専用ポートで起動し、`/login` が200、未認証の `/books` がログインへリダイレクトすること。`/api/auth/providers` と `/api/version` の応答も確認する。開発・本番DBには接続せず、データを書き換えない。
 - 検証用コンテナの終了後も、通常の開発サーバー・DBコンテナが稼働していること。

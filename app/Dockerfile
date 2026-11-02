@@ -9,6 +9,7 @@ COPY vendor ./vendor
 # Prismaのスキーマ・設定ファイルをこの時点で先にコピーしておく必要がある。
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+COPY prisma.d1.config.ts ./
 RUN npm ci
 
 COPY . .
@@ -27,7 +28,7 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 # 実行用の依存も同じlockfileから導入し、postinstallでPrisma Clientを生成する。
-COPY --from=builder /app/package.json /app/package-lock.json /app/prisma.config.ts ./
+COPY --from=builder /app/package.json /app/package-lock.json /app/prisma.config.ts /app/prisma.d1.config.ts ./
 COPY --from=builder /app/.npmrc ./
 COPY --from=builder /app/vendor ./vendor
 RUN npm ci --omit=dev

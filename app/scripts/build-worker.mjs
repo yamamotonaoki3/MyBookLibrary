@@ -16,12 +16,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const WASM_NAME = "query_compiler_bg.wasm";
+const WASM_NAME = "query_compiler_fast_bg.wasm";
 const HANDLER_DIR = path.join(appDir, ".open-next/server-functions/default");
 
 /** handler.mjs の中の、wasm への絶対パスの動的 import を相対パスに書き換える。 */
 export function rewriteWasmImports(source) {
-  const pattern = /import\("[^"]*[\/]query_compiler_bg\.wasm"\)/g;
+  if (source.includes("@prisma/adapter-mariadb")) {
+    throw new Error("Worker handlerにMariaDB adapterのコードが含まれています。provider分岐とserver bundleを確認してください。");
+  }
+  const pattern = /import\("[^"]*[\/]query_compiler_fast_bg\.wasm"\)/g;
   const matches = source.match(pattern) ?? [];
   return { source: source.replace(pattern, `import("./${WASM_NAME}")`), count: matches.length };
 }
@@ -30,6 +33,7 @@ function run(command, args, env = {}) {
   const result = spawnSync(command, args, {
     cwd: appDir,
     stdio: "inherit",
+    windowsHide: true,
     env: { ...process.env, ...env },
   });
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} が失敗しました（終了コード ${result.status}）`);

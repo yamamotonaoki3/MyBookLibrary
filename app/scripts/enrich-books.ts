@@ -1,8 +1,8 @@
 import "dotenv/config";
-import { PrismaClient } from "../src/generated/prisma";
+import { createMysqlPrisma } from "../src/lib/prismaMysql";
 import { searchBooks } from "../src/lib/rakuten";
 
-const prisma = new PrismaClient();
+const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

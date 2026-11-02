@@ -1,6 +1,6 @@
-import { PrismaClient } from "../src/generated/prisma";
+import { createMysqlPrisma } from "../src/lib/prismaMysql";
 
-const prisma = new PrismaClient();
+const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
 
 async function main() {
   // テストユーザーを作成（存在しなければ）

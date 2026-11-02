@@ -8,6 +8,7 @@
 jest.mock("@/lib/session");
 
 import { testPrisma, resetDb } from "../helpers/dbTest";
+import { prisma } from "@/lib/prisma";
 import { asUser } from "../helpers/sessionMock";
 import { jsonRequest } from "../helpers";
 
@@ -24,6 +25,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await testPrisma.$disconnect();
+  await prisma.$disconnect();
 });
 
 describe("POST /api/favorite-authors", () => {

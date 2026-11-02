@@ -157,7 +157,7 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 | フロントエンド | Next.js 16 (React 19) + TypeScript |
 | バックエンド | Next.js API Routes（同一プロジェクト内） |
 | データベース | Cloudflare D1（SQLite。本番・ステージング・デモ）／ MySQL 8.4（ローカル開発） |
-| ORM | Prisma 6 |
+| ORM | Prisma 7 |
 | 認証 | Auth.js (NextAuth.js) v5（メール＋パスワード・Google OAuth） |
 | バリデーション | Zod v4 |
 | スタイリング | Tailwind CSS v4 + shadcn/ui |

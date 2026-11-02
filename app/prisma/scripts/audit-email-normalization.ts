@@ -8,9 +8,9 @@
  * 実行: npm run audit:email-normalization （DATABASE_URL の接続先に対して実行される）
  */
 import "dotenv/config";
-import { PrismaClient } from "@/generated/prisma";
+import { createMysqlPrisma } from "@/lib/prismaMysql";
 
-const prisma = new PrismaClient();
+const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
 
 async function scalar(sql: string): Promise<number> {
   const rows = await prisma.$queryRawUnsafe<Array<Record<string, number | bigint>>>(sql);

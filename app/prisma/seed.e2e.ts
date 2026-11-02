@@ -8,7 +8,7 @@
  * 実行前に `resetDb()` 相当のクリーンな状態を前提とする
  * （`playwright.config.ts` の `globalSetup` で db-test に対して呼び出す）。
  */
-import { PrismaClient } from "../src/generated/prisma";
+import { createMysqlPrisma } from "../src/lib/prismaMysql";
 import { assertTestDatabaseUrl } from "../src/__tests__/helpers/testDbGuard";
 
 export const E2E_USER = {
@@ -29,7 +29,7 @@ export const E2E_ADMIN = {
  * 安全性を確認していることを前提とする。
  */
 export async function seedE2e(): Promise<void> {
-  const prisma = new PrismaClient();
+  const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
   try {
     const bcrypt = await import("bcryptjs");
     const passwordHash = await bcrypt.hash(E2E_USER.password, 12);

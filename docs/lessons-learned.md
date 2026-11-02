@@ -521,3 +521,30 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - **次回の行動規則**: E2Eの待ち時間だけでインメモリ制限を避けようとせず、サーバーの処理時刻と共有状態を考慮して環境ごとに設定する。認証の目印はproxyと、それを通らないルート（/api/auth）の両方で判定をそろえる。
 - **状態**: 有効
 - **根拠**: Issue #794、検索の0設定と目印ありのセッション取得のRED/GREENテスト
+
+### 2026-11-01: Driver adapterの結合テストでは使用した各Clientを切断する
+- **種別**: 手直し（Issue #809）
+- **対象領域・関連ファイル**: Prisma MariaDB adapter / `app/src/__tests__/integration/` のfixtureとアプリsingletonを併用するsuite
+- **何が起きたか**: `reading-status` suiteはfixture用Prisma clientだけを切断し、suite内で使ったアプリ側singletonのpoolを残した。Jestはテストsummaryを出した後も終了しなかった。
+- **対応**: `reading-status` にアプリsingletonのdisconnectを1行加えたところprocessが正常終了し、同じ不足があった4 suiteをそろえた。forceExitは使わず、MySQLとD1のintegrationを再実行した。
+- **次回の行動規則**: Driver adapterを使うintegrationでは、helperとapp singletonなどsuite内で生成・使用した全ClientをafterAllで明示disconnectする。summaryの成功とJest processの終了値を別々に確認し、forceExitでhandle leakを隠さない。
+- **状態**: 有効
+- **根拠**: `reading-status` 単独で終了しないことを再現し、app singletonのdisconnect追加後にwrapper status 0。全MySQL integrationはstatus 0、D1 integrationも変更後にstatus 0。
+
+### 2026-11-01: 関数内requireだけではWorker bundleからdriverを除外できない
+- **種別**: 手直し（Issue #809）
+- **対象領域・関連ファイル**: Prisma D1 Worker bundle / `app/src/lib/prisma.ts`、`app/src/lib/prismaMysqlSingleton.ts`、`app/scripts/build-worker.mjs`
+- **何が起きたか**: 同じprovider module内で関数内requireを条件分岐しても、OpenNextのWorker出力にMariaDB adapterとconnection poolの実コードが残った。package directoryが出力に無くても、bundle chunkにはdriver実装が含まれ得る。
+- **対応**: `DB_PROVIDER` のliteral build-time分岐からD1 moduleまたはMySQL singleton moduleを直接requireし、MySQLのcache/lazy処理を別moduleへ分離した。Worker build guardでhandler内のMariaDB adapter identifierを拒否する。
+- **次回の行動規則**: 関数内requireを分離の保証とみなさず、providerごとにmoduleを分けてliteral条件から直接requireする。package名やmetadataだけで判断せず、実際のbuild output codeを走査するregression testとWorker build smokeで確認する。
+- **状態**: 有効
+- **根拠**: 混入fixtureのRED（Missing expected exception）からnative tests 2/2成功へ。修正後Worker outputで3171 filesを走査し実code hit/driver pathとも0。保存した配布4 filesも0、offline `wrangler deploy --dry-run` status 0。
+
+### 2026-11-02: Jest path aliasをPlaywright global setupのNode解決と混同しない
+- **種別**: 手直し（Issue #809）
+- **対象領域・関連ファイル**: Playwright global setup / `app/src/lib/prismaMysql.ts`、`app/src/__tests__/node/lib/prismaMysql.test.ts`
+- **何が起きたか**: 通常E2Eのglobal setupからdbTest経由でMySQL factoryを読み込むと、Jest mapper向けの `@/generated/prisma` aliasをNodeが解決できず、シナリオ開始前に失敗した。
+- **対応**: factoryの生成Clientと接続設定moduleのimportを相対pathにした。Jest mapperなし・pathsなしconfigのtsx子プロセスから実factoryを読み、架空URLで構築とdisconnectを行う回帰テストを追加した。SQL/queryと実DB接続は行わない。
+- **次回の行動規則**: Jestで通るaliasがPlaywright config/global setupや直接Node読み込みでも解決すると仮定しない。テストランナーが異なるmodule load境界は、その実行環境のresolverを通すfocused smokeで確認する。
+- **状態**: 有効
+- **根拠**: PR #810初回CIでglobal setup失敗・シナリオ0件を確認。修正後focused test 4/4と `npm run check`（86 suites/873 tests）status 0。修正後CI結果はPR checksで追跡し、まだ成功を主張しない。

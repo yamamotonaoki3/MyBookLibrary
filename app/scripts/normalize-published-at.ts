@@ -9,9 +9,9 @@ import { config } from "dotenv";
 import { resolve } from "path";
 config({ path: resolve(__dirname, "../.env.local") });
 
-import { PrismaClient } from "../src/generated/prisma";
+import { createMysqlPrisma } from "../src/lib/prismaMysql";
 
-const prisma = new PrismaClient();
+const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
 
 async function main() {
   const books = await prisma.book.findMany({
