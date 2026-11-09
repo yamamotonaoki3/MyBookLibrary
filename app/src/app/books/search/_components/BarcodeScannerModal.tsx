@@ -13,6 +13,22 @@ export default function BarcodeScannerModal({ onClose, onScanned }: Props) {
   const [scanning, setScanning] = useState(false);
   const scannedRef = useRef(false);
   const isRunningRef = useRef(false);
+  // 親は onClose / onScanned を毎回新しい関数で渡す。effect の依存に入れると、親が再レンダリング
+  // されるたびにカメラが止まって起動し直され、映像が消える。最新の関数を ref で保持して参照する。
+  const onCloseRef = useRef(onClose);
+  const onScannedRef = useRef(onScanned);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    onScannedRef.current = onScanned;
+  });
+
+  // ?scanDebug=1 のときだけ、映像の状態を画面に表示する（iPhone の PWA で映像が出ない原因の調査用）
+  const [debug] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("scanDebug")
+  );
+  const [debugText, setDebugText] = useState("");
+  const startCountRef = useRef(0);
+  const startErrorRef = useRef("");
 
   useEffect(() => {
     let stopped = false;
@@ -29,6 +45,7 @@ export default function BarcodeScannerModal({ onClose, onScanned }: Props) {
 
       const scanner = new Html5Qrcode("barcode-reader");
       scannerRef.current = scanner;
+      startCountRef.current += 1;
 
       try {
         await scanner.start(
@@ -41,8 +58,8 @@ export default function BarcodeScannerModal({ onClose, onScanned }: Props) {
             scannedRef.current = true;
             isRunningRef.current = false;
             scanner.stop().catch(() => {});
-            onScanned(isbn);
-            onClose();
+            onScannedRef.current(isbn);
+            onCloseRef.current();
           },
           () => {}
         );
@@ -58,7 +75,8 @@ export default function BarcodeScannerModal({ onClose, onScanned }: Props) {
           (c as HTMLElement).style.display = "none";
         });
         setScanning(true);
-      } catch {
+      } catch (e) {
+        startErrorRef.current = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
         if (!stopped) {
           setError("カメラを起動できませんでした。カメラへのアクセスを許可してください。");
         }
@@ -78,7 +96,30 @@ export default function BarcodeScannerModal({ onClose, onScanned }: Props) {
         scannerRef.current?.clear();
       }
     };
-  }, [onClose, onScanned]);
+  }, []);
+
+  useEffect(() => {
+    if (!debug) return;
+    const timer = setInterval(() => {
+      const video = document.querySelector<HTMLVideoElement>("#barcode-reader video");
+      const track = (video?.srcObject as MediaStream | null)?.getVideoTracks()[0];
+      const reader = document.getElementById("barcode-reader");
+      setDebugText(
+        [
+          `standalone=${(navigator as Navigator & { standalone?: boolean }).standalone ?? "n/a"}`,
+          `starts=${startCountRef.current} running=${isRunningRef.current}`,
+          `startError=${startErrorRef.current || "none"}`,
+          `reader=${reader?.clientWidth}x${reader?.clientHeight}`,
+          video
+            ? `video=${video.clientWidth}x${video.clientHeight} src=${video.videoWidth}x${video.videoHeight} ready=${video.readyState} paused=${video.paused}`
+            : "video=none",
+          video ? `style.width=${video.style.width} display=${getComputedStyle(video).display} opacity=${getComputedStyle(video).opacity}` : "",
+          track ? `track=${track.readyState} muted=${track.muted} enabled=${track.enabled}` : "track=none",
+        ].join("\n")
+      );
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [debug]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -108,6 +149,15 @@ export default function BarcodeScannerModal({ onClose, onScanned }: Props) {
               </p>
             )}
           </>
+        )}
+
+        {debug && (
+          <pre
+            data-testid="scan-debug"
+            className="mt-3 overflow-x-auto rounded bg-zinc-100 p-2 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+          >
+            {debugText || "診断中…"}
+          </pre>
         )}
 
         <button
