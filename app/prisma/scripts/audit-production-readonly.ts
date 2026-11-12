@@ -3,9 +3,9 @@
  * 実行前に DATABASE_URL のホストと PRODUCTION_DB_HOST の完全一致を必ず確認する。
  */
 import "dotenv/config";
-import { PrismaClient } from "@/generated/prisma";
+import { createMysqlPrisma } from "@/lib/prismaMysql";
 
-const prisma = new PrismaClient();
+const prisma = createMysqlPrisma(process.env.DATABASE_URL!);
 
 const tables = [
   "users", "user_libraries", "accounts", "sessions", "verification_tokens", "books", "book_isbns", "authors", "awards", "award_entries",

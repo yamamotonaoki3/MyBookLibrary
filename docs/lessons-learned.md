@@ -4,6 +4,11 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 
 ## 索引
 
+- 2026-11-10: メジャー更新（Prisma 7）は、本番相当の件数の架空データと Cron を、ステージングで通してから本番へ出す（#821、#822）
+- 2026-11-09: iPhone の PWA だけバーコードスキャンの映像が灰色になった。親の再レンダリングでスキャナが再起動する構造を、コールバックの ref 保持で直し、ステージングと本番の PWA で解消を確認した（#815、#816）
+
+- 2026-11-02: Windows E2E の CSS 起動失敗を `FORCE_COLOR` の値比較で切り分けた（#811）
+
 - 2026-10-29: 利用者が待つ検索は空結果と時間切れを区別し、APIと画面の両方で期限を設ける（#802）
 
 - 2026-10-29: Cronの内部APIはCookieなしでproxy通過を検証する（#696）
@@ -40,6 +45,47 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - 2026-10-17: Windows で、`wrangler d1 execute --command` に複数行の SQL を渡すと失敗した。1 行にするか、`--file` を使う
 
 ## 記録
+
+### 2026-11-10: Prisma 7.10.1 を、本番相当の件数の架空データと Cron で、ステージングで検証した（#821、#822）
+
+- **種別:** 検証（本番反映前のリスク確認）
+- **対象領域・関連ファイル:** `app/prisma/scripts/staging-volume/`（架空データの生成と削除）、`app/src/lib/cronScheduler.ts`、`app/src/lib/bookEnrichmentService.ts`
+- **背景:** 本番は Prisma 6.19.3、`main` は Prisma 7.10.1（#810）。過去に、D1 の 1 クエリあたり変数 100 個の上限が、ステージングの少ない件数では見つからず本番相当の件数で見つかった（2026-10-17）。
+- **やったこと:** 本番の件数（books 3,016、award_entries 3,035、book_enrichment_items 5,561 など。件数のみを読み取り専用で数えた）に合わせた架空データ（名前に `PERF`、ISBN は `999…`/`998…`）をステージング D1 に入れ、ステージングの Cron を一時的に有効にして確認した。
+- **結果:** `smoke:remote` 11/11、ユーザー向け 17 件と管理者向け 11 件で 5xx なし、書誌補完の開始（3,017 件の一括作成）が成功、新刊チェックの Cron 10 回が 200、書誌補完の tick（毎時30分）が正常終了した。問題は見つからなかった。
+- **確認できていないこと:** 本番の実データの形での確認。書誌補完の tick は 3 件の処理で、長時間・数千件の連続処理ではない。画面の目視（HTTP の応答のみ）。架空 ISBN なので、楽天・NDL の実際の応答は含まない。
+- **後始末:** Cron を無効に戻し、テストユーザーの権限を戻し、`cleanup.sql` で架空データを削除した（件数は検証前と同じ。`audit_logs` のみ書誌補完の開始で 1 件増えた）。
+- **次回の行動規則:** 依存のメジャー更新や D1 のクエリに影響する変更は、本番反映の前に、本番相当の件数の架空データをステージングに入れて全 API と Cron を通す。実データは持ち込まず、識別子（id が 100000 以上）で削除できる `cleanup.sql` をセットで使う。本番の D1 には、これらのスクリプトを適用しない。本番反映の前には、D1 の Time Travel の復元ポイントを控える。
+- **状態:** 有効。
+
+### 2026-11-09: iPhone の PWA だけバーコードスキャンの映像が灰色になった（#815、#816）
+
+- **種別:** 不具合の修正
+- **対象領域・関連ファイル:** `app/src/app/books/search/_components/BarcodeScannerModal.tsx`、`app/src/app/books/search/page.tsx`、`app/next.config.ts`、`app/src/lib/pwaRuntimeCaching.ts`、`app/public/manifest.json`
+- **何が起きたか:** 本番（Cloudflare）で、iPhone のホーム画面から起動した PWA（`display: standalone`）の「探す」→ バーコードスキャンを開き、カメラの使用を許可しても、映像が出ず灰色の枠だけが表示される。案内文「本の裏表紙のバーコードを…」は表示される（`scanner.start()` は完了している）。
+- **切り分けで確認できた事実:**
+  - iPhone 標準のコードスキャナーではカメラが映る。カメラの故障や iOS 本体の問題ではない。
+  - 同じ iPhone の Safari のタブで本番を開くと、スキャン画面にカメラ映像が出て正常に動く。アプリのコード、本番サーバー、楽天 API、ネットワークの問題ではない。
+  - ホーム画面のアイコンを削除して作り直し、`workers.dev` の Web サイトデータを消しても、PWA では灰色のままだった。古い Service Worker のキャッシュだけが原因とは言えない。
+  - `BarcodeScannerModal.tsx` は導入時（#192）から変更されていない。`html5-qrcode` は 2.3.8 のまま。`Permissions-Policy` や CSP のヘッダーは設定していない。
+- **原因:** `BarcodeScannerModal` の effect の依存配列に、親（`books/search/page.tsx`）が毎回新しく作る `onClose` と `handleIsbnScanned` が入っていた。親が再レンダリングされるたびに、カメラが止められて起動し直され、映像が消えて灰色の枠だけが残る。単体テストで「再レンダリングのたびに `start()` が再実行される」ことを再現した（修正前は失敗）。
+- **対応（#816）:** `onClose` / `onScanned` を ref で保持し、effect の依存配列を空にした。あわせて、URL に `?scanDebug=1` を付けたときだけ `video` 要素やトラックの状態を画面に表示する診断を加えた（通常は表示されない）。
+- **確認できたこと:** ステージングの PWA（ホーム画面起動）でカメラ映像が表示され、バーコードの読み取りで実際の本を登録できた。本番（`0.0.0-53524d6`）にも、スキャナの修正だけを反映し（#819、#820）、iPhone の PWA でカメラ映像が表示されることを確認した（2026-11-10）。
+- **まだ確認できていないこと:**
+  - 親が再レンダリングされた契機。導入時から同じ構造で、Safari のタブでは起きていなかったため、PWA（スタンドアロン表示）では、カメラ許可のダイアログの前後などで再レンダリングが起きやすい、という推測にとどまる。診断表示の値は取っていない。
+- **次回の行動規則:** `useEffect` で外部のリソース（カメラ・タイマー・接続）を開始して後始末する処理には、親から渡るコールバックを依存配列に入れない。毎回新しくなる関数は ref で保持して最新を参照する。カメラ関連の不具合は、権限・起動の成否・映像の描画を別々に切り分け、PWA と Safari のタブで同じ画面を比べる。コードを読んだだけで原因を断定せず、実機で確認した事実と推測を分けて記録する。
+- **状態:** 有効。ステージングと本番の PWA で解消を確認済み。
+- **根拠:** 実機での切り分け（iPhone 標準スキャナー、Safari タブ、PWA の作り直し、ステージングの PWA）の結果と、再レンダリングで `start()` が再実行されることの単体テスト（修正前に失敗、修正後に成功。全 879 件成功）。PR #817。
+
+### 2026-11-02: Windows E2E の CSS 起動失敗を `FORCE_COLOR` の値比較で切り分けた（#811）
+
+- **種別:** 環境依存の不具合
+- **対象領域・関連ファイル:** Playwright の通常/デモ E2E 設定、`app/playwright.config.ts`、`app/playwright.demo.config.ts`
+- **何が起きたか:** Windows（Node.js 24.22.1、OS ビルド 26300）で `FORCE_COLOR=1` のまま起動すると CSS 処理中に `next dev` が失敗した。同じ環境で `FORCE_COLOR=0` を指定すると CSS 起動と 19 秒のスモーク確認が通った。失敗を起こす内部 DLL の仕組みは特定できていない。
+- **対応:** 通常の Next.js E2E サーバーに限り、Windows では `FORCE_COLOR=0` を設定した。デモ設定は通常設定を継承する。
+- **次回の行動規則:** Windows の CLI/開発サーバーで CSS 関連の起動失敗が起きたら、まず `FORCE_COLOR` の有無と値を比較する。原因機構を未特定のまま特定 DLL の問題と断定せず、他の OS や別サーバー設定へ一般化しない。
+- **状態:** 有効。設定回帰テストと Windows 通常設定のスモーク 1 件、デモ設定の E2E 7 件が成功し、CSS 起動失敗は再現しなかった。Linux/macOS 上の E2E 実行や通常 E2E 全体、PWA E2E、ビルドの結果を示すものではない。
+- **根拠:** Windows の `FORCE_COLOR=1` 起動失敗、`FORCE_COLOR=0` での CSS 起動成功と 19 秒のスモーク確認、および修正後の Windows スモーク/デモ確認（#811）。DLL 内部の仕組みは未特定。過去の Windows #809 失敗は別記録の履歴として維持する。
 
 ### 2026-10-29: 利用者が待つ検索は空結果と時間切れを区別し、APIと画面の両方で期限を設ける
 
@@ -521,3 +567,30 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - **次回の行動規則**: E2Eの待ち時間だけでインメモリ制限を避けようとせず、サーバーの処理時刻と共有状態を考慮して環境ごとに設定する。認証の目印はproxyと、それを通らないルート（/api/auth）の両方で判定をそろえる。
 - **状態**: 有効
 - **根拠**: Issue #794、検索の0設定と目印ありのセッション取得のRED/GREENテスト
+
+### 2026-11-01: Driver adapterの結合テストでは使用した各Clientを切断する
+- **種別**: 手直し（Issue #809）
+- **対象領域・関連ファイル**: Prisma MariaDB adapter / `app/src/__tests__/integration/` のfixtureとアプリsingletonを併用するsuite
+- **何が起きたか**: `reading-status` suiteはfixture用Prisma clientだけを切断し、suite内で使ったアプリ側singletonのpoolを残した。Jestはテストsummaryを出した後も終了しなかった。
+- **対応**: `reading-status` にアプリsingletonのdisconnectを1行加えたところprocessが正常終了し、同じ不足があった4 suiteをそろえた。forceExitは使わず、MySQLとD1のintegrationを再実行した。
+- **次回の行動規則**: Driver adapterを使うintegrationでは、helperとapp singletonなどsuite内で生成・使用した全ClientをafterAllで明示disconnectする。summaryの成功とJest processの終了値を別々に確認し、forceExitでhandle leakを隠さない。
+- **状態**: 有効
+- **根拠**: `reading-status` 単独で終了しないことを再現し、app singletonのdisconnect追加後にwrapper status 0。全MySQL integrationはstatus 0、D1 integrationも変更後にstatus 0。
+
+### 2026-11-01: 関数内requireだけではWorker bundleからdriverを除外できない
+- **種別**: 手直し（Issue #809）
+- **対象領域・関連ファイル**: Prisma D1 Worker bundle / `app/src/lib/prisma.ts`、`app/src/lib/prismaMysqlSingleton.ts`、`app/scripts/build-worker.mjs`
+- **何が起きたか**: 同じprovider module内で関数内requireを条件分岐しても、OpenNextのWorker出力にMariaDB adapterとconnection poolの実コードが残った。package directoryが出力に無くても、bundle chunkにはdriver実装が含まれ得る。
+- **対応**: `DB_PROVIDER` のliteral build-time分岐からD1 moduleまたはMySQL singleton moduleを直接requireし、MySQLのcache/lazy処理を別moduleへ分離した。Worker build guardでhandler内のMariaDB adapter identifierを拒否する。
+- **次回の行動規則**: 関数内requireを分離の保証とみなさず、providerごとにmoduleを分けてliteral条件から直接requireする。package名やmetadataだけで判断せず、実際のbuild output codeを走査するregression testとWorker build smokeで確認する。
+- **状態**: 有効
+- **根拠**: 混入fixtureのRED（Missing expected exception）からnative tests 2/2成功へ。修正後Worker outputで3171 filesを走査し実code hit/driver pathとも0。保存した配布4 filesも0、offline `wrangler deploy --dry-run` status 0。
+
+### 2026-11-02: Jest path aliasをPlaywright global setupのNode解決と混同しない
+- **種別**: 手直し（Issue #809）
+- **対象領域・関連ファイル**: Playwright global setup / `app/src/lib/prismaMysql.ts`、`app/src/__tests__/node/lib/prismaMysql.test.ts`
+- **何が起きたか**: 通常E2Eのglobal setupからdbTest経由でMySQL factoryを読み込むと、Jest mapper向けの `@/generated/prisma` aliasをNodeが解決できず、シナリオ開始前に失敗した。
+- **対応**: factoryの生成Clientと接続設定moduleのimportを相対pathにした。Jest mapperなし・pathsなしconfigのtsx子プロセスから実factoryを読み、架空URLで構築とdisconnectを行う回帰テストを追加した。SQL/queryと実DB接続は行わない。
+- **次回の行動規則**: Jestで通るaliasがPlaywright config/global setupや直接Node読み込みでも解決すると仮定しない。テストランナーが異なるmodule load境界は、その実行環境のresolverを通すfocused smokeで確認する。
+- **状態**: 有効
+- **根拠**: PR #810初回CIでglobal setup失敗・シナリオ0件を確認。修正後focused test 4/4と `npm run check`（86 suites/873 tests）status 0。修正後CI結果はPR checksで追跡し、まだ成功を主張しない。

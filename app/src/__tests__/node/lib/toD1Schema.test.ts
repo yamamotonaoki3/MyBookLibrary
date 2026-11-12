@@ -32,6 +32,14 @@ describe("toD1Schema", () => {
     expect(output).not.toContain('provider = "mysql"');
     expect(output).not.toContain("DATABASE_URL");
   });
+  it("接続URLをschemaから除き、generatorとmodelを維持する", () => {
+    expect(output).not.toMatch(/^\s*url\s*=/m);
+    const model = (schema: string) => schema.match(/model Review \{[\s\S]*?\n\}/)?.[0];
+    expect(model(output)).toBe(model(SAMPLE)?.replace(/[ \t]+@db\.\w+(\([^)]*\))?/g, ""));
+    expect(output).toMatch(/provider\s+= "prisma-client-js"/);
+    expect(output).toContain('output     = "../../src/generated/prisma-d1"');
+    expect(output).toContain('engineType = "client"');
+  });
 
   it("generator の出力先を D1 用に分ける", () => {
     expect(output).toContain('output     = "../../src/generated/prisma-d1"');

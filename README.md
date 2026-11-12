@@ -68,8 +68,8 @@
 | フロントエンド | Next.js 16 (React 19) + TypeScript |
 | バックエンド | Next.js API Routes |
 | データベース | Cloudflare D1（SQLite。本番・ステージング・デモ）／ MySQL 8.4（ローカル開発） |
-| ORM | Prisma 6 |
-| 認証 | Auth.js (NextAuth.js) v5（メール＋パスワード・Google OAuth） |
+| ORM | Prisma 7 |
+| 認証 | Auth.js (NextAuth.js) v5 ベータ版（`next-auth@5.0.0-beta.x`。メール＋パスワード・Google OAuth） |
 | バリデーション | Zod v4 |
 | スタイリング | Tailwind CSS v4 + shadcn/ui |
 | テスト | Jest + ts-jest、Playwright（E2E） |
@@ -77,6 +77,8 @@
 | 外部 API | 楽天ブックス API・国立国会図書館 API（NDL）・カーリル API |
 | PWA | @ducanh2912/next-pwa |
 | デプロイ | Cloudflare Workers（OpenNext）+ D1。`main` → ステージング、`production` → 本番、`demo` → デモを、Workers Builds で自動デプロイ（[手順](docs/cloudflare-deploy.md)） |
+
+各パッケージの正確なバージョンは、[`app/package.json`](app/package.json) と [`app/package-lock.json`](app/package-lock.json) を参照してください。アプリ自体のバージョン（`/api/version` の `name`）の付け方は、[バージョンの付け方と基準](docs/versioning.md) にあります。
 
 AWS（EC2 + RDS + CloudFront。Terraform 管理）は、現在すべて停止中です。いつでも再開できるよう、定義と手順だけ残しています（[AWS デプロイガイド](docs/aws/aws-deploy-guide.md)）。
 
@@ -110,6 +112,26 @@ npm run dev
 ```
 
 ブラウザで http://localhost:3000 を開く。
+
+### ローカルテスト用DBの上書き設定（任意）
+
+テスト用DBのイメージを固定し、ポートをローカルホストだけに公開する例です。ベース設定のテスト用DBを変更するもので、新しいDBを追加する設定ではありません。既存の `docker-compose.override.yml` がある場合は上書きせず、そのまま利用してください。
+
+```powershell
+if (Test-Path -LiteralPath docker-compose.override.yml) {
+    throw '既存の docker-compose.override.yml があるため、上書きしません。'
+} else {
+    Copy-Item -LiteralPath docker-compose.override.yml.example -Destination docker-compose.override.yml
+}
+```
+
+この例はテスト用DBを `127.0.0.1:3307` に公開します。ベースの Compose 設定にあるサービスのボリューム設定を引き継ぐため、DBデータを作り直したり移行したりする設定ではありません。新しい環境で例をコピーした場合は、適用内容を次のコマンドで確認できます。
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.override.yml.example config --quiet
+```
+
+確認ではサンプルを直接指定し、ローカルのoverrideの内容を読み込んだり表示したりしません。
 
 ## ディレクトリ構成
 

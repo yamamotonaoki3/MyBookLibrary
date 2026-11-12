@@ -18,7 +18,7 @@
  */
 import path from "node:path";
 import { parseArgs as parseCliArgs } from "node:util";
-import { PrismaClient as MysqlClient } from "@/generated/prisma";
+import { createMysqlPrisma } from "../../../src/lib/prismaMysql";
 import { Prisma as D1Prisma } from "@/generated/prisma-d1";
 import { assertProfileMatchesTarget, assertSourceUrlIsLocal, assertWritableTarget, safeErrorMessage, type MigrationProfile } from "@/lib/migration/etl/guard";
 import { DEMO_MASTER_TABLES, MIGRATION_TABLES } from "@/lib/migration/etl/tables";
@@ -81,7 +81,7 @@ function parseArgs(argv: string[]): Options {
 function openSource(): { client: MigrationClient; close: () => Promise<void> } {
   const url = process.env.MIGRATION_SOURCE_DATABASE_URL;
   assertSourceUrlIsLocal(url);
-  const prisma = new MysqlClient({ datasourceUrl: url });
+  const prisma = createMysqlPrisma(url);
   return { client: prisma as unknown as MigrationClient, close: () => prisma.$disconnect() };
 }
 

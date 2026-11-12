@@ -1,3 +1,4 @@
+jest.mock("@/lib/prisma", () => ({ prisma: {} }));
 jest.mock("@/repositories/readingStatusRepository");
 jest.mock("@/lib/mutualFollows");
 jest.mock("@/lib/bookIsbn");

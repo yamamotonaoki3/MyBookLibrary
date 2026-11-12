@@ -53,6 +53,8 @@ export default defineConfig({
       env: {
         ...testEnv,
         ...stubEnv(STUB_PORT),
+        // Windows の E2E 起動で CSS 処理が失敗するため、Next サーバーでは色強制を無効化する。
+        ...(process.platform === "win32" ? { FORCE_COLOR: "0" } : {}),
         // E2Eは同じユーザー・同じプロセスを共有し、サーバーの処理時刻の詰まりで制限に当たる。
         // レート制限そのものは単体テストで担保する。
         SEARCH_RATE_LIMIT_INTERVAL_MS: "0",

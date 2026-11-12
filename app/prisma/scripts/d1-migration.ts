@@ -51,12 +51,31 @@ function buildDatabaseFromMigrations(files: string[], dir: string): string {
 /** マイグレーション適用後の DB から D1 版スキーマへの差分 SQL を求める。差分がなければ null。 */
 function diffToSchema(dbPath: string): string | null {
   const url = `file:${dbPath.replace(/\\/g, "/")}`;
+  const configPath = path.join(path.dirname(dbPath), "prisma.d1.config.ts");
+  writeFileSync(
+    configPath,
+    [
+      `export default { schema: ${JSON.stringify(D1_SCHEMA)}, datasource: { url: ${JSON.stringify(url)} } };`,
+      "",
+    ].join("\n")
+  );
   // シェルを介さず Prisma CLI を Node で直接起動する（パスに空白があっても引数が分割されない）
   const prismaCli = path.resolve(__dirname, "../../node_modules/prisma/build/index.js");
   const result = spawnSync(
     process.execPath,
-    [prismaCli, "migrate", "diff", "--from-url", url, "--to-schema-datamodel", D1_SCHEMA, "--script", "--exit-code"],
-    { encoding: "utf8" }
+    [
+      prismaCli,
+      "migrate",
+      "diff",
+      "--from-config-datasource",
+      "--to-schema",
+      D1_SCHEMA,
+      "--script",
+      "--exit-code",
+      "--config",
+      configPath,
+    ],
+    { encoding: "utf8", windowsHide: true }
   );
   if (result.status === 0) return null;
   if (result.status === 2) {

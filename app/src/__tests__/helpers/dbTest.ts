@@ -13,7 +13,7 @@
  */
 // Playwright（e2e/global-setup.ts）は ts-jest の moduleNameMapper（"@/..."）を
 // 解決できないため、ここは相対パスで import する。
-import { Prisma, PrismaClient } from "../../generated/prisma";
+import type { Prisma, PrismaClient } from "../../generated/prisma";
 import { assertTestDatabaseUrl, EXPECTED_TEST_DB_NAME } from "./testDbGuard";
 
 /**
@@ -78,7 +78,16 @@ function createD1TestPrisma(): PrismaClient {
 }
 
 /** integration テスト全体で共有する PrismaClient。テストファイルの afterAll で切断する。 */
-export const testPrisma: PrismaClient = isD1 ? createD1TestPrisma() : new PrismaClient();
+function createMysqlTestPrisma(): PrismaClient {
+  const databaseUrl = process.env.DATABASE_URL;
+  assertTestDatabaseUrl(databaseUrl);
+  // D1 tests must not load the MySQL adapter or driver.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createMysqlPrisma } = require("../../lib/prismaMysql") as typeof import("../../lib/prismaMysql");
+  return createMysqlPrisma(databaseUrl!);
+}
+
+export const testPrisma: PrismaClient = isD1 ? createD1TestPrisma() : createMysqlTestPrisma();
 
 /**
  * 全テーブルを TRUNCATE して空にする。
