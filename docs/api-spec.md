@@ -11,7 +11,7 @@
 
 ## 1. バリデーションルール一覧
 
-すべてのバリデーションは `app/src/lib/validations.ts` の Zod スキーマに基づく。
+主な共有バリデーションは `app/src/lib/validations.ts` の Zod スキーマに基づく。本の編集APIは route handler 内で EditBookSchema を定義している。バリデーションエラーの形式は各 route の実装に従う。
 
 ### ユーザー登録（RegisterSchema）
 
@@ -21,6 +21,7 @@
 | `email` | string | 必須、メールアドレス形式 |
 | `password` | string | 必須、8〜100文字 |
 | `confirmPassword` | string | 必須、`password` と一致 |
+| `secretWord` | string | 任意。前後空白をトリムし、空文字または2〜50文字 |
 
 ### ログイン（LoginSchema）
 
@@ -36,6 +37,7 @@
 | `email` | string | 必須、メールアドレス形式 |
 | `password` | string | 必須、8〜100文字 |
 | `confirmPassword` | string | 必須、`password` と一致 |
+| `secretWord` | string | 必須、1文字以上。照合前に前後空白をトリム（step: verifySecretWord/reset） |
 
 ### 読書ステータス登録（ReadingStatusSchema）
 
@@ -53,11 +55,11 @@
 
 | フィールド | 型 | ルール |
 | --- | --- | --- |
-| `title` | string | 任意、1〜200文字 |
-| `author` | string | 任意、1〜100文字 |
-| `isbn` | string | 任意 |
-| `coverImageUrl` | string | 任意 |
-| `publishedAt` | string | 任意 |
+| `title` | string | 必須、前後空白トリム後1〜200文字 |
+| `author` | string | 必須、前後空白トリム後1〜100文字 |
+| `isbn` | string | 任意、null可 |
+| `coverImageUrl` | string | 任意、null可、URL形式 |
+| `publishedAt` | string | 任意、null可 |
 
 ### レビュー（ReviewSchema）
 
@@ -152,7 +154,7 @@
 { "error": "エラーメッセージ" }
 ```
 
-Zod バリデーション失敗時のみフィールド別エラーを返す：
+バリデーションエラーのレスポンス形式は route ごとに異なる。フィールド別エラーを返す route もあれば、最初の issue のメッセージを文字列で返す route もある（本の編集APIなど）。たとえば次の形式がある：
 
 ```json
 {
@@ -169,7 +171,7 @@ Zod バリデーション失敗時のみフィールド別エラーを返す：
 | `200` | 成功 | — |
 | `201` | 作成成功 | — |
 | `204` | 削除成功（レスポンスボディなし） | — |
-| `400` | リクエスト不正（バリデーション失敗・不正な ID 形式） | `"○○ が不正です。"` / Zod フィールドエラー |
+| `400` | リクエスト不正（バリデーション失敗・不正な ID 形式） | route によりフィールド別エラーまたはメッセージ文字列 |
 | `401` | 未認証 | `"認証が必要です"` |
 | `403` | 権限なし | `"権限がありません"` |
 | `404` | リソース未検出 | `"○○が見つかりません。"` |
@@ -183,8 +185,8 @@ Zod バリデーション失敗時のみフィールド別エラーを返す：
 
 | 状況 | コード | メッセージ |
 | --- | --- | --- |
-| バリデーション失敗 | 400 | Zod フィールドエラー |
-| メールアドレス重複 | 409 | `"このメールアドレスは既に使用されています"` |
+| バリデーション失敗 | 400 | Zod の fieldErrors（フィールド別エラー） |
+| メールアドレス重複 | 409 | `{ "error": { "email": ["このメールアドレスは既に使用されています"] } }` |
 
 #### POST /api/auth/reset-password（step: check）
 
@@ -239,7 +241,7 @@ Zod バリデーション失敗時のみフィールド別エラーを返す：
 | `User` | `email` @unique | 409（register API で手動チェック） |
 | `Book` | `isbn` @unique | `upsert` / `findFirst` で事前回避 |
 | `ReadingStatus` | `@@unique([userId, bookId])` | `upsert` で自動上書き |
-| `Review` | `@@unique([userId, bookId])` | 409（重複投稿時） |
+| `Review` | ユーザー・本の組み合わせにDB一意制約なし | 同じユーザーが同じ本に複数投稿可能 |
 | `Like` | `@@unique([userId, reviewId])` | 409（手動チェック） |
 | `Report` | `@@unique([userId, reviewId])` | 409（手動チェック） |
 | `FavoriteAuthor` | `@@unique([userId, authorId])` | 409（DB 制約で自動） |
@@ -344,7 +346,7 @@ title,author,isbn,coverImageUrl,publishedAt,awardId,year,type
 **レスポンス（201）**
 
 ```json
-{ "message": "ユーザー登録が完了しました" }
+{ "ok": true }
 ```
 
 ---
