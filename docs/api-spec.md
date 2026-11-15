@@ -244,7 +244,7 @@ Zod バリデーション失敗時のみフィールド別エラーを返す：
 | `Report` | `@@unique([userId, reviewId])` | 409（手動チェック） |
 | `FavoriteAuthor` | `@@unique([userId, authorId])` | 409（DB 制約で自動） |
 | `AwardEntry` | `@@unique([bookId, awardId, year])` | 409（手動チェック） |
-| `Notification` | `@@unique([userId, type, bookIsbn])` | `createMany` の `skipDuplicates: true` で無視 |
+| `Notification` | `@@unique([userId, type, bookIsbn])` | 単件作成は一意制約違反を無視（ISBN が null の通知は共存）。新刊 Cron は同じ `userId`・`bookIsbn` の既存通知を事前除外して一括登録（`skipDuplicates` は使わない） |
 
 ---
 

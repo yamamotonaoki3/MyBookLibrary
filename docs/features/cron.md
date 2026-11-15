@@ -14,7 +14,7 @@ Cloudflare Workers の Cron Trigger で毎日定期実行し、お気に入り�
 
 - 定期実行（Cloudflare Cron Trigger）でお気に入り著者の新刊（1週間以内）を楽天ブックス API で検索する
 - 新刊が見つかった場合、通知 ON のユーザーに通知を作成する
-- 同じ新刊で重複通知は作成しない（`Notification` テーブルに `@@unique([userId, type, bookId])` 制約）
+- 同じ新刊で重複通知は作成しない（`Notification` テーブルに `@@unique([userId, type, bookIsbn])` 制約）
 
 ### 実行フロー
 
@@ -29,9 +29,11 @@ GET /api/cron/check-new-books（Bearer = Worker の secret CRON_SECRET）
   ↓
 各著者の楽天ブックス API で過去1週間の新刊を検索
   ↓
-新刊が見つかった場合 → 通知 ON のユーザーに通知を作成
+新刊が見つかった場合 → 通知 ON のユーザーごとに既存通知を取得
   ↓
-重複チェック（同 userId・type・bookId の通知が既存なら作成しない）
+重複チェック（同 userId・bookIsbn の通知が既存なら、種類に関わらず除外）
+  ↓
+未通知の新刊を一括登録（MySQL は createMany、D1 はバインド変数の上限に合わせて分割）
 ```
 
 ### 環境ごとの Cron
@@ -47,7 +49,7 @@ GET /api/cron/check-new-books（Bearer = Worker の secret CRON_SECRET）
 
 毎時の式は書誌補完専用で、`GET /api/admin/book-enrichment/tick` を `ENRICHMENT_TICK_SECRET` で呼ぶ。未設定なら失敗する。デモの毎時イベントはsecret確認前にスキップして正常終了する。他の式は従来の `CRON_SECRET` と新刊チェック／デモ初期化を使う。分割実行の予算・未確認事項は[書誌補完仕様](book-enrichment.md#workers-の分割実行と制限)を参照。
 
-本番の毎日の新刊チェック `0 0 * * *` と毎時の補完 `30 * * * *` はUTC 00:00に同時起動する。`controller.cron` の文字列で呼び先とBearerを区別するため、互いに干渉しない。補完は1回20秒の予算で数件〜十数件の見込み、1,000件に約4〜8日（計算上の目安で実測ではない）。待機中は1日24回の軽い確認クエリを行う。処理順は新しい本（`bookId` 降順）からで、AWSの常駐ワーカーも共通。毎時実行の時間・CPU上限への適合性は未確認で、20秒の予算は変更しない。
+本番の毎日の新刊チェック `0 0 * * *` と毎時の補完 `30 * * * *` は実行時刻を30分ずらしている。`controller.cron` の文字列で呼び先とBearerを区別する。補完は1回20秒の予算で数件〜十数件の見込み、1,000件に約4〜8日（計算上の目安で実測ではない）。待機中は1日24回の軽い確認クエリを行う。処理順は新しい本（`bookId` 降順）からで、AWSの常駐ワーカーも共通。毎時実行の時間・CPU上限への適合性は未確認で、20秒の予算は変更しない。
 
 ### AWS 構成（停止中）
 
