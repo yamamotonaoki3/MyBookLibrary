@@ -22,7 +22,7 @@ flowchart TD
     DASHBOARD --> NOTIFY[通知\n/notifications]
     DASHBOARD --> CONTACT[お問い合わせ\n/contact]
     DASHBOARD --> ABOUT[このアプリについて\n/about]
-    DASHBOARD --> SETTINGS[設定\n/settings]
+    DASHBOARD --> SETTINGS[設定\n/settings\nアカウント情報：モバイルはアコーディオン、PCは常時表示]
     DASHBOARD --> |管理者のみ| ADMIN[管理者パネル（設定/管理/監査ログ）\n/admin]
 
     BOOKS --> BOOKDETAIL[本の詳細\n/books/id]
@@ -47,8 +47,6 @@ flowchart TD
     NOTIFY --> |いいね通知| BOOKDETAIL
     NOTIFY --> |フォロー通知| USERPROFILE[ユーザー詳細\n/users/id]
 
-    SETTINGS -.->|モバイル幅のみ・モーダル：アカウント情報| ACCOUNTMODAL[[アカウント情報モーダル]]
-    ACCOUNTMODAL -.-> SETTINGS
     SETTINGS --> LIBSETTINGS[近隣図書館の登録\n/settings#libraries]
     SETTINGS --> |パスワードでログイン中のみ| CHANGEPW[パスワード変更\n/settings/change-password]
     FORCED([管理者による強制リセット後]) -.->|自動で移動| CHANGEPW
@@ -94,7 +92,7 @@ flowchart TD
 | `/notifications` | 通知 | 必要 |
 | `/contact` | お問い合わせ | 必要 |
 | `/about` | このアプリについて（利用している外部 API の案内） | 必要 |
-| `/settings` | 設定（アカウント情報はモバイル幅のみモーダル表示、PC幅は常時インライン表示） | 必要 |
+| `/settings` | 設定（アカウント情報はモバイル幅ではアコーディオン、PC幅は常時表示。管理者も利用可。ただし管理者のナビゲーションには設定画面へのリンクなし） | 必要 |
 | `/settings/change-password` | パスワード変更（設定画面の「パスワード」の欄から開く。パスワードでログインしているアカウントのみ。管理者による強制リセット後は、自動でここへ移動し、変更するまで、ほかの画面へ進めない） | 必要 |
 | `/settings/follows` | フォロー一覧・おすすめフォロー候補 | 必要 |
 | `/users/[id]` | ユーザー詳細（フォロー/フォロー解除。お気に入り著者・読んでいる本は誰でも閲覧可、相互フォロー時は活動通知が届く） | 必要 |
