@@ -14,9 +14,9 @@
 | --- | --- | --- |
 | API Routes（`src/app/api/**/route.ts`） | 51 | 約14（follows・監査ログ・手動書籍管理・users/[id] は未対応） |
 | `src/lib/*.ts` | 17 | 11 |
-| コンポーネント・ページ（`.tsx`、計10,418行） | — | **0** |
+| コンポーネント・ページ（`.tsx`） | — | **あり**（2026-11-15 に実在する UI テストを確認。下記） |
 
-`app/jest.config.ts` には `jsdom` project（`testMatch: src/__tests__/ui/**/*.test.ts?(x)`）が既に定義されており、`.tsx` のコンポーネントテストも実行可能（[#431](https://github.com/yamamotonaoki3/MyBookLibrary/issues/431) は対応済み）。コンポーネントテストが0件なのは、まだ1件も書かれていないため。
+`app/jest.config.ts` には `jsdom` project（`testMatch: src/__tests__/ui/**/*.test.ts?(x)`）が既に定義されており、`.tsx` のコンポーネントテストも実行可能（[#431](https://github.com/yamamotonaoki3/MyBookLibrary/issues/431) は対応済み）。現在は `ui/BarcodeScannerModal.test.tsx`、`ui/BookSearchTimeout.test.tsx`、`ui/LibraryAvailabilityButton.test.tsx` などのコンポーネントテストがある。上表の API・lib の件数は 2026-08-13 の記録で、現在の件数ではない。
 
 ## 凡例
 
@@ -49,7 +49,7 @@
 | --- | --- |
 | なぜ困難か | `src/proxy.ts` は `NextAuth(authConfig).auth` をそのまま export するだけで、自前のロジックを一切持たない。動作は NextAuth の内部実装に依存するため、`proxy.ts` を直接呼ぶテストは NextAuth 自体のテストになり、自プロジェクトのロジックの検証にならない |
 | どうテストするか | **`proxy.ts` 自体はテストしない。** 実質のテスト対象である `src/auth.config.ts` の `authorized` コールバックを直接呼ぶ単体テストで、公開パス／保護パス／管理者パス／リダイレクト先を網羅する。さらに、matcher の設定ミスによって保護対象のパスが素通りしないよう、`config.matcher` の正規表現を「パス文字列 → マッチするか」のテーブルテストで検証する |
-| 状態 | 未対応（Phase 3 で実施） |
+| 状態 | 一部対応済み。`node/lib/authorizedPaths.test.ts` が公開パス・保護パス・tick の完全一致と類似パスを、`node/lib/proxyMatcher.test.ts` が matcher を検証する。ブラウザ起動中・ログアウト済みの目印は `node/lib/authorizedBrowserSession.test.ts` で検証する |
 
 ### 1-3. `src/auth.ts`（NextAuth 設定オブジェクト）
 
@@ -68,7 +68,7 @@
 | なぜ困難か | **カスケード削除・複合ユニーク制約（`P2002`）・トランザクションのロールバックは、モックでは原理的に検証できない。** 「モックが `P2002` を投げるか」はテスト側の取り決めにすぎず、実際のスキーマがその制約を持っているかは何も保証しない |
 | どうテストするか | 通常は `src/lib/__mocks__/prisma.ts`（`jest.mock("@/lib/prisma")` の1行で使える）で結合テストする |
 | モックの限界を補う | 制約系のみ実DBで担保する（[#433](https://github.com/yamamotonaoki3/MyBookLibrary/issues/433)）。対象は `api/user/delete` のカスケード、`api/favorite-authors` の重複登録、`api/reviews/[id]/report` の重複通報、`api/reading-status` の upsert、`api/admin/manual-books/merge` の統合元書籍に紐づく読書ステータス・レビュー・受賞登録の付け替え（統合先で複合ユニーク制約に抵触するケースを含む）の5件に絞る |
-| 状態 | モック側は対応済み（[#430](https://github.com/yamamotonaoki3/MyBookLibrary/issues/430)）／実DB側は未対応 |
+| 状態 | モック側は対応済み（[#430](https://github.com/yamamotonaoki3/MyBookLibrary/issues/430)）。実DB側は `integration/user-delete.itest.ts`（カスケード削除）、`favorite-authors.itest.ts`（重複登録）、`reviews-report.itest.ts`（重複通報）、`reading-status.itest.ts`（upsert）で検証する。手動書籍マージの制約系は、この4ファイルでは検証しない |
 
 `$transaction` のコールバックにはルートと同一のモックが渡るため、トランザクション内の呼び出しも `prismaMock.user.deleteMany` のように検証できる。
 
@@ -95,7 +95,7 @@
 | なぜ困難か | `getUserMedia` / カメラ / `<video>` に依存し、jsdom では動作しない |
 | どうテストするか | `jest.mock("html5-qrcode")` でクラス全体をモックし、「スキャン成功コールバックに ISBN を渡したら検索が走る」ところだけを検証する |
 | 対象外 | **カメラ起動自体はテストしない。** ブラウザ確認のチェックリストに手動項目として残す |
-| 状態 | 未対応（Phase 4 で実施） |
+| 状態 | 一部対応済み。`ui/BarcodeScannerModal.test.tsx` は `html5-qrcode` をモックし、再描画でのカメラ再起動防止、最新の `onScanned` / `onClose` 呼び出し、不正な ISBN の無視を検証する。実カメラの起動確認は対象外 |
 
 ### 1-7. `api/cron/check-new-books`
 
@@ -226,12 +226,11 @@
 
 ### 3-5. 既知の例外：`next/font/google`（Geist / Geist Mono）は対象外
 
-`src/app/layout.tsx` は `next/font/google` で Geist・Geist Mono を読み込んでおり、`next dev` 起動時（`next build` も同様）に Next.js 自身が `fonts.googleapis.com` へ CSS/フォントファイルを取得する。これは E2E（#435）の「外部通信ゼロ」の対象**外**として扱う。
+`src/app/layout.tsx` は `next/font/google` で Geist・Geist Mono を読み込む。本節が対象とする外部 API は楽天・NDL・カーリルの3つで、Google Fonts は外部通信ゼロの対象外として扱う。
 
-- **本節が対象とする外部APIは、楽天・NDL・カーリルの3つに限定される。** これらは ToS・レート制限・課金の観点で明示的な配慮が必要（3-1参照）だが、Google Fonts はそれらとは性質が異なる（高可用な公式CDN、Next.js自体が標準機能として依存する、E2Eの有無に関わらず通常の開発・本番でも同様に発生する）
-- **技術的な理由で対処を見送った。** Next.js公式の緩和策 `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` は Webpack 向けの実装で、本プロジェクトが使う Turbopack（`next.config.ts` の `turbopack: {}`）では別経路（Rust実装）のため効かない。実際に試したところ、ビルド自体が壊れる形で失敗した（2026-08-11 検証）
-- **実害は小さいと判断した。** GitHub Actions（`ubuntu-latest`）は既定でインターネット接続があるため、CIでハングする心配はない。フォントの取得は `next dev` サーバー起動時に1回のみで、テストケースごとに繰り返されるものではない
-- **完全に対処する場合の選択肢**（今回は見送り）: `next/font/google` を `next/font/local` に切り替えフォントファイルをリポジトリに同梱する（アプリ本体の変更を伴う）。必要になった場合は別Issueで扱う
+現在の通常 E2E 設定（`playwright.config.ts`）は `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` を指定し、デモ E2E も継承する。2026-08-11 の検証では当時の Turbopack でこの方法を利用できなかったが、現行設定で外部通信を抑止できるかは今回の監査では実行確認していない。設定の存在だけで、Google Fonts への通信が発生しないとは判断しない。
+
+フォントをローカルに同梱する場合はアプリ本体の変更を伴うため、必要になった時点で別 Issue とする。
 
 ---
 
