@@ -80,7 +80,7 @@ Windows では通常・デモの Playwright 設定が起動する Next.js 開発
 
 ### E2E の検索間隔とログアウト判定（#794）
 
-- `playwright.config.ts` の next dev 用 webServer の env だけに `SEARCH_RATE_LIMIT_INTERVAL_MS: "0"` を設定する。同じユーザー・同じプロセスを共有する E2E では、サーバーの処理時刻の詰まりによる429を避ける。デモ・PWAのPlaywright設定と、本番・ステージング・デモのwrangler設定には追加せず、既定の500msを維持する。
+- `playwright.config.ts` の next dev 用 webServer の env だけに `SEARCH_RATE_LIMIT_INTERVAL_MS: "0"` を設定する。同じユーザー・同じプロセスを共有する E2E では、サーバーの処理時刻の詰まりによる429を避ける。デモのPlaywright設定も通常設定の `server.env` を継承するため、デモE2Eの検索間隔も0になる。PWAのPlaywright設定と、本番・ステージング・デモのwrangler設定には追加せず、既定の500msを維持する。
 - `searchRateLimit.test.ts` が既定値・上書き・不正値・0を、既存の `rateLimit.test.ts` が制限そのものを検証する。`books-search.test.ts` は既定の500ms未満で429、500msで許可、0では連続検索を許可することを確認する。
 - `sessionRequestIsSignedOut.test.ts` がCookieヘッダーの名前の完全一致・空値・別パス・POSTを検証する。`auth-session-marker.test.ts` は目印ありのGET sessionがAuth.jsを呼ばずnull JSON・Set-Cookieなしを返し、目印なしや他パスでは従来のハンドラを呼ぶことを確認する。
 - `auth-session.spec.ts` の #784 のCookie書き戻しシナリオで、書き戻した後も `/api/auth/session` がnullでSet-Cookieがないことを確認する。既存のログアウト直後のnull判定も維持する。
