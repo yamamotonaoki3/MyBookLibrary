@@ -26,7 +26,7 @@ flowchart LR
 ```
 
 - アプリは **Next.js 16**（画面と API Routes が同じプロジェクト）。OpenNext で Cloudflare Workers 向けにビルドし、**1 つの Worker** として動かす。
-- データは **Cloudflare D1**（SQLite）。ORM は Prisma 6（D1 アダプタ。wasm 版のクライアント）。
+- データは **Cloudflare D1**（SQLite）。ORM は Prisma 7.10.1（D1 アダプタ。wasm 版のクライアント）。
 - 定期実行は **Cron Trigger**。Worker の `scheduled` ハンドラが、Worker 自身の API を、Bearer 認証で内部呼び出しする。
 - 外部 API は、サーバー（Worker）から呼ぶ。利用者のブラウザが直接呼ぶのは、Google のログイン画面だけ。
 - **AWS（EC2・RDS・CloudFront）は、リソースを削除済み**。構成は [aws/README.md](aws/README.md) に残している。
@@ -37,7 +37,7 @@ flowchart LR
 
 | 環境 | Worker 名 | D1 | デプロイ元のブランチ | Cron | 備考 |
 | --- | --- | --- | --- | --- | --- |
-| 本番 | `mybooklibrary` | `mybooklibrary-db` | `production` | 毎日 UTC 00:00（JST 09:00）: 新刊チェック | 利用者向け。実データ |
+| 本番 | `mybooklibrary` | `mybooklibrary-db` | `production` | 毎日 UTC 00:00（JST 09:00）: 新刊チェック、毎時30分: 書誌補完 | 利用者向け。実データ |
 | ステージング | `mybooklibrary-staging` | `mybooklibrary-staging-db` | `main` | なし（本番との二重通知を防ぐ） | 確認用。架空データ |
 | デモ | `mybooklibrary-demo` | `mybooklibrary-demo-db` | `demo` | 毎日 UTC 18:00（JST 03:00）: デモの初期化 | `DEMO_MODE=true`。公開。架空データ。[方針](demo-environment.md) |
 
@@ -47,7 +47,7 @@ flowchart LR
 ## リクエストの流れ
 
 1. ブラウザ → Worker。静的ファイル（`/_next/static` など）は、アセットから返す。
-2. 画面と API は、まず `src/proxy.ts`（Auth.js の `auth`。判定は `src/auth.config.ts`）を通り、未ログインなら、ログイン画面へ送る。**未ログインでも通すのは**、`/login`・`/register`・`/forgot-password`・`/api/auth/*`・`/api/cron/*`・`/api/version`・`/manifest.json`・`/icons/*`。`/api/cron/*` は、ログインのセッションではなく、Route Handler が **Bearer トークン（`CRON_SECRET`）**で認証する。`api/auth/*` と静的ファイルは、proxy 自体を通さない。
+2. 画面と API は、まず `src/proxy.ts`（Auth.js の `auth`。判定は `src/auth.config.ts`）を通り、未ログインなら、ログイン画面へ送る。**未ログインでも通すのは**、`/login`・`/register`・`/forgot-password`・`/api/auth/*`・`/api/cron/*`・`/api/admin/book-enrichment/tick`（完全一致）・`/api/version`・`/manifest.json`・`/icons/*`・`/sw.js`・ハッシュ付きの `/workbox-*.js` と `/pwa-worker-*.js`。`/api/cron/*` は、ログインのセッションではなく、Route Handler が **Bearer トークン（`CRON_SECRET`）**で認証する。書誌補完の tick は、Route Handler が専用の Bearer トークン（`ENRICHMENT_TICK_SECRET`）で認証する。`api/auth/*` と静的ファイルは、proxy 自体を通さない。
 3. ページ・Route Handler が、サービス・リポジトリ経由で D1 を読み書きし、必要なら外部 API（楽天・NDL・カーリル）を呼ぶ。
 4. 管理者の API は、`requireAdminSession` で、JWT のロールと DB の最新のロールの両方を確認する。デモ環境では、管理者の API をすべて 403 にする。
 
@@ -80,6 +80,7 @@ flowchart LR
 ## 定期実行（Cron）
 
 - 本番: 新刊チェック（`GET /api/cron/check-new-books`）。お気に入り著者の新刊を、楽天ブックス API で探し、通知を作る。重複通知は作らない（冪等）。
+- 本番: 書誌補完（毎時30分。`GET /api/admin/book-enrichment/tick`）。専用の `ENRICHMENT_TICK_SECRET` を使い、1回20秒の予算で分割実行する。
 - デモ: 新刊チェックの代わりに、デモのデータの初期化（`GET /api/cron/reset-demo`）。
 - ステージング: なし。手動で確認する。
 - 詳細は [新刊チェック（Cron）の定義書](features/cron.md)。
