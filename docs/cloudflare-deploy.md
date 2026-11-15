@@ -44,7 +44,7 @@ npm run d1:migrate:staging
 npm run d1:migrate:production
 ```
 
-`d1_migrations` テーブルで適用済みのものは再適用されないため、繰り返し実行しても安全。デプロイ時のマイグレーション適用は #684 で自動化する。
+`d1_migrations` テーブルで適用済みのものは再適用されないため、繰り返し実行しても安全。デプロイ時のマイグレーション適用は #684 で自動化済み。`npm run deploy:staging` / `deploy:production` / `deploy:demo` が、リモート D1 への適用に成功してから Worker を公開する（`scripts/deploy-worker.mjs`）。
 
 ## 自動デプロイ（Workers Builds）
 

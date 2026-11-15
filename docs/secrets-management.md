@@ -7,8 +7,8 @@
 | ローカル開発 | `app/.env.local` | `app/.env.local.example` |
 | テスト | CI の使い捨て環境変数または `app/.env.test` | `app/.env.test.example` |
 | DB 移行 | 作業端末の `app/.env.migration-source` / `app/.env.migration-target` | 各 `.example` |
-| 現行 AWS 本番 | AWS SSM Parameter Store | Terraform の変数定義と `terraform.tfvars.example` |
-| Cloudflare 移行後 | Cloudflare Workers の Secret（`wrangler secret put`、環境ごと） | `app/wrangler.jsonc`（secret 以外の `vars`）。登録するものと手順は [cloudflare-deploy.md](cloudflare-deploy.md) |
+| 停止中の AWS 構成 | AWS SSM Parameter Store | Terraform の変数定義と `terraform.tfvars.example` |
+| 現行の Cloudflare 環境 | Cloudflare Workers の Secret（`wrangler secret put`、環境ごと） | `app/wrangler.jsonc`（secret 以外の `vars`）。登録するものと手順は [cloudflare-deploy.md](cloudflare-deploy.md) |
 
 `.env*` の実値、`*.tfvars`、Terraform state/plan、DB dump は `.gitignore` の対象である。追加する前に `git ls-files` で追跡対象になっていないことを確認する。
 
