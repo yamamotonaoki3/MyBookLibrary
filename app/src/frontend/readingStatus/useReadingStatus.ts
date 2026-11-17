@@ -52,7 +52,12 @@ export function useReadingStatus({ initialStatus, initialBookId, buildBody }: Op
       try {
         const body = buildBodyRef.current();
         // Legacy/remote cover metadata must not block an otherwise valid status change.
-        if (body.coverImageUrl != null) body.coverImageUrl = getSafeWebUrl(body.coverImageUrl);
+        if (body.coverImageUrl != null) {
+          const coverImageUrl = body.coverImageUrl;
+          body.coverImageUrl = typeof coverImageUrl === "string" && getSafeWebUrl(coverImageUrl) !== null
+            ? coverImageUrl.trim()
+            : null;
+        }
         const res = await fetch("/api/reading-status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

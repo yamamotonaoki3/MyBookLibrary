@@ -5,7 +5,7 @@ import { getSafeWebUrl } from "@/lib/webUrl";
 export const CoverImageUrlSchema = z.preprocess(
   value => value === "" ? null : value,
   z.string().refine(value => getSafeWebUrl(value) !== null, "書影は有効なHTTP(S) URLで指定してください。")
-    .transform(value => getSafeWebUrl(value)!).nullable().optional(),
+    .transform(value => value.trim()).nullable().optional(),
 );
 
 export const ReviewSchema = z.object({

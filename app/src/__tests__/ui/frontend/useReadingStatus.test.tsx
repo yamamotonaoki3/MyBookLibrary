@@ -104,6 +104,28 @@ describe("useReadingStatus", () => {
     await waitFor(() => expect(result.current.busy).toBe(false));
     expect(result.current.status).toBe("read");
   });
+
+  it("日本語パスの表紙URLは前後の空白だけを除いて送信する", async () => {
+    const coverImageUrl = `https://example.com/${"あ".repeat(20)}.jpg`;
+    global.fetch = jest.fn().mockResolvedValue(ok());
+    const { result } = renderHook(() =>
+      useReadingStatus({
+        initialStatus: "unread",
+        initialBookId: null,
+        buildBody: () => ({
+          title: "[E2E_TEST] 本",
+          author: "testuser_author",
+          coverImageUrl: `  ${coverImageUrl}  `,
+        }),
+      })
+    );
+
+    act(() => result.current.changeStatus("reading"));
+    await waitFor(() => expect(result.current.busy).toBe(false));
+
+    const init = (global.fetch as jest.Mock).mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(init.body as string).coverImageUrl).toBe(coverImageUrl);
+  });
 });
 
 // A legacy cover is presentation metadata, and must not prevent changing the reading status.

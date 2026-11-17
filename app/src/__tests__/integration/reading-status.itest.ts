@@ -78,6 +78,30 @@ describe("POST /api/reading-status", () => {
     expect(await testPrisma.readingStatus.findMany({ where: { userId: user.id } })).toHaveLength(0);
   });
 
+  it("日本語パスの表紙URLは前後の空白だけを除いてDBに保存する", async () => {
+    const coverImageUrl = `https://example.com/${"あ".repeat(20)}.jpg`;
+    const user = await testPrisma.user.create({
+      data: { name: "testuser_cover_url", email: "testuser_cover_url@example.com", role: "user" },
+    });
+
+    asUser(user.id);
+    const res = await POST(
+      jsonRequest("/api/reading-status", {
+        body: {
+          title: "[E2E_TEST] 日本語パスの表紙",
+          author: "testuser_author",
+          status: "reading",
+          coverImageUrl: `  ${coverImageUrl}  `,
+        },
+      })
+    );
+    expect(res.status).toBe(200);
+
+    const { bookId } = await res.json();
+    const book = await testPrisma.book.findUniqueOrThrow({ where: { id: bookId } });
+    expect(book.coverImageUrl).toBe(coverImageUrl);
+  });
+
   it("新規登録した本の他版ISBNは、応答後の処理として保存される（応答時点では未保存）", async () => {
     const ndlHardcoverXml = `<?xml version="1.0"?><searchRetrieveResponse><numberOfRecords>1</numberOfRecords><records><record><recordData>
 <dc:title>しき</dc:title><dc:creator>町屋良平</dc:creator>
