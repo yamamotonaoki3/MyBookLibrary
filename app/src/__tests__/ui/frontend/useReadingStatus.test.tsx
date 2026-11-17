@@ -105,3 +105,17 @@ describe("useReadingStatus", () => {
     expect(result.current.status).toBe("read");
   });
 });
+
+// A legacy cover is presentation metadata, and must not prevent changing the reading status.
+it("can save reading status when an old cover is not a Web URL", async () => {
+  const { ReadingStatusSchema } = await import("@/lib/validations");
+  global.fetch = jest.fn(async (_url, init) => {
+    const parsed = ReadingStatusSchema.safeParse(JSON.parse(init!.body as string));
+    return { ok: parsed.success, json: async () => ({ bookId: 1 }) } as Response;
+  });
+  const { result } = renderHook(() => useReadingStatus({ initialStatus: "unread", initialBookId: 1, buildBody: () => ({ title: "[E2E_TEST] 本", author: "testuser_author", coverImageUrl: "data:image/png;base64,AA==" }) }));
+  act(() => result.current.changeStatus("reading"));
+  await waitFor(() => expect(result.current.busy).toBe(false));
+  expect(result.current.error).toBeNull();
+  expect(result.current.status).toBe("reading");
+});

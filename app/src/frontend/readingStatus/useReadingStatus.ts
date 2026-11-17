@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getSafeWebUrl } from "@/lib/webUrl";
 
 export type ReadingStatusValue = "unread" | "want_to_read" | "reading" | "read";
 
@@ -49,10 +50,13 @@ export function useReadingStatus({ initialStatus, initialBookId, buildBody }: Op
       const value = queuedRef.current;
       queuedRef.current = null;
       try {
+        const body = buildBodyRef.current();
+        // Legacy/remote cover metadata must not block an otherwise valid status change.
+        if (body.coverImageUrl != null) body.coverImageUrl = getSafeWebUrl(body.coverImageUrl);
         const res = await fetch("/api/reading-status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...buildBodyRef.current(), status: value }),
+          body: JSON.stringify({ ...body, status: value }),
         });
         if (!res.ok) throw new Error(`status ${res.status}`);
         const data = await res.json();

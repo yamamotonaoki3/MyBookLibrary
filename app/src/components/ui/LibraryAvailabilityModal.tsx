@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X, ExternalLink } from "lucide-react";
+import { getSafeWebUrl } from "@/lib/webUrl";
 import { getLoanStatusStyle, showReserveLink } from "@/lib/libraryAvailabilityUi";
 
 type AvailabilityResult = {
@@ -105,14 +106,14 @@ export function LibraryAvailabilityModal({ bookId, isbn, bookTitle, onClose }: P
                             {r.loanStatus}
                           </span>
                           <span className="text-xs text-zinc-500">{r.libname}</span>
-                          {showReserveLink(r.loanStatus) && r.reserveurl && (
+                          {showReserveLink(r.loanStatus) && getSafeWebUrl(r.reserveurl) && (
                             <a
-                              href={r.reserveurl}
+                              href={getSafeWebUrl(r.reserveurl)!}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-0.5 text-xs text-blue-600 hover:underline dark:text-blue-400"
                             >
-                              予約する <ExternalLink className="h-3 w-3" />
+                              予約する <span className="sr-only">（外部サイト・新しいタブで開きます）</span><ExternalLink className="h-3 w-3" aria-hidden="true" />
                             </a>
                           )}
                         </div>

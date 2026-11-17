@@ -1,13 +1,15 @@
 /**
  * 楽天ブックス・NDLサーチ・カーリルの最小スタブサーバー。
  *
- * E2E（Playwright）はサーバーサイド（Route Handler）から実行されるため、
+ * 外部APIへの呼び出しはサーバーサイド（Route Handler）から実行されるため、
  * Playwright の `page.route()` では外部通信を止められない。代わりに
  * `RAKUTEN_API_BASE` / `NDL_API_BASE` / `NDL_SRU_BASE` / `CALIL_API_BASE` を
  * このサーバーの URL に向けて起動する（`src/lib/{rakuten,ndl,calil}.ts` 参照）。
  *
  * フィクスチャは `e2e/fixtures/external/` の固定ファイルを返すのみで、
  * クエリパラメータによる出し分けは行わない（E2Eの検索結果を安定させるため）。
+ * PWA保護テストのみ localReserve を明示し、予約URLを実際の待受ポートの
+ * loopbackへ置換する。通常のsuiteのfixtureは変更しない。
  * 外部APIが遅い状況を再現したいテストのため、NDL・楽天の応答遅延だけ
  * `/__stub/delay` で設定できる（`/__stub/reset` で戻す）。
  */
@@ -43,8 +45,8 @@ function sendAfterDelay(
   }, delayMs);
 }
 
-export function createStubServer() {
-  return createServer((req, res) => {
+export function createStubServer({ localReserve = false }: { localReserve?: boolean } = {}) {
+  const server = createServer((req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
 
     switch (url.pathname) {
@@ -80,8 +82,19 @@ export function createStubServer() {
         return send(res, 200, "application/json; charset=utf-8", readFixture("calil-library.json"));
 
       // カーリル 貸出状況確認（continue:0 を即返し、実APIの2秒ポーリングを再現しない）
-      case "/check":
-        return send(res, 200, "application/json; charset=utf-8", readFixture("calil-check.json"));
+      case "/check": {
+        const fixture = readFixture("calil-check.json");
+        if (!localReserve) return send(res, 200, "application/json; charset=utf-8", fixture);
+        // Use the bound port, never the request Host header or an external destination.
+        const address = server.address();
+        if (!address || typeof address === "string") return send(res, 500, "text/plain", "missing stub port");
+        const data = JSON.parse(fixture);
+        data.books["9784101010014"].Tokyo_Bunkyo.reserveurl = `http://localhost:${address.port}/stub/reserve`;
+        return send(res, 200, "application/json; charset=utf-8", JSON.stringify(data));
+      }
+      case "/stub/reserve":
+        if (!localReserve) return send(res, 404, "text/plain", "reserve stub disabled");
+        return send(res, 200, "text/html; charset=utf-8", '<!doctype html><html lang="ja"><meta charset="utf-8"><title>[E2E_TEST] 予約先</title><h1>[E2E_TEST] ローカル予約先</h1></html>');
 
       // 書影のスタブ（1x1 PNG）。フィクスチャの largeImageUrl はこのパスを指す。
       // next/image がフェッチする際に実際の楽天CDNへ通信しないようにするため。
@@ -98,6 +111,7 @@ export function createStubServer() {
         return send(res, 404, "text/plain", `stub-server: unknown path ${url.pathname}`);
     }
   });
+  return server;
 }
 
 /**
@@ -123,7 +137,7 @@ export function stubEnv(port: number): Record<string, string> {
 
 if (require.main === module) {
   const port = Number(process.env.STUB_SERVER_PORT ?? 3999);
-  const server = createStubServer();
+  const server = createStubServer({ localReserve: !!process.env.PROTECTION_STUB_ORIGIN });
   server.listen(port, () => {
     console.log(`stub-server listening on http://localhost:${port}`);
   });

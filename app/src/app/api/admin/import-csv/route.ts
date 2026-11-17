@@ -1,3 +1,4 @@
+import { CoverImageUrlSchema } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
@@ -69,11 +70,14 @@ function parseRow(row: string[]): ParsedRow {
   if (isNaN(awardId) || isNaN(year)) throw new Error("awardId・year は数値で指定してください");
   if (type !== "winner" && type !== "nominee") throw new Error("type は winner または nominee");
 
+  const coverResult = CoverImageUrlSchema.safeParse(coverImageUrl?.trim() || null);
+  if (!coverResult.success) throw new Error("書影は有効なHTTP(S) URLで指定してください。");
+
   return {
     title,
     normalizedAuthor: normalizeAuthorName(author),
     isbn: isbn?.trim() || null,
-    coverImageUrl: coverImageUrl?.trim() || null,
+    coverImageUrl: coverResult.data ?? null,
     publishedAt,
     awardId,
     year,

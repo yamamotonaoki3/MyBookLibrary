@@ -4,6 +4,8 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 
 ## 索引
 
+- 2026-11-17: 保護ヘッダーはNext応答とCloudflare ASSETSを分けて設定・検証する（#841）
+
 - 2026-11-10: メジャー更新（Prisma 7）は、本番相当の件数の架空データと Cron を、ステージングで通してから本番へ出す（#821、#822）
 - 2026-11-09: iPhone の PWA だけバーコードスキャンの映像が灰色になった。親の再レンダリングでスキャナが再起動する構造を、コールバックの ref 保持で直し、ステージングと本番の PWA で解消を確認した（#815、#816）
 
@@ -45,6 +47,16 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - 2026-10-17: Windows で、`wrangler d1 execute --command` に複数行の SQL を渡すと失敗した。1 行にするか、`--file` を使う
 
 ## 記録
+
+### 2026-11-17: 保護ヘッダーはNext応答とCloudflare ASSETSを分けて設定・検証する（#841）
+
+- **種別:** レビュー指摘に基づく手直し。
+- **対象領域・関連ファイル:** `app/next.config.ts`、`app/public/_headers`、`app/src/lib/browserProtection.ts`、`app/e2e-pwa/browser-protection.spec.ts`。
+- **何が起きたか:** Nextの全パスにheadersを追加しても、現行Cloudflare構成のASSETS直配信はNextを通らない。NextのローカルHTTP確認だけでは静的資産への適用を保証できなかった。PWAテストのpage.routeによるAPI置換もSW制御下の実経路を保証しない。
+- **対応と根拠:** public/_headersをproduction builderと完全同期させる単体テストを追加。既存Wranglerのassets-only local配信でSW・manifestの200応答と全保護ヘッダー一致を確認した。PWAはSW controllerを確認し、実APIからローカルスタブへ到達する架空DB fixtureと、追跡対象の疑似カメラ設定で3件の回帰テストを通した。独立CLIレビュー第2回は指摘なし。
+- **次回の行動規則:** ヘッダー変更は配信層ごとに設定箇所と実HTTP検証を分ける。PWAの互換テストはSWを維持した実経路で行い、ブラウザーに依存する設定を検証専用ファイルだけへ隠さない。
+- **未確認:** OpenNext完成成果物の同梱、公開Cloudflareでの配信、実機カメラ・実外部サービス。ローカル成功から保証しない。
+- **状態:** 有効。
 
 ### 2026-11-10: Prisma 7.10.1 を、本番相当の件数の架空データと Cron で、ステージングで検証した（#821、#822）
 

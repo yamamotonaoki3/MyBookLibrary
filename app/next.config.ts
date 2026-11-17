@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { buildSecurityHeaders } from "./src/lib/browserProtection";
 import withPWAInit from "@ducanh2912/next-pwa";
 import { version as appVersion } from "./package.json";
 import { pwaRuntimeCaching } from "./src/lib/pwaRuntimeCaching";
@@ -23,6 +24,9 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: buildSecurityHeaders(process.env.NODE_ENV === "development") }];
+  },
   // 接続先の DB（mysql / d1）をビルド時に埋め込む。使わない側の実装はバンドルから除かれる（src/lib/prisma.ts）。
   env: {
     DB_PROVIDER: process.env.DB_PROVIDER ?? "mysql",

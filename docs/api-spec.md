@@ -47,9 +47,11 @@
 | `title` | string | 必須、前後空白トリム、1〜200文字 |
 | `author` | string | 必須、前後空白トリム、1〜100文字 |
 | `isbn` | string | 任意 |
-| `coverImageUrl` | string | 任意、URL 形式 |
+| `coverImageUrl` | string / null | 任意、空文字はnull。HTTP(S)の絶対URLのみ（userinfo・内部空白/制御文字・バックスラッシュなし） |
 | `publishedAt` | string | 任意 |
 | `source` | enum | 任意、`rakuten` / `manual` |
+
+管理者登録・編集とCSVの書影URLも同じ条件を使う。CSVは不正な書影URLの行をエラーとして除外する。任意hostのHTTP(S)は維持する（[方針](browser-protection.md)）。
 
 ### 本の編集（EditBookSchema）
 
@@ -58,7 +60,7 @@
 | `title` | string | 必須、前後空白トリム後1〜200文字 |
 | `author` | string | 必須、前後空白トリム後1〜100文字 |
 | `isbn` | string | 任意、null可 |
-| `coverImageUrl` | string | 任意、null可、URL形式 |
+| `coverImageUrl` | string / null | 任意、空文字はnull。HTTP(S)の絶対URLのみ（userinfo・内部空白/制御文字・バックスラッシュなし） |
 | `publishedAt` | string | 任意、null可 |
 
 ### レビュー（ReviewSchema）

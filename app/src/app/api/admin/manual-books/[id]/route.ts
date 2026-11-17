@@ -1,3 +1,4 @@
+import { CoverImageUrlSchema } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeAuthorName } from "@/lib/normalizeAuthorName";
@@ -26,6 +27,11 @@ export async function PATCH(request: NextRequest, { params }: Props) {
 
     const { title, author, isbn, coverImageUrl } = await request.json();
 
+    const coverResult = CoverImageUrlSchema.safeParse(coverImageUrl);
+    if (!coverResult.success) {
+      return NextResponse.json({ error: "書影は有効なHTTP(S) URLで指定してください。" }, { status: 400 });
+    }
+
     let authorId = book.authorId;
     if (author !== undefined) {
       const normalizedAuthor = normalizeAuthorName(author);
@@ -42,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: Props) {
         ...(title !== undefined && { title }),
         authorId,
         ...(isbn !== undefined && { isbn: isbn || null }),
-        ...(coverImageUrl !== undefined && { coverImageUrl: coverImageUrl || null }),
+        ...(coverImageUrl !== undefined && { coverImageUrl: coverResult.data ?? null }),
       },
       include: { author: true },
     });

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { BookCover } from "@/components/ui/BookCover";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
@@ -1053,19 +1053,13 @@ export default function AdminPage() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="relative h-16 w-10 flex-shrink-0 overflow-hidden rounded">
-                        {book.coverImageUrl ? (
-                          <Image
+                        <BookCover
                             src={book.coverImageUrl}
                             alt={book.title}
                             fill
                             className="object-cover"
                             sizes="40px"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-[9px] text-zinc-400 dark:bg-zinc-800">
-                            No Image
-                          </div>
-                        )}
+                           fallbackClassName="flex h-full w-full items-center justify-center bg-zinc-100 text-[9px] text-zinc-400 dark:bg-zinc-800" />
                       </div>
                       <div className="min-w-0 flex-1 text-sm">
                         <p className="font-semibold text-zinc-900 dark:text-zinc-50">{book.title}</p>

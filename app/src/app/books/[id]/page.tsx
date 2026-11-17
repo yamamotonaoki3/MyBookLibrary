@@ -1,5 +1,5 @@
 import { BookReviewCount } from "@/frontend/books/BookReviewCount";
-import Image from "next/image";
+import { BookCover } from "@/components/ui/BookCover";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
@@ -111,19 +111,13 @@ export default async function BookDetailPage({ params }: Props) {
       {/* 書籍ヘッダー */}
       <div className="flex gap-4">
         <div className="relative h-36 w-24 shrink-0 overflow-hidden rounded-lg">
-          {book.coverImageUrl ? (
-            <Image
+          <BookCover
               src={book.coverImageUrl}
               alt={`${book.title}の書影`}
               fill
               className="object-cover"
               sizes="128px"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-sm text-zinc-400 dark:bg-zinc-800">
-              No Image
-            </div>
-          )}
+             fallbackClassName="flex h-full w-full items-center justify-center bg-zinc-100 text-sm text-zinc-400 dark:bg-zinc-800" />
         </div>
 
         <div className="flex min-w-0 flex-col gap-2">
