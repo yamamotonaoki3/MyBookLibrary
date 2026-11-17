@@ -2,6 +2,10 @@
 
 文学賞の受賞・ノミネート作品の読書進捗管理と、お気に入り著者の管理を行う Web アプリケーション。
 
+## アプリ概要
+
+[紹介動画付きのアプリ概要](https://yamamotonaoki3.github.io/MyBookLibrary/)で、主な機能と実際の操作画面を確認できます。
+
 ## ライブデモ
 
 **https://mybooklibrary-demo.nyproducts.workers.dev**
