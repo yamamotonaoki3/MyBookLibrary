@@ -1,7 +1,7 @@
 "use client";
 import { BookReviewCount } from "@/frontend/books/BookReviewCount";
 
-import Image from "next/image";
+import { BookCover } from "@/components/ui/BookCover";
 import Link from "next/link";
 import type { BookWithAwardEntry } from "@/types/award";
 import LibraryAvailabilityButton from "@/components/ui/LibraryAvailabilityButton";
@@ -30,19 +30,13 @@ export function BookCard({ entry }: Props) {
     <div className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
       <Link href={`/books/${book.id}`} className="shrink-0">
         <div className="relative h-32 w-20 overflow-hidden rounded">
-          {book.coverImageUrl ? (
-            <Image
+          <BookCover
               src={book.coverImageUrl}
               alt={`${book.title}の書影`}
               fill
               className="object-cover"
               sizes="80px"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-xs text-zinc-400 dark:bg-zinc-800">
-              No Image
-            </div>
-          )}
+             fallbackClassName="flex h-full w-full items-center justify-center bg-zinc-100 text-xs text-zinc-400 dark:bg-zinc-800" />
         </div>
       </Link>
 

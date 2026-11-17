@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { SEARCH_CLIENT_TIMEOUT_MS } from "@/lib/searchTimeouts";
 import { BookReviewCount } from "@/frontend/books/BookReviewCount";
-import Image from "next/image";
+import { BookCover } from "@/components/ui/BookCover";
 import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -59,19 +59,13 @@ function SearchResultCard({ book }: { book: SearchResult }) {
         className="shrink-0"
       >
         <div className="relative h-32 w-20 overflow-hidden rounded">
-          {book.coverImageUrl ? (
-            <Image
+          <BookCover
               src={book.coverImageUrl}
               alt={`${book.title}の書影`}
               fill
               className="object-cover"
               sizes="80px"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-zinc-100 text-xs text-zinc-400 dark:bg-zinc-800">
-              No Image
-            </div>
-          )}
+             fallbackClassName="flex h-full w-full items-center justify-center bg-zinc-100 text-xs text-zinc-400 dark:bg-zinc-800" />
           {preparing && <CoverLoadingOverlay />}
         </div>
       </Link>

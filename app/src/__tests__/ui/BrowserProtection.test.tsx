@@ -1,0 +1,10 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { LibraryAvailabilityModal } from "@/components/ui/LibraryAvailabilityModal";
+import { BookCard } from "@/app/awards/_components/BookCard";
+import type { BookWithAwardEntry } from "@/types/award";
+const entry:BookWithAwardEntry={awardEntryId:1,year:2026,type:"winner",status:"unread",hasReview:false,book:{id:1,title:"[E2E_TEST] 本",isbn:null,coverImageUrl:"https://example.com/first.jpg",publishedAt:"2026-01-01",publicReviewCount:0,author:{id:1,name:"testuser_author"}}};
+afterEach(()=>jest.restoreAllMocks());
+function availability(url:string){global.fetch=jest.fn().mockResolvedValue({ok:true,json:async()=>({results:{"9780000000001":[{systemid:"test",libkey:"test",libname:"testuser_library",loanStatus:"貸出可",reserveurl:url}]}})});render(<LibraryAvailabilityModal bookId={1} bookTitle="[E2E_TEST] 本" onClose={()=>{}}/>);}
+it("does not make a non-Web reservation URL clickable",async()=>{availability("javascript:alert(1)");await screen.findByText("testuser_library");expect(screen.queryByRole("link",{name:/予約する/})).not.toBeInTheDocument();expect(screen.getByText("貸出可")).toBeVisible();});
+it("preserves HTTP reservation links and announces external/new-tab behavior",async()=>{availability("http://library.example.com/reserve");const link=await screen.findByRole("link",{name:/予約する/});expect(link).toHaveAttribute("href","http://library.example.com/reserve");expect(link).toHaveAttribute("target","_blank");expect(link).toHaveAttribute("rel","noopener noreferrer");expect(link).toHaveAccessibleName(/外部.*新しいタブ/);});
+it("falls back on image failure and retries a changed source",()=>{const {rerender}=render(<BookCard entry={entry}/>);fireEvent.error(screen.getByAltText("[E2E_TEST] 本の書影"));expect(screen.getByText("No Image")).toBeVisible();expect(screen.queryByRole("img")).not.toBeInTheDocument();rerender(<BookCard entry={{...entry,book:{...entry.book,coverImageUrl:"https://another.example.com/next.jpg"}}}/>);expect(screen.getByRole("img")).toHaveAttribute("src","https://another.example.com/next.jpg");});

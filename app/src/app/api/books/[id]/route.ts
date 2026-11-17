@@ -5,12 +5,13 @@ import { logger } from "@/lib/logger";
 import { chunk } from "@/lib/chunk";
 import { parseSalesDateToUtcDate } from "@/lib/dateParsing";
 import { z } from "zod";
+import { CoverImageUrlSchema } from "@/lib/validations";
 
 const EditBookSchema = z.object({
   title: z.string().trim().min(1).max(200),
   author: z.string().trim().min(1).max(100),
   isbn: z.string().optional().nullable(),
-  coverImageUrl: z.string().url().optional().nullable(),
+  coverImageUrl: CoverImageUrlSchema,
   publishedAt: z.string().optional().nullable(),
 });
 

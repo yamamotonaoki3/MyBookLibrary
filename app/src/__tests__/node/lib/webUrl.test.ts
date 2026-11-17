@@ -1,0 +1,3 @@
+import { getSafeWebUrl } from "@/lib/webUrl";
+it.each([null,undefined,42,"","/reserve","//example.com/x","data:image/png;base64,AA==","ftp://example.com/x","https://user@example.com/x","https://example.com/a\tb","https:\\example.com/x"])("rejects ambiguous or non-Web URL %p",value=>expect(getSafeWebUrl(value)).toBeNull());
+it.each([["http://library.example.com/reserve","http://library.example.com/reserve"],["https://任意.example/表紙.jpg","https://xn--boqq45b.example/%E8%A1%A8%E7%B4%99.jpg"],["  HTTPS://EXAMPLE.COM/cover.jpg  ","https://example.com/cover.jpg"]])("normalizes only safe Web URL %s",(input,want)=>expect(getSafeWebUrl(input)).toBe(want));

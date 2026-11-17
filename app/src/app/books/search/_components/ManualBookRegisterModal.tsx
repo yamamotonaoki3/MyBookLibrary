@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getSafeWebUrl } from "@/lib/webUrl";
 
 type ReadingStatus = "want_to_read" | "reading" | "read";
 
@@ -31,7 +32,7 @@ export default function ManualBookRegisterModal({ onClose, onRegistered }: Props
     else if (title.trim().length > 200) errs.title = "200文字以内で入力してください";
     if (!author.trim()) errs.author = "著者名を入力してください";
     else if (author.trim().length > 100) errs.author = "100文字以内で入力してください";
-    if (coverImageUrl.trim() && !/^https?:\/\/.+/.test(coverImageUrl.trim())) {
+    if (coverImageUrl.trim() && getSafeWebUrl(coverImageUrl) === null) {
       errs.coverImageUrl = "有効なURLを入力してください";
     }
     return errs;

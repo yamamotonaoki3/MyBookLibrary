@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { normalizeEmail } from "@/lib/email";
+import { getSafeWebUrl } from "@/lib/webUrl";
+
+export const CoverImageUrlSchema = z.preprocess(
+  value => value === "" ? null : value,
+  z.string().refine(value => getSafeWebUrl(value) !== null, "書影は有効なHTTP(S) URLで指定してください。")
+    .transform(value => value.trim()).nullable().optional(),
+);
 
 export const ReviewSchema = z.object({
   body: z
@@ -21,7 +28,7 @@ export const ReadingStatusSchema = z.object({
   title: z.string().trim().min(1).max(200),
   author: z.string().trim().min(1).max(100),
   isbn: z.string().optional().nullable(),
-  coverImageUrl: z.string().url().optional().nullable(),
+  coverImageUrl: CoverImageUrlSchema,
   publishedAt: z.string().optional().nullable(),
   source: z.enum(["rakuten", "manual"]).optional(),
 });

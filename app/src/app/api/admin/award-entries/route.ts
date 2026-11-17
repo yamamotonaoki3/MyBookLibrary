@@ -1,3 +1,4 @@
+import { CoverImageUrlSchema } from "@/lib/validations";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
@@ -26,6 +27,11 @@ export async function POST(request: NextRequest) {
   try {
     const { title, author, isbn, coverImageUrl, publishedAt, awardId, year, type } =
       await request.json();
+
+    const coverResult = CoverImageUrlSchema.safeParse(coverImageUrl);
+    if (!coverResult.success) {
+      return NextResponse.json({ error: "書影は有効なHTTP(S) URLで指定してください。" }, { status: 400 });
+    }
 
     if (!title || !author || !awardId || !year || !type) {
       return NextResponse.json(
@@ -59,7 +65,7 @@ export async function POST(request: NextRequest) {
           title,
           authorId: authorRecord.id,
           isbn: isbn || null,
-          coverImageUrl: coverImageUrl ?? null,
+          coverImageUrl: coverResult.data ?? null,
           publishedAt:
             parseSalesDateToUtcDate(publishedAt, { allowIsoFallback: true }) ?? new Date(),
         },

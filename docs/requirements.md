@@ -122,6 +122,8 @@ ISBN・カバー画像・出版日が欠けている登録済みの本につい�
 
 ### セキュリティ
 
+- ブラウザー保護ヘッダー・互換性重視のCSP、外部予約URLと書影のHTTP(S)検証を行う。制約と検証範囲は[ブラウザーの保護と外部コンテンツ](browser-protection.md)を参照。
+
 - パスワードのハッシュ化（bcryptjs、salt: 12）
 - HTTPS 通信（Cloudflare が対応。AWS 構成では CloudFront）
 - SQL インジェクション対策（Prisma ORM が対応）

@@ -1,7 +1,7 @@
 "use client";
 import { BookReviewCount } from "@/frontend/books/BookReviewCount";
 
-import Image from "next/image";
+import { BookCover } from "@/components/ui/BookCover";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -67,19 +67,13 @@ export function BookStatusCard({ book, canonicalAuthorName }: Props) {
     }
   }
 
-  const coverImage = book.coverImageUrl ? (
-    <Image
+  const coverImage = <BookCover
       src={book.coverImageUrl}
       alt={book.title}
       width={64}
       height={90}
       className="flex-shrink-0 rounded object-cover"
-    />
-  ) : (
-    <div className="flex h-[90px] w-16 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-xs text-gray-400 dark:bg-gray-700">
-      No Image
-    </div>
-  );
+     fallbackClassName="flex h-[90px] w-16 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-xs text-gray-400 dark:bg-gray-700" />;
 
   return (
     <div className="flex h-full gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">

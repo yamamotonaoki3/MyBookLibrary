@@ -1,7 +1,7 @@
 "use client";
 
 import { BookReviewCount } from "@/frontend/books/BookReviewCount";
-import Image from "next/image";
+import { BookCover } from "@/components/ui/BookCover";
 import Link from "next/link";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,19 +56,13 @@ export function BookCard({ book, initialStatus, hasReview }: Props) {
         <CardContent className="flex gap-4 p-4">
           <Link href={`/books/${book.id}`} className="shrink-0">
             <div className="relative h-32 w-20 overflow-hidden rounded">
-              {book.coverImageUrl ? (
-                <Image
+              <BookCover
                   src={book.coverImageUrl}
                   alt={`${book.title}の書影`}
                   fill
                   className="object-cover"
                   sizes="80px"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground rounded">
-                  No Image
-                </div>
-              )}
+                 fallbackClassName="flex h-full w-full items-center justify-center bg-muted text-xs text-muted-foreground rounded" />
             </div>
           </Link>
 
