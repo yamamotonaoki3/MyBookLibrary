@@ -9,229 +9,155 @@ defaults:
   run:
     working-directory: app
 
+env:
+  CI_RUNTIME_IMAGE: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
+  WRANGLER_SEND_METRICS: "false"
+  WRANGLER_SEND_ERROR_REPORTS: "false"
+  NEXT_TELEMETRY_DISABLED: "1"
+  CHECKPOINT_DISABLE: "1"
+  PRISMA_HIDE_UPDATE_MESSAGE: "1"
+  npm_config_audit: "false"
+  npm_config_fund: "false"
+
 jobs:
   test:
-    runs-on: ubuntu-latest
-
-    # 実DB統合テスト用。db-test サービスのポートを 3307 で公開し、
-    # testDbGuard.ts の判定（ホスト localhost/127.0.0.1、ポート3307、
-    # DB名 mybooklibrary_test）とローカル開発時の docker-compose.yml の
-    # db-test サービスに揃える。認証情報はこのジョブの実行中しか存在しない
-    # 使い捨てのコンテナ用で、推測されにくい値にしている。
-    services:
-      db-test:
-        image: mysql:8.4
-        env:
-          MYSQL_ROOT_PASSWORD: ci_root_9f3ab21c
-          MYSQL_DATABASE: mybooklibrary_test
-          MYSQL_USER: ci_test_user
-          MYSQL_PASSWORD: ci_test_pw_7d4e8a63
-        ports:
-          - 3307:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
-
-    env:
-      # 実DB統合テスト・E2E共通の .env.test（testDbGuard.ts の判定に合わせる）。
-      # 外部APIキーはダミー値（docs/test-dependency-map.md の方針どおり、
-      # CIには実キーを置かない）。
-      # CRON_SECRET は cron API 側で16文字以上必須（route.ts の MIN_CRON_SECRET_LENGTH）。
-      CI_ENV_TEST_CONTENT: |
-        DATABASE_URL="mysql://ci_test_user:ci_test_pw_7d4e8a63@localhost:3307/mybooklibrary_test"
-        RAKUTEN_APP_ID=dummy
-        RAKUTEN_ACCESS_KEY=dummy
-        CALIL_API_KEY=dummy
-        AUTH_SECRET=dummy-ci-secret-not-for-production
-        CRON_SECRET=dummy-ci-cron-secret-not-for-production
-
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 22.23.4
           cache: npm
           cache-dependency-path: app/package-lock.json
-
+      - name: Verify clean preparation inputs
+        run: |
+          for file in .env .env.local .env.test .dev.vars; do
+            if [ -e "$file" ]; then echo "Unexpected app env input"; exit 1; fi
+          done
       - name: Install dependencies
         run: npm ci
-
-      # prisma generate が無いと Prisma Client の型が無く tsc が落ちる。
       - name: Generate Prisma Client
         run: npx prisma generate
-
-      # D1 版スキーマ（prisma/d1/schema.prisma）が MySQL 版から生成した内容と一致し、
-      # Prisma として有効であることを検査する（手編集・再生成漏れの検出）。
       - name: D1 schema drift check
         run: npm run schema:d1:check
-
-      # D1 のマイグレーションを順に適用した結果が D1 版スキーマと一致するか（追加漏れの検出）。
-      - name: D1 migrations check
-        run: npm run d1:migration:check
-
-      # ドキュメントのリンク切れ・存在しないパスの検出（#754）。ファイルを移動・削除したときの直し忘れを防ぐ。
       - name: Docs link check
         run: npm run check:docs
-
       - name: Typecheck
         run: npm run typecheck
-
       - name: Lint
         run: npm run lint
-
-      # node + jsdom project のみ。
-      - name: Test
-        run: npm run test -- --coverage
-
+      # Acquiring the locked image supplies Chromium and OS libraries; no app is started.
+      - name: Prepare runtime and test database images
+        run: |
+          docker pull --platform linux/amd64 "$CI_RUNTIME_IMAGE"
+          docker pull --platform linux/amd64 mysql:8.4
+          echo "CI_ISOLATION_RUNTIME_IMAGE=$(docker image inspect --format '{{.Id}}' "$CI_RUNTIME_IMAGE")" >> "$GITHUB_ENV"
+          echo "CI_ISOLATION_MYSQL_IMAGE=$(docker image inspect --format '{{.Id}}' mysql:8.4)" >> "$GITHUB_ENV"
+      # Migrations/Jest/MySQL/normal+cron+demo+PWA E2E/build all run in the none namespace.
+      - name: Isolated application tests
+        id: isolated
+        run: node scripts/run-ci-isolated.mjs test
+      # Publish only validated owned output. Missing required reports fail the runner;
+      # valid partial coverage/reports can still be recovered when a suite fails.
       - name: Upload coverage report
-        if: always()
+        if: always() && steps.isolated.outputs.artifacts != ''
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: app/coverage
+          path: ${{ steps.isolated.outputs.artifacts }}/reports/coverage
           retention-days: 7
-
-      - name: Create .env.test
-        run: printf '%s' "$CI_ENV_TEST_CONTENT" > .env.test
-
-      # globalSetup が prisma migrate deploy を実行するため、
-      # db-test サービスの起動完了（health check）を待ってから走らせる。
-      - name: Integration test
-        run: npm run test:integration
-
-      - name: Get installed Playwright version
-        id: playwright-version
-        # package.json の devDependencies はセマンティックレンジ（例: ^1.62.1）で、
-        # package-lock.json が解決した実際のバージョンとは異なりうる。
-        # ブラウザ本体の互換性はインストール済みパッケージのバージョンに紐づくため、
-        # node_modules 側から実バージョンを読む。
-        run: echo "version=$(node -e "console.log(require('@playwright/test/package.json').version)")" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-
-      # ブラウザ本体はキャッシュされるが、OS依存ライブラリはキャッシュされないため
-      # キャッシュヒット時も --with-deps 相当のシステム依存関係だけ入れ直す。
-      - name: Install Playwright OS dependencies
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
-
-      - name: E2E test
-        run: npm run test:e2e
-
-      - name: E2E test (book enrichment cron)
-        env:
-          ENRICHMENT_MODE: cron
-        run: |
-          export ENRICHMENT_TICK_SECRET="$(openssl rand -hex 16)"
-          npx playwright test e2e/book-enrichment-cron.spec.ts
-
-      # デモ環境の保護（DEMO_MODE=true で、アプリを別に起動して確認する）
-      - name: E2E test (demo mode)
-        run: npm run test:e2e:demo
-      # next dev disables PWA; exercise the real production Service Worker.
-      - name: Build production PWA test app
-        run: npm run build:test:pwa
-      - name: E2E test (production PWA)
-        run: npm run test:e2e:pwa
-
       - name: Upload Playwright report
-        if: always()
+        if: always() && steps.isolated.outputs.artifacts != ''
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: |
-            app/playwright-report
-            app/playwright-report-pwa
+            ${{ steps.isolated.outputs.artifacts }}/reports/playwright-report
+            ${{ steps.isolated.outputs.artifacts }}/reports/playwright-report-pwa
+          retention-days: 7
+      - name: Upload isolation evidence
+        if: always() && steps.isolated.outputs.artifacts != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-isolation-evidence
+          path: |
+            ${{ steps.isolated.outputs.artifacts }}/suite-result.json
+            ${{ steps.isolated.outputs.artifacts }}/host-result.json
+            ${{ steps.isolated.outputs.artifacts }}/logs
           retention-days: 7
 
-  # 同じ結合テストを、ローカルの D1（miniflare）に対して実行する（MySQL 版は上の test ジョブ）。
-  # D1 のマイグレーション適用から globalSetup が行うため、DB サービスや .env.test は不要。
   integration-d1:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 22.23.4
           cache: npm
           cache-dependency-path: app/package-lock.json
-
-      # postinstall が MySQL 用・D1 用の Prisma クライアントを生成する。
+      - name: Verify clean preparation inputs
+        run: |
+          for file in .env .env.local .env.test .dev.vars; do
+            if [ -e "$file" ]; then echo "Unexpected app env input"; exit 1; fi
+          done
       - name: Install dependencies
         run: npm ci
+      - name: Prepare runtime image
+        run: |
+          docker pull --platform linux/amd64 "$CI_RUNTIME_IMAGE"
+          echo "CI_ISOLATION_RUNTIME_IMAGE=$(docker image inspect --format '{{.Id}}' "$CI_RUNTIME_IMAGE")" >> "$GITHUB_ENV"
+      - name: Integration test (D1, isolated)
+        id: isolated
+        run: node scripts/run-ci-isolated.mjs integration-d1
+      - name: Upload D1 isolation evidence
+        if: always() && steps.isolated.outputs.artifacts != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-isolation-evidence
+          path: |
+            ${{ steps.isolated.outputs.artifacts }}/suite-result.json
+            ${{ steps.isolated.outputs.artifacts }}/host-result.json
+            ${{ steps.isolated.outputs.artifacts }}/logs
+          retention-days: 7
 
-      - name: Integration test (D1)
-        run: npm run test:integration:d1
-
-  # Cloudflare Workers 向けの Worker をビルドし、ローカル（wrangler dev --local）で起動して動作を確認する。
-  # OpenNext は Windows を公式にはサポートしないため、ビルドはここ（Linux）で検証する。
   worker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 22.23.4
           cache: npm
           cache-dependency-path: app/package-lock.json
-
-      # postinstall が MySQL 用・D1 用の Prisma クライアントを生成する。
+      - name: Verify clean preparation inputs
+        run: |
+          for file in .env .env.local .env.test .dev.vars; do
+            if [ -e "$file" ]; then echo "Unexpected app env input"; exit 1; fi
+          done
       - name: Install dependencies
         run: npm ci
-
-      # DB_PROVIDER=d1 の本番ビルド → OpenNext の Worker → Prisma の wasm の同梱（scripts/build-worker.mjs）。
-      - name: Build Worker
-        run: npm run build:worker
-
-      # Worker のサイズ（圧縮後）が Workers Paid の上限（10 MiB）に収まることを確認する。
-      - name: Check Worker size
+      - name: Prepare runtime image
         run: |
-          npx wrangler deploy --dry-run --outdir "$RUNNER_TEMP/worker-dist" 2>&1 | tee "$RUNNER_TEMP/dry-run.log"
-          gzip_kib=$(grep -oE 'gzip: [0-9.]+' "$RUNNER_TEMP/dry-run.log" | grep -oE '[0-9.]+' | head -1)
-          echo "Worker size (gzip): ${gzip_kib} KiB" | tee -a "$GITHUB_STEP_SUMMARY"
-          awk -v size="$gzip_kib" 'BEGIN { exit !(size > 0 && size < 10240) }'
-          # デモ環境専用の保護（DEMO_MODE）は、本番に入れない
-          if grep -q 'DEMO_MODE' "$RUNNER_TEMP/dry-run.log"; then echo "DEMO_MODE が、デモ以外の設定に入っています"; exit 1; fi
-
-      # ステージング環境の設定（Worker 名・D1・vars・Cron）が wrangler で解決できることを確認する。
-      - name: Check staging config
-        run: |
-          npx wrangler deploy --dry-run --env staging --outdir "$RUNNER_TEMP/worker-dist-staging" 2>&1 | tee "$RUNNER_TEMP/dry-run-staging.log"
-          grep -q 'mybooklibrary-staging-db' "$RUNNER_TEMP/dry-run-staging.log"
-          # デモ環境専用の保護（DEMO_MODE）は、ステージングに入れない
-          if grep -q 'DEMO_MODE' "$RUNNER_TEMP/dry-run-staging.log"; then echo "DEMO_MODE が、デモ以外の設定に入っています"; exit 1; fi
-
-      # デモ環境の設定（Worker 名・D1・vars・Cron なし）が wrangler で解決できることを確認する。
-      - name: Check demo config
-        run: |
-          npx wrangler deploy --dry-run --env demo --outdir "$RUNNER_TEMP/worker-dist-demo" 2>&1 | tee "$RUNNER_TEMP/dry-run-demo.log"
-          grep -q 'mybooklibrary-demo-db' "$RUNNER_TEMP/dry-run-demo.log"
-          # デモ環境では、保護（DEMO_MODE）が有効であること
-          grep -q 'DEMO_MODE' "$RUNNER_TEMP/dry-run-demo.log"
-
-      # ローカルの D1 + Worker で、ログイン・保護ページ・Cron まで確認する（認証情報は実行ごとに生成）。
-      - name: Smoke test Worker
-        run: npm run smoke:worker
+          docker pull --platform linux/amd64 "$CI_RUNTIME_IMAGE"
+          echo "CI_ISOLATION_RUNTIME_IMAGE=$(docker image inspect --format '{{.Id}}' "$CI_RUNTIME_IMAGE")" >> "$GITHUB_ENV"
+      # Build/dry-run size/staging/demo config checks and local smoke stay in this job.
+      - name: Worker build and smoke (isolated)
+        id: isolated
+        run: node scripts/run-ci-isolated.mjs worker
+      - name: Upload Worker isolation evidence
+        if: always() && steps.isolated.outputs.artifacts != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: worker-isolation-evidence
+          path: |
+            ${{ steps.isolated.outputs.artifacts }}/suite-result.json
+            ${{ steps.isolated.outputs.artifacts }}/host-result.json
+            ${{ steps.isolated.outputs.artifacts }}/logs
+          retention-days: 7
