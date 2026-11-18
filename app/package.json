@@ -25,7 +25,7 @@
     "test:e2e:pwa": "playwright test -c playwright.pwa.config.ts",
     "test:worker-build": "node --test scripts/build-worker.test.mjs",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run lint && npm run check:docs && npm run test:worker-build && npm run test",
+    "check": "npm run typecheck && npm run lint && npm run check:docs && npm run test:ci-isolation && npm run test:worker-build && npm run test",
     "check:docs": "node scripts/check-docs.mjs",
     "start": "next start",
     "lint": "eslint",
@@ -48,7 +48,8 @@
     "deploy:staging": "node scripts/deploy-worker.mjs staging",
     "deploy:production": "node scripts/deploy-worker.mjs production",
     "deploy:demo": "node scripts/deploy-worker.mjs demo",
-    "schema:d1:check": "tsx prisma/scripts/generate-d1-schema.ts --check && prisma validate --config prisma.d1.config.ts"
+    "schema:d1:check": "tsx prisma/scripts/generate-d1-schema.ts --check && prisma validate --config prisma.d1.config.ts",
+    "test:ci-isolation": "node --test scripts/ci-isolation.test.mjs scripts/ci-isolated-suite.test.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "2.11.3",

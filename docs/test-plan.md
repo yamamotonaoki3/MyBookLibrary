@@ -168,3 +168,25 @@ Windows では通常・デモの Playwright 設定が起動する Next.js 開発
 ## 進捗の更新方法
 
 新しいテストを追加したら、このファイルの該当行を「未実施」から「実施済み」に更新し、テストファイル名を記載する。
+
+## CI 隔離 runner の検証（#852）
+
+`scripts/ci-isolation.test.mjs` は危険入力、exact ID/Image/env、tmpfs/port/mount、foreign ownership、partial setup、失敗伝播、成果物・cleanup 中の cancel、source/成果物の境界を検証する。`scripts/ci-isolated-suite.test.mjs` は Linux toolchain/Client/DB/stub/CI preflight と最初の失敗で後続を止める契約を検証する。Docker boundary は unit で fake とし、実 namespace の確認と全 suite 実行は別の統合検証で行う。
+
+| job | 維持する実行検証 |
+| --- | --- |
+| test | D1 migration 整合、Worker build helper/隔離 runner unit、Jest coverage、MySQL 結合、通常 E2E、book-enrichment cron E2E、demo-mode E2E、production PWA build/E2E |
+| integration-d1 | 既存の全 D1 結合テスト・local migration |
+| worker | Worker build、gzip サイズ、staging/demo dry-run 設定、local Worker/D1/Cron smoke |
+
+docs/type/lint と純粋な `schema:d1:check` は runner 側のまま。npm/browser image 等の準備通信と、アプリのテスト通信を区別する。Node/npm/ABI/native/browser、source/deps/schema SHA、network/loopback、公開 port/host bind/foreign volume なし、env キー、終了 code・成果物・owned cleanup の証跡を確認する。skip や根拠のない timeout 延長で失敗を隠さない。
+
+通常予約 E2E は `e2e/library-availability.spec.ts` の実 fixture 経路で local href と local HTML200 を確認する。`browser-protection.spec.ts` の route.fulfill だけを、この配線の証拠にしない。
+
+`CI_ISOLATION_NODE_ARCHIVE` は Windows ローカル検証専用の準備入力とする。Windows へ Linux のリンクを展開せず、bsdtar の archive inclusion で非圧縮化する。Linux CI は正確な Node22.23.4/npm10.9.9 から通常の flat tar を作り、この入力を渡さない。非Windowsで指定した場合は準備開始前に明確なエラーで拒否する。
+
+配送待ちのキャンセルは最終結果を確定する前に扱う。fake adapter の直接 abort だけでなく、Linux 子プロセスへ実SIGTERMを送り、回収・cleanup中と結果公開中の非ゼロ終了、既存の非ゼロ suite exit 優先を確認する。
+
+ローカルでは clean Git source と今回新規 files の明示 SHA allowlist を使う。private agent instructions は clean committed bytes を収録し、元の working copy は取り込まない。CI checkout は通常の tracked source を使う。Git の index・commit を操作して新規 files を無理に拾う必要はない。
+
+導入時は `pull_request` の proposed merge ref と workflow 全体を静的に確認する。`pull_request_target` や旧 workflow の手動再実行で未隔離テストを先行させない。GitHub CI 起動・push/PR/merge/公開は別途承認後に行う。

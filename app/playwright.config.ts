@@ -42,7 +42,7 @@ export default defineConfig({
       // 楽天・NDL・カーリルの最小スタブサーバー（#434 参照）。
       command: "npx tsx e2e/stub-server.ts",
       port: STUB_PORT,
-      env: { STUB_SERVER_PORT: String(STUB_PORT) },
+      env: { STUB_SERVER_PORT: String(STUB_PORT), STUB_LOCAL_RESERVE: "true" },
       reuseExistingServer: !process.env.CI,
       timeout: 15_000,
     },

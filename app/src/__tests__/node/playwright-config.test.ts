@@ -98,7 +98,10 @@ describe('Playwright server color environment', () => {
     });
 
     const normal = loadConfig(nextConfig, 'win32');
-    expect(serverFor(normal, 'stub-server.ts').env).toEqual({ STUB_SERVER_PORT: '3999' });
+    expect(serverFor(normal, 'stub-server.ts').env).toEqual({
+      STUB_SERVER_PORT: '3999',
+      STUB_LOCAL_RESERVE: 'true',
+    });
 
     const pwa = loadConfig(pwaConfig, 'win32');
     expect(serverFor(pwa, 'npm run start').env?.FORCE_COLOR).toBeUndefined();
