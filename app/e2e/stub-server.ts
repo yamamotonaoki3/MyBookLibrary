@@ -137,7 +137,7 @@ export function stubEnv(port: number): Record<string, string> {
 
 if (require.main === module) {
   const port = Number(process.env.STUB_SERVER_PORT ?? 3999);
-  const server = createStubServer({ localReserve: !!process.env.PROTECTION_STUB_ORIGIN });
+  const server = createStubServer({ localReserve: process.env.STUB_LOCAL_RESERVE === "true" || !!process.env.PROTECTION_STUB_ORIGIN });
   server.listen(port, () => {
     console.log(`stub-server listening on http://localhost:${port}`);
   });

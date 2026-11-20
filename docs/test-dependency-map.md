@@ -246,3 +246,17 @@
 - [lessons-learned.md](lessons-learned.md) — 実装中の学び・手直しの記録
 - [requirements.md](requirements.md) — 要件定義
 - [api-spec.md](api-spec.md) — API仕様
+
+## CI の通信境界（#852）
+
+CI は依存取得とアプリ実行を分ける。GitHub Actions・npm・固定 runtime image の取得、Prisma Client 生成、純粋な schema 検証、docs/type/lint は runner 側で行う。既存 postinstall は MySQL/D1 の Client 生成だけで、準備用 source に実値の env を持ち込まない。
+
+アプリを実行する Jest・MySQL/D1 結合・通常/cron/demo/PWA E2E・PWA/Worker build・Wrangler dry-run/local smoke は `scripts/run-ci-isolated.mjs` が作る Docker の `none` namespace 内で実行する。MySQL は新規 tmpfs の testDB/3307 を使い、app/browser/stub は同じ namespace の loopback だけで接続する。D1/Worker は DB container を使わない。`d1:migration:check` も SQL を一時 SQLite へ実行するため、隔離された test suite に含める。
+
+公開 port・host bind・Docker socket・既存 DB volume・実 env・個人 home/資格情報は runtime に渡さない。image の EXPOSE は port 公開ではなく、MySQL の run-owned `/var/lib/mysql` tmpfs だけを許可する。作成した exact ID/Image、image baseline と固定 env、namespace/ownership を app 開始前に検査する。
+
+Node 22.23.4 Linux x64/ABI127/npm10.9.9 と lock の Playwright 1.62.1 を使う。公式 version-pinned image が browser/OS 依存を供給し、Node/npm/child PATH・native modules/workerd/Chromium は runtime で検査する。旧依存を再利用するローカル検証は lock/schema と Linux artifact の SHA 照合が前提で、Windows/Alpine バイナリは使わない。互換性や準備物が不足したら失敗し、host 実行や外部取得へ fallback しない。
+
+Wrangler の metrics/error reports と Next telemetry を CI で止め、Worker build に既存 font mock を適用する。通常 E2E の予約 link は既存 opt-in の local stub に向ける。PWA の Service Worker/cache 検証は維持し、route/mock だけを外向き拒否の保証にしない。
+
+成果物は専用出力の regular files だけを検証・回収する。必須 report 欠落・cleanup 失敗は job を失敗させ、suite の非ゼロ exit を優先する。SIGINT/TERM/cancel は作成済み owned ID だけを片付けるが、hard kill・runner 消失では完全回収を保証できない。実本番等への疎通で隔離を検証しない。

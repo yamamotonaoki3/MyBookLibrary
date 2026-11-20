@@ -4,6 +4,8 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 
 ## 索引
 
+- 2026-11-19: CI隔離は実runnerと同じ入力・権限・終了経路で検証する（#852）
+
 - 2026-11-17: 保護ヘッダーはNext応答とCloudflare ASSETSを分けて設定・検証する（#841）
 
 - 2026-11-10: メジャー更新（Prisma 7）は、本番相当の件数の架空データと Cron を、ステージングで通してから本番へ出す（#821、#822）
@@ -47,6 +49,17 @@ Codexレビューで採用された指摘や、実装中の手直しのうち、
 - 2026-10-17: Windows で、`wrangler d1 execute --command` に複数行の SQL を渡すと失敗した。1 行にするか、`--file` を使う
 
 ## 記録
+
+### 2026-11-19: CI隔離は実runnerと同じ入力・権限・終了経路で検証する（#852）
+
+- **種別:** 実行検証とレビュー指摘に基づく手直し。
+- **対象領域・関連ファイル:** `.github/workflows/ci.yml`、`app/scripts/ci-isolation.mjs`、`app/scripts/run-ci-isolated.mjs`。
+- **何が起きたか:** 手作りの準備物や権限を落としていないprobeの成功は実runnerの証拠にならなかった。WindowsへのLinuxリンク展開と、capを落としたtarの所有者復元で起動前に失敗した。また、fakeの直接abortでは同期CLI中に配送待ちとなるOSシグナルを検出できなかった。
+- **対応と根拠:** source/依存/Node/npm/browserの固定値を照合し、実準備経路の成果物を同じnone namespace・cap-drop条件で確認した。Windows専用アーカイブ入力はarchive間コピー、runtime展開は`--no-same-owner`で既存の権限制限を維持する。キャンセルは実子プロセスへのSIGTERMで成功の取り違えを再現した。
+- **次回の行動規則:** 依存取得と静的検査をアプリ実行から分け、実runnerの入力・権限・所有resource・成果物・終了codeまで通して確認する。キャンセルはeventloopへの配送後に結果を確定し、遅いsignalでも非ゼロ終了とsuite失敗の優先を守る。stub設定やunitだけから全processの通信遮断を保証しない。
+- **未確認:** 新workflowのGitHub Actions上の実行。ローカルの隔離検証から外部環境での成功を断定しない。
+- **状態:** 有効。
+
 
 ### 2026-11-17: 保護ヘッダーはNext応答とCloudflare ASSETSを分けて設定・検証する（#841）
 

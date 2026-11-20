@@ -153,7 +153,7 @@ test.describe("在庫確認モーダル（本詳細ページ）", () => {
     await expect(page.getByText("近隣図書館が登録されていません")).toBeVisible();
   });
 
-  test("図書館登録済みの場合、ISBNごとの貸出状況と予約リンクが表示される", async ({ page }) => {
+  test("図書館登録済みの場合、ISBNごとの貸出状況と予約リンクが表示される", async ({ page, request }) => {
     const book = await seedBookWithStubIsbn();
     const user = await testPrisma.user.findUniqueOrThrow({
       where: { email: "e2e-test@example.com" },
@@ -178,6 +178,11 @@ test.describe("在庫確認モーダル（本詳細ページ）", () => {
     const reserveLink = page.getByRole("link", { name: /予約する/ });
     await expect(reserveLink).toBeVisible();
     await expect(reserveLink).toHaveAttribute("target", "_blank");
+    const reserveUrl = "http://localhost:3999/stub/reserve";
+    await expect(reserveLink).toHaveAttribute("href", reserveUrl);
+    const reserveResponse = await request.get(reserveUrl);
+    expect(reserveResponse.status()).toBe(200);
+    expect(await reserveResponse.text()).toContain("[E2E_TEST] ローカル予約先");
   });
 
   test("ISBNが登録されていない本では、その旨のメッセージが表示される", async ({ page }) => {
