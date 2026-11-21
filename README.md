@@ -2,6 +2,12 @@
 
 文学賞の受賞・ノミネート作品の読書進捗管理と、お気に入り著者の管理を行う Web アプリケーション。
 
+## 制作背景
+
+家族から、文学賞の受賞・ノミネート作品を確認しながら読書状況を管理できるアプリが見つからないと聞いたことをきっかけに制作しました。
+
+普段から図書館を利用しているため、蔵書状況を確認し、外部の予約ページへ移動できる機能も加えました。また、好きな著者の新刊を知れたら面白いという話から、お気に入り著者の新刊情報をアプリ内で確認できる機能へと発想を広げました。
+
 ## アプリ概要
 
 [紹介動画付きのアプリ概要](https://yamamotonaoki3.github.io/MyBookLibrary/)で、主な機能と実際の操作画面を確認できます。
@@ -170,7 +176,6 @@ MyBookLibrary/
 - [アーキテクチャ概要](docs/architecture.md)・[運用手順書](docs/operations.md)
 - [Cloudflare へのデプロイ](docs/cloudflare-deploy.md)・[本番切り替え手順書](docs/d1-cutover-runbook.md)・[デモ環境の方針と構成](docs/demo-environment.md)
 - [テスト計画表](docs/test-plan.md)・[テスト依存関係マップ](docs/test-dependency-map.md)
-- [学び・手直しの記録](docs/lessons-learned.md)
 - [AWS 構成（停止中）](docs/aws/README.md)
 - [移行計画（アーカイブ）](docs/archive/cloudflare-d1-migration-plan.md)
 
