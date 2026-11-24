@@ -2,7 +2,7 @@
 
 ## ライブデモ
 
-**[https://mybooklibrary-demo.nyproducts.workers.dev](https://mybooklibrary-demo.nyproducts.workers.dev)**
+**[https://mybooklibrary-demo.nyproducts.workers.dev](https://mybooklibrary-demo.nyproducts.workers.dev)** ｜ デモ用アカウントでログインできます。
 
 ### ライブデモの使い方と注意事項
 
@@ -40,6 +40,8 @@
 家族から、文学賞の受賞・ノミネート作品を確認しながら読書状況を管理できるアプリが見つからないと聞いたことをきっかけに制作しました。
 
 普段から図書館を利用しているため、蔵書状況を確認し、外部の予約ページへ移動できる機能も加えました。また、好きな著者の新刊を知れたら面白いという話から、お気に入り著者の新刊情報をアプリ内で確認できる機能へと発想を広げました。
+
+デモとは別の本番環境を、家族で読書記録をつけるために使っています。
 
 ## アプリ概要
 
@@ -115,7 +117,7 @@
 
 各パッケージの正確なバージョンは、[`app/package.json`](app/package.json) と [`app/package-lock.json`](app/package-lock.json) を参照してください。アプリ自体のバージョン（`/api/version` の `name`）の付け方は、[バージョンの付け方と基準](docs/versioning.md) にあります。
 
-AWS（EC2 + RDS + CloudFront。Terraform 管理）は、現在すべて停止中です。いつでも再開できるよう、定義と手順だけ残しています（[AWS デプロイガイド](docs/aws/aws-deploy-guide.md)）。
+当初は AWS（EC2・RDS・CloudFront）で本番環境を構築しました。維持費を抑えるため、本番を Cloudflare Workers + D1 に移行しました。AWS 環境は稼働していませんが、再構築できるように [Terraform の構成定義](terraform/) と [AWS デプロイガイド](docs/aws/aws-deploy-guide.md) は残しています。
 
 E2E テストには Playwright を使用（詳細は下記「テスト」参照）。
 
